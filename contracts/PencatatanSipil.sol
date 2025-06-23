@@ -35,4 +35,15 @@ contract PencatatanSipil {
         address verifikatorDukcapil; // alamat verifikator dukcapil
         uint256 waktuVerifikasiDukcapil; // waktu permohonan diverifikasi di dukcapil
     }
+
+    uint256 public jumlahPermohonan;
+    mapping (uint256 => Permohonan) permohonans;
+
+    event PermohonanDiajukan(
+        uint256 indexed id,
+        address indexed pemohon,
+        JenisPermohonan jenis,
+        string cidIPFS,
+        uint256 waktu
+    );
 }
