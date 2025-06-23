@@ -1,0 +1,15 @@
+{
+  "name": "idchain",
+  "version": "1.0.0",
+  "description": "DApp for Population Data Management in the level of Regency",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.24.1"
+  }
+}
