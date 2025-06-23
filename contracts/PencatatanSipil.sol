@@ -46,4 +46,28 @@ contract PencatatanSipil {
         string cidIPFS,
         uint256 waktu
     );
+
+    function SubmitPermohonan(JenisPermohonan _jenis, string calldata _cidIPFS)  external {
+        require(bytes(_cidIPFS).length > 0, "CID IPFS tidak boleh kosong.");
+
+        uint256 idBaru = jumlahPermohonan++;
+        jumlahPermohonan++;
+
+        permohonans[idBaru] = Permohonan ({
+            id: idBaru,
+            pemohon: msg.sender,
+            jenis: _jenis,
+            cidIPFS: _cidIPFS,
+            status: Status.Diajukan,
+            waktuPengajuan: block.timestamp,
+            alasanPenolakanKalurahan: "",
+            alasanPenolakanDukcapil: "",
+            verifikatorKalurahan: address(0),
+            waktuVerifikasiKalurahan: 0,
+            verifikatorDukcapil: address(0),
+            waktuVerifikasiDukcapil: 0
+        });
+
+        emit PermohonanDiajukan(idBaru, msg.sender, _jenis, _cidIPFS, block.timestamp);
+    }
 }
