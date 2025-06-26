@@ -39,11 +39,26 @@ contract PencatatanSipil {
     uint256 public jumlahPermohonan;
     mapping (uint256 => Permohonan) permohonans;
 
+    mapping (address => bool) public kalurahan;
+
+    modifier onlyKalurahan() {
+        require(kalurahan[msg.sender], "Hanya kalurahan yang diizinkan!");
+        _;
+    }
+
     event PermohonanDiajukan(
         uint256 indexed id,
         address indexed pemohon,
         JenisPermohonan jenis,
         string cidIPFS,
+        uint256 waktu
+    );
+
+    event VerifikasiKalurahan (
+        uint256 indexed id,
+        address indexed verifikator,
+        bool disetujui,
+        string alasan,
         uint256 waktu
     );
 
@@ -70,4 +85,24 @@ contract PencatatanSipil {
 
         emit PermohonanDiajukan(idBaru, msg.sender, _jenis, _cidIPFS, block.timestamp);
     }
+
+    function verifikasiKalurahan(uint256 _id, bool _disetujui, string calldata _alasan) external {
+        Permohonan storage p = permohonans[_id];
+
+        require(p.status == Status.Diajukan, "Permohonan bukan dalam status Diajukan.");
+
+        if (_disetujui) {
+            p.status = Status.DisetujuiKalurahan;
+        } else {
+            p.status = Status.DitolakKalurahan;
+            p.alasanPenolakanKalurahan = _alasan;
+        }
+
+        p.verifikatorKalurahan = msg.sender;
+        p.waktuVerifikasiKalurahan = block.timestamp;
+
+        emit VerifikasiKalurahan(_id, msg.sender, _disetujui, _alasan, block.timestamp);
+    }
+
+
 }
