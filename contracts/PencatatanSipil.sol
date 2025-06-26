@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-contract PencatatanSipil {
+import "./KontrolAkses.sol";
+
+contract PencatatanSipil is KontrolAkses {
     enum JenisPermohonan {
         Kelahiran,
         Kematian,
@@ -39,13 +41,6 @@ contract PencatatanSipil {
     uint256 public jumlahPermohonan;
     mapping (uint256 => Permohonan) permohonans;
 
-    mapping (address => bool) public kalurahan;
-
-    modifier onlyKalurahan() {
-        require(kalurahan[msg.sender], "Hanya kalurahan yang diizinkan!");
-        _;
-    }
-
     event PermohonanDiajukan(
         uint256 indexed id,
         address indexed pemohon,
@@ -60,6 +55,14 @@ contract PencatatanSipil {
         bool disetujui,
         string alasan,
         uint256 waktu
+    );
+
+    event VerifikasiDukcapil (
+        uint256 indexed id,
+        address indexed verifikator,
+        bool disetujui,
+        string alasan,
+        uint256 waktu 
     );
 
     function SubmitPermohonan(JenisPermohonan _jenis, string calldata _cidIPFS)  external {
@@ -86,7 +89,7 @@ contract PencatatanSipil {
         emit PermohonanDiajukan(idBaru, msg.sender, _jenis, _cidIPFS, block.timestamp);
     }
 
-    function verifikasiKalurahan(uint256 _id, bool _disetujui, string calldata _alasan) external {
+    function verifikasiKalurahan(uint256 _id, bool _disetujui, string calldata _alasan) external onlyKalurahan {
         Permohonan storage p = permohonans[_id];
 
         require(p.status == Status.Diajukan, "Permohonan bukan dalam status Diajukan.");
@@ -104,5 +107,22 @@ contract PencatatanSipil {
         emit VerifikasiKalurahan(_id, msg.sender, _disetujui, _alasan, block.timestamp);
     }
 
+    function verifikasiDukcapil(uint256 _id, bool _disetujui, string calldata _alasan) external onlyDukcapil {
+        Permohonan storage p = permohonans[_id];
+
+        require(p.status == Status.DisetujuiKalurahan, "Permohonan belum disetujui oleh Kalurahan.");
+
+        if (_disetujui) {
+            p.status = Status.DisetujuiDukcapil;
+        } else {
+            p.status = Status.DitolakDukcapil;
+            p.alasanPenolakanDukcapil = _alasan;
+        }
+
+        p.verifikatorDukcapil = msg.sender;
+        p.waktuVerifikasiDukcapil = block.timestamp;
+
+        emit VerifikasiDukcapil(_id, msg.sender, _disetujui, _alasan, block.timestamp);
+    }
 
 }
