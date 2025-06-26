@@ -116,5 +116,25 @@ describe("PencatatanSipil", function () {
             .withArgs(0, warga.address, 0, "cid_event", anyValue);
     });
 
+    it("dukcapil dapat menyetujui permohonan", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx");
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+        await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
+
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "");
+        const updated = await pencatatan.getPermohonan(ids[0]);
+        expect(updated.status).to.equal(5); // DisetujuiDukcapil
+    });
+
+    it("warga tidak bisa memverifikasi sebagai dukcapil", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_test");
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+
+        await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
+
+        await expect(
+            pencatatan.connect(warga).verifikasiDukcapil(ids[0], true, "")
+        ).to.be.revertedWith("Hanya petugas dukcapil yang diizinkan melakukan ini.");
+    });
 
 });
