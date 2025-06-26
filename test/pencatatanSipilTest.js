@@ -87,4 +87,26 @@ describe("PencatatanSipil", function () {
         ).to.be.revertedWith("Hanya petugas kalurahan yang diizinkan melakukan ini.");
     });
 
+    it("warga tidak boleh memverifikasi permohonan", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx");
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+
+        await expect(
+            pencatatan.connect(warga).verifikasiKalurahan(ids[0], true, "")
+        ).to.be.revertedWith("Hanya petugas kalurahan yang diizinkan melakukan ini.");
+    });
+
+    it("kalurahan tidak boleh memverifikasi jika status bukan Diajukan", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx");
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+
+        // Ubah status ke DisetujuiKalurahan dulu
+        await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
+
+        // Coba verifikasi ulang
+        await expect(
+            pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "")
+        ).to.be.revertedWith("Permohonan bukan dalam status Diajukan.");
+    });
+
 });
