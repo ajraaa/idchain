@@ -104,7 +104,6 @@ contract PencatatanSipil is KontrolAkses {
         require(bytes(_cidIPFS).length > 0, "CID IPFS tidak boleh kosong.");
 
         uint256 idBaru = jumlahPermohonan++;
-        jumlahPermohonan++;
 
         permohonans[idBaru] = Permohonan({
             id: idBaru,
