@@ -137,4 +137,27 @@ describe("PencatatanSipil", function () {
         ).to.be.revertedWith("Hanya petugas dukcapil yang diizinkan melakukan ini.");
     });
 
+    it("emit event saat verifikasi kalurahan", async () => {
+        await pencatatan.connect(warga).submitPermohonan(1, "cid_kalurahan");
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+
+        await expect(
+            pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], false, "Data tidak lengkap")
+        )
+            .to.emit(pencatatan, "VerifikasiKalurahan")
+            .withArgs(ids[0], kalurahan.address, false, "Data tidak lengkap", anyValue);
+    });
+
+    it("emit event saat verifikasi dukcapil", async () => {
+        await pencatatan.connect(warga).submitPermohonan(2, "cid_dukcapil");
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+
+        await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
+
+        await expect(
+            pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "")
+        )
+            .to.emit(pencatatan, "VerifikasiDukcapil")
+            .withArgs(ids[0], dukcapil.address, true, "", anyValue);
+    });
 });
