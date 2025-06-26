@@ -29,6 +29,16 @@ describe("PencatatanSipil", function () {
         expect(data.status).to.equal(0); // Diajukan
     });
 
+    it("id permohonan harus bertambah satu per submit", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_a");
+        await pencatatan.connect(warga).submitPermohonan(1, "cid_b");
+
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+        expect(ids[0]).to.equal(0);
+        expect(ids[1]).to.equal(1); // bukan 2
+    });
+
+
     it("kalurahan dapat memverifikasi permohonan", async () => {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
@@ -66,16 +76,6 @@ describe("PencatatanSipil", function () {
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         const jenis = await pencatatan.getJenisPermohonan(ids[0]);
         expect(jenis).to.equal("Cerai");
-    });
-
-    it("mengembalikan array id permohonan yang diajukan oleh pemohon", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_a");
-        await pencatatan.connect(warga).submitPermohonan(1, "cid_b");
-
-        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
-        expect(ids.length).to.equal(2);
-        expect(ids[0]).to.equal(0);
-        expect(ids[1]).to.equal(2); // karena jumlahPermohonan diincrement dua kali
     });
 
     it("gagal jika bukan kalurahan yang memverifikasi", async () => {
