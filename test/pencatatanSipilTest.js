@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 describe("PencatatanSipil", function () {
     let pencatatan, owner, kalurahan, dukcapil, warga;
@@ -108,5 +109,12 @@ describe("PencatatanSipil", function () {
             pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "")
         ).to.be.revertedWith("Permohonan bukan dalam status Diajukan.");
     });
+
+    it("emit event saat permohonan diajukan", async () => {
+        await expect(pencatatan.connect(warga).submitPermohonan(0, "cid_event"))
+            .to.emit(pencatatan, "PermohonanDiajukan")
+            .withArgs(0, warga.address, 0, "cid_event", anyValue);
+    });
+
 
 });
