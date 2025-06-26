@@ -97,7 +97,7 @@ contract PencatatanSipil is KontrolAkses {
         return "Jenis Tidak Dikenal";
     }
 
-    function SubmitPermohonan(
+    function submitPermohonan(
         JenisPermohonan _jenis,
         string calldata _cidIPFS
     ) external {
