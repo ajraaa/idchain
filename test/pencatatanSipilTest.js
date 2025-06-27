@@ -62,7 +62,7 @@ describe("PencatatanSipil", function () {
 
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(6); // DitolakDukcapil
-        expect(updated.alasanPenolakanDukcapil).to.equal("Data tidak lengkap");
+        expect(updated.alasanPenolakan).to.equal("Data tidak lengkap");
     });
 
     it("mengembalikan status permohonan sebagai string", async () => {
