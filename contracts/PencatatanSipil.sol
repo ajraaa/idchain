@@ -30,8 +30,7 @@ contract PencatatanSipil is KontrolAkses {
         string cidIPFS; // cid ipfs dari dokumen terenkripsi
         Status status; // status permohonan terkini
         uint256 waktuPengajuan; // waktu pengajuan permohonan
-        string alasanPenolakanKalurahan; // alasan penolakan oleh kalurahan
-        string alasanPenolakanDukcapil; // alasan penolakan oleh dukcapil
+        string alasanPenolakan; // alasan penolakan
         address verifikatorKalurahan; // alamat verifikator kalurahan
         uint256 waktuVerifikasiKalurahan; // waktu permohonan diverifikasi di kalurahan
         address verifikatorDukcapil; // alamat verifikator dukcapil
@@ -112,8 +111,7 @@ contract PencatatanSipil is KontrolAkses {
             cidIPFS: _cidIPFS,
             status: Status.Diajukan,
             waktuPengajuan: block.timestamp,
-            alasanPenolakanKalurahan: "",
-            alasanPenolakanDukcapil: "",
+            alasanPenolakan: "",
             verifikatorKalurahan: address(0),
             waktuVerifikasiKalurahan: 0,
             verifikatorDukcapil: address(0),
@@ -147,7 +145,7 @@ contract PencatatanSipil is KontrolAkses {
             p.status = Status.DisetujuiKalurahan;
         } else {
             p.status = Status.DitolakKalurahan;
-            p.alasanPenolakanKalurahan = _alasan;
+            p.alasanPenolakan = _alasan;
         }
 
         p.verifikatorKalurahan = msg.sender;
@@ -178,7 +176,7 @@ contract PencatatanSipil is KontrolAkses {
             p.status = Status.DisetujuiDukcapil;
         } else {
             p.status = Status.DitolakDukcapil;
-            p.alasanPenolakanDukcapil = _alasan;
+            p.alasanPenolakan = _alasan;
         }
 
         p.verifikatorDukcapil = msg.sender;
@@ -211,8 +209,7 @@ contract PencatatanSipil is KontrolAkses {
             string memory cidIPFS,
             Status status,
             uint256 waktuPengajuan,
-            string memory alasanPenolakanKalurahan,
-            string memory alasanPenolakanDukcapil,
+            string memory alasanPenolakan,
             address verifikatorKalurahan,
             uint256 waktuVerifikasiKalurahan,
             address verifikatorDukcapil,
@@ -227,8 +224,7 @@ contract PencatatanSipil is KontrolAkses {
             p.cidIPFS,
             p.status,
             p.waktuPengajuan,
-            p.alasanPenolakanKalurahan,
-            p.alasanPenolakanDukcapil,
+            p.alasanPenolakan,
             p.verifikatorKalurahan,
             p.waktuVerifikasiKalurahan,
             p.verifikatorDukcapil,
