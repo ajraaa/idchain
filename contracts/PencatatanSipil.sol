@@ -9,8 +9,7 @@ contract PencatatanSipil is KontrolAkses {
         Kematian,
         Kawin,
         Cerai,
-        Pindah,
-        Datang
+        Pindah
     }
 
     enum Status {
@@ -91,7 +90,6 @@ contract PencatatanSipil is KontrolAkses {
         if (j == JenisPermohonan.Kawin) return "Kawin";
         if (j == JenisPermohonan.Cerai) return "Cerai";
         if (j == JenisPermohonan.Pindah) return "Pindah";
-        if (j == JenisPermohonan.Datang) return "Datang";
 
         return "Jenis Tidak Dikenal";
     }
