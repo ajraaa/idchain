@@ -3,8 +3,13 @@ pragma solidity ^0.8.28;
 
 contract KontrolAkses {
     address public owner;
+
     mapping(address => bool) public kalurahan;
     mapping(address => bool) public dukcapil;
+
+    constructor() {
+        owner = msg.sender;
+    }
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Hanya owner yang dapat melakukan ini.");
@@ -25,10 +30,6 @@ contract KontrolAkses {
             "Hanya petugas dukcapil yang diizinkan melakukan ini."
         );
         _;
-    }
-
-    constructor() {
-        owner = msg.sender;
     }
 
     function tambahKalurahan(address _akun) external onlyOwner {
