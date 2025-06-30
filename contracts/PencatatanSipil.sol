@@ -26,7 +26,7 @@ contract PencatatanSipil is KontrolAkses {
         uint256 id; // ID permohonan
         address pemohon; // alamat pemohon
         JenisPermohonan jenis; // jenis permohonan
-        string cidIPFS; // cid ipfs dari dokumen terenkripsi
+        string cidIPFS; // cid ipfs dari dokumen formulir terenkripsi
         Status status; // status permohonan terkini
         uint256 waktuPengajuan; // waktu pengajuan permohonan
         string alasanPenolakan; // alasan penolakan
