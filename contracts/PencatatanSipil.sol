@@ -27,6 +27,7 @@ contract PencatatanSipil is KontrolAkses {
         address pemohon; // alamat pemohon
         JenisPermohonan jenis; // jenis permohonan
         string cidIPFS; // cid ipfs dari dokumen formulir terenkripsi
+        uint8 kalurahanAsalId; // ID untuk mapping kalurahan asal
         Status status; // status permohonan terkini
         uint256 waktuPengajuan; // waktu pengajuan permohonan
         string alasanPenolakan; // alasan penolakan
@@ -96,7 +97,8 @@ contract PencatatanSipil is KontrolAkses {
 
     function submitPermohonan(
         JenisPermohonan _jenis,
-        string calldata _cidIPFS
+        string calldata _cidIPFS,
+        uint8 _kalurahanAsalId
     ) external {
         require(bytes(_cidIPFS).length > 0, "CID IPFS tidak boleh kosong.");
 
@@ -107,6 +109,7 @@ contract PencatatanSipil is KontrolAkses {
             pemohon: msg.sender,
             jenis: _jenis,
             cidIPFS: _cidIPFS,
+            kalurahanAsalId: _kalurahanAsalId,
             status: Status.Diajukan,
             waktuPengajuan: block.timestamp,
             alasanPenolakan: "",
