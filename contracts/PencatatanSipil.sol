@@ -143,7 +143,7 @@ contract PencatatanSipil is KontrolAkses {
         uint256 _id,
         bool _disetujui,
         string calldata _alasan
-    ) external onlyKalurahan {
+    ) external onlyKalurahan onlyKalurahanAsal(_id) {
         Permohonan storage p = permohonans[_id];
 
         require(
