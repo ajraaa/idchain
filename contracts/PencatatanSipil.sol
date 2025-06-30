@@ -27,7 +27,7 @@ contract PencatatanSipil is KontrolAkses {
         address pemohon; // alamat pemohon
         JenisPermohonan jenis; // jenis permohonan
         string cidIPFS; // cid ipfs dari dokumen formulir terenkripsi
-        uint8 kalurahanAsalId; // ID untuk mapping kalurahan asal
+        uint8 idKalurahanAsal; // ID untuk mapping kalurahan asal
         Status status; // status permohonan terkini
         uint256 waktuPengajuan; // waktu pengajuan permohonan
         string alasanPenolakan; // alasan penolakan
@@ -65,6 +65,15 @@ contract PencatatanSipil is KontrolAkses {
         uint256 waktu
     );
 
+    modifier onlyKalurahanAsal(uint256 _id) {
+        require(
+            idKalurahanByAddress[msg.sender] ==
+                permohonans[_id].idKalurahanAsal,
+            "Hanya kalurahan asal yang berwenang!"
+        );
+        _;
+    }
+
     function getStatusPermohonan(
         uint256 _id
     ) external view returns (string memory) {
@@ -98,7 +107,7 @@ contract PencatatanSipil is KontrolAkses {
     function submitPermohonan(
         JenisPermohonan _jenis,
         string calldata _cidIPFS,
-        uint8 _kalurahanAsalId
+        uint8 _idKalurahanAsal
     ) external {
         require(bytes(_cidIPFS).length > 0, "CID IPFS tidak boleh kosong.");
 
@@ -109,7 +118,7 @@ contract PencatatanSipil is KontrolAkses {
             pemohon: msg.sender,
             jenis: _jenis,
             cidIPFS: _cidIPFS,
-            kalurahanAsalId: _kalurahanAsalId,
+            idKalurahanAsal: _idKalurahanAsal,
             status: Status.Diajukan,
             waktuPengajuan: block.timestamp,
             alasanPenolakan: "",
@@ -208,7 +217,7 @@ contract PencatatanSipil is KontrolAkses {
             address pemohon,
             JenisPermohonan jenis,
             string memory cidIPFS,
-            uint8 kalurahanAsalId,
+            uint8 idKalurahanAsal,
             Status status,
             uint256 waktuPengajuan,
             string memory alasanPenolakan,
@@ -224,7 +233,7 @@ contract PencatatanSipil is KontrolAkses {
             p.pemohon,
             p.jenis,
             p.cidIPFS,
-            p.kalurahanAsalId,
+            p.idKalurahanAsal,
             p.status,
             p.waktuPengajuan,
             p.alasanPenolakan,
