@@ -277,6 +277,30 @@ contract PencatatanSipil is KontrolAkses {
         return daftarPermohonanKalurahanAsal[idKalurahan];
     }
 
+    function getPermohonanBelumVerifikasiKalurahan(
+        Status _status
+    ) external view onlyKalurahan returns (uint256[] memory) {
+        uint8 idKalurahan = idKalurahanByAddress[msg.sender];
+        uint256[] storage semua = daftarPermohonanKalurahanAsal[idKalurahan];
+
+        uint256 count = 0;
+        for (uint256 i = 0; i < semua.length; i++) {
+            if (permohonans[semua[i]].status == _status) {
+                count++;
+            }
+        }
+
+        uint256[] memory hasil = new uint256[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < semua.length; i++) {
+            if (permohonans[semua[i]].status == _status) {
+                hasil[index++] = semua[i];
+            }
+        }
+
+        return hasil;
+    }
+
     function getPermohonanForDukcapil()
         external
         view
