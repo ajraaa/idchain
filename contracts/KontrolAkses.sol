@@ -45,6 +45,7 @@ contract KontrolAkses {
 
         addressKalurahanById[_id] = _akun;
         idKalurahanByAddress[_akun] = _id;
+        kalurahan[_akun] = true;
     }
 
     function tambahKalurahan(address _akun) external onlyOwner {
@@ -57,6 +58,11 @@ contract KontrolAkses {
 
     function hapusKalurahan(address _akun) external onlyOwner {
         kalurahan[_akun] = false;
+        uint8 id = idKalurahanByAddress[_akun];
+        if (id != 0) {
+            delete addressKalurahanById[id];
+            delete idKalurahanByAddress[_akun];
+        }
     }
 
     function hapusDukcapil(address _akun) external onlyOwner {
