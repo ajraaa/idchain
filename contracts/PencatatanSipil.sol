@@ -301,12 +301,9 @@ contract PencatatanSipil is KontrolAkses {
         return hasil;
     }
 
-    function getPermohonanForDukcapil()
-        external
-        view
-        onlyDukcapil
-        returns (uint256[] memory)
-    {
-        return daftarPermohonanPerStatus[Status.DisetujuiKalurahan];
+    function getPermohonanForDukcapil(
+        Status _status
+    ) external view onlyDukcapil returns (uint256[] memory) {
+        return daftarPermohonanPerStatus[_status];
     }
 }
