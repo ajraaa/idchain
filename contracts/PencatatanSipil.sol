@@ -19,7 +19,8 @@ contract PencatatanSipil is KontrolAkses {
         DitolakKalurahan,
         DiprosesDukcapil,
         DisetujuiDukcapil,
-        DitolakDukcapil
+        DitolakDukcapil,
+        DibatalkanPemohon
     }
 
     struct Permohonan {
@@ -48,6 +49,12 @@ contract PencatatanSipil is KontrolAkses {
         address indexed pemohon,
         JenisPermohonan jenis,
         string cidIPFS,
+        uint256 waktu
+    );
+
+    event PermohonanDibatalkan(
+        uint256 indexed id,
+        address indexed pemohon,
         uint256 waktu
     );
 
@@ -88,6 +95,7 @@ contract PencatatanSipil is KontrolAkses {
         if (s == Status.DiprosesDukcapil) return "Diproses Dukcapil";
         if (s == Status.DisetujuiDukcapil) return "Disetujui Dukcapil";
         if (s == Status.DitolakDukcapil) return "Ditolak Dukcapil";
+        if (s == Status.DibatalkanPemohon) return "Dibatalkan oleh Pemohon";
 
         return "Status Tidak Dikenal";
     }
@@ -152,6 +160,24 @@ contract PencatatanSipil is KontrolAkses {
             _cidIPFS,
             block.timestamp
         );
+    }
+
+    function batalkanPermohonan(uint256 _id) external {
+        Permohonan storage p = permohonans[_id];
+
+        require(p.pemohon == msg.sender, "Bukan pemilik permohonan.");
+        require(
+            p.status == Status.Diajukan,
+            "Permohonan tidak dapat dibatalkan."
+        );
+
+        _hapusByStatus(_id, Status.Diajukan); // Hapus dari mapping status sebelumnya
+
+        p.status = Status.DibatalkanPemohon;
+        p.waktuVerifikasiKalurahan = block.timestamp; // Waktu pembatalan
+        p.alasanPenolakan = "Permohonan dibatalkan oleh pemohon.";
+
+        emit PermohonanDibatalkan(p.id, msg.sender, block.timestamp);
     }
 
     function verifikasiKalurahan(
