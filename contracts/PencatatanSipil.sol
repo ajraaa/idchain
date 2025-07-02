@@ -131,6 +131,10 @@ contract PencatatanSipil is KontrolAkses {
         uint8 _idKalurahanAsal
     ) external {
         require(bytes(_cidIPFS).length > 0, "CID IPFS tidak boleh kosong.");
+        require(
+            addressKalurahanById[_idKalurahanAsal] != address(0),
+            "ID tidak valid!"
+        );
 
         uint256 idBaru = jumlahPermohonan++;
 
