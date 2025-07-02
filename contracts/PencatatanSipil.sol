@@ -40,6 +40,7 @@ contract PencatatanSipil is KontrolAkses {
     uint256 public jumlahPermohonan;
     mapping(uint256 => Permohonan) permohonans;
     mapping(address => uint256[]) public daftarPermohonanPemohon;
+    mapping(uint8 => uint256[]) public daftarPermohonanKalurahanAsal;
 
     event PermohonanDiajukan(
         uint256 indexed id,
@@ -129,6 +130,7 @@ contract PencatatanSipil is KontrolAkses {
         });
 
         daftarPermohonanPemohon[msg.sender].push(idBaru);
+        daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
 
         emit PermohonanDiajukan(
             idBaru,
