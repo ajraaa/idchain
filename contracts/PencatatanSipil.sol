@@ -245,4 +245,14 @@ contract PencatatanSipil is KontrolAkses {
             p.waktuVerifikasiDukcapil
         );
     }
+
+    function getPermohonanByKalurahanAsal()
+        external
+        view
+        onlyKalurahan
+        returns (uint256[] memory)
+    {
+        uint8 idKalurahan = idKalurahanByAddress[msg.sender];
+        return daftarPermohonanKalurahanAsal[idKalurahan];
+    }
 }
