@@ -283,19 +283,19 @@ contract PencatatanSipil is KontrolAkses {
         uint8 idKalurahan = idKalurahanByAddress[msg.sender];
         uint256[] storage semua = daftarPermohonanKalurahanAsal[idKalurahan];
 
+        uint256[] memory temp = new uint256[](semua.length);
         uint256 count = 0;
+
         for (uint256 i = 0; i < semua.length; i++) {
             if (permohonans[semua[i]].status == _status) {
+                temp[count] = semua[i];
                 count++;
             }
         }
 
         uint256[] memory hasil = new uint256[](count);
-        uint256 index = 0;
-        for (uint256 i = 0; i < semua.length; i++) {
-            if (permohonans[semua[i]].status == _status) {
-                hasil[index++] = semua[i];
-            }
+        for (uint256 i = 0; i < count; i++) {
+            hasil[i] = temp[i];
         }
 
         return hasil;
