@@ -41,6 +41,7 @@ contract PencatatanSipil is KontrolAkses {
     mapping(uint256 => Permohonan) permohonans;
     mapping(address => uint256[]) public daftarPermohonanPemohon;
     mapping(uint8 => uint256[]) public daftarPermohonanKalurahanAsal;
+    mapping(Status => uint256[]) public daftarPermohonanPerStatus;
 
     event PermohonanDiajukan(
         uint256 indexed id,
@@ -105,6 +106,17 @@ contract PencatatanSipil is KontrolAkses {
         return "Jenis Tidak Dikenal";
     }
 
+    function _hapusByStatus(uint256 _id, Status _status) internal {
+        uint256[] storage daftar = daftarPermohonanPerStatus[_status];
+        for (uint256 i = 0; i < daftar.length; i++) {
+            if (daftar[i] == _id) {
+                daftar[i] = daftar[daftar.length - 1];
+                daftar.pop();
+                break;
+            }
+        }
+    }
+
     function submitPermohonan(
         JenisPermohonan _jenis,
         string calldata _cidIPFS,
@@ -131,6 +143,7 @@ contract PencatatanSipil is KontrolAkses {
 
         daftarPermohonanPemohon[msg.sender].push(idBaru);
         daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
+        daftarPermohonanPerStatus[Status.Diajukan].push(idBaru);
 
         emit PermohonanDiajukan(
             idBaru,
@@ -153,11 +166,15 @@ contract PencatatanSipil is KontrolAkses {
             "Permohonan bukan dalam status Diajukan."
         );
 
+        _hapusByStatus(_id, Status.Diajukan);
+
         if (_disetujui) {
             p.status = Status.DisetujuiKalurahan;
+            daftarPermohonanPerStatus[Status.DisetujuiKalurahan].push(_id);
         } else {
             p.status = Status.DitolakKalurahan;
             p.alasanPenolakan = _alasan;
+            daftarPermohonanPerStatus[Status.DitolakKalurahan].push(_id);
         }
 
         p.verifikatorKalurahan = msg.sender;
@@ -184,11 +201,15 @@ contract PencatatanSipil is KontrolAkses {
             "Permohonan belum disetujui oleh Kalurahan."
         );
 
+        _hapusByStatus(_id, Status.DisetujuiKalurahan);
+
         if (_disetujui) {
             p.status = Status.DisetujuiDukcapil;
+            daftarPermohonanPerStatus[Status.DisetujuiDukcapil].push(_id);
         } else {
             p.status = Status.DitolakDukcapil;
             p.alasanPenolakan = _alasan;
+            daftarPermohonanPerStatus[Status.DitolakDukcapil].push(_id);
         }
 
         p.verifikatorDukcapil = msg.sender;
@@ -254,5 +275,14 @@ contract PencatatanSipil is KontrolAkses {
     {
         uint8 idKalurahan = idKalurahanByAddress[msg.sender];
         return daftarPermohonanKalurahanAsal[idKalurahan];
+    }
+
+    function getPermohonanForDukcapil()
+        external
+        view
+        onlyDukcapil
+        returns (uint256[] memory)
+    {
+        return daftarPermohonanPerStatus[Status.DisetujuiKalurahan];
     }
 }
