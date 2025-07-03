@@ -391,45 +391,8 @@ contract PencatatanSipil is KontrolAkses {
 
     function getPermohonan(
         uint256 _id
-    )
-        external
-        view
-        returns (
-            uint256 id,
-            uint256 waktuPengajuan,
-            uint256 waktuVerifikasiKalurahan,
-            uint256 waktuVerifikasiKalurahanTujuan,
-            uint256 waktuVerifikasiDukcapil,
-            address pemohon,
-            address verifikatorKalurahan,
-            address verifikatorKalurahanTujuan,
-            address verifikatorDukcapil,
-            string memory cidIPFS,
-            string memory alasanPenolakan,
-            JenisPermohonan jenis,
-            Status status,
-            uint8 idKalurahanAsal,
-            uint8 idKalurahanTujuan
-        )
-    {
-        Permohonan memory p = permohonans[_id];
-        return (
-            p.id,
-            p.waktuPengajuan,
-            p.waktuVerifikasiKalurahan,
-            p.waktuVerifikasiKalurahanTujuan,
-            p.waktuVerifikasiDukcapil,
-            p.pemohon,
-            p.verifikatorKalurahan,
-            p.verifikatorKalurahanTujuan,
-            p.verifikatorDukcapil,
-            p.cidIPFS,
-            p.alasanPenolakan,
-            p.jenis,
-            p.status,
-            p.idKalurahanAsal,
-            p.idKalurahanTujuan
-        );
+    ) external view returns (Permohonan memory) {
+        return permohonans[_id];
     }
 
     function getPermohonanByKalurahanAsal()
