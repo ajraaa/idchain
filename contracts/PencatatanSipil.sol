@@ -355,12 +355,19 @@ contract PencatatanSipil is KontrolAkses {
     ) external onlyDukcapil {
         Permohonan storage p = permohonans[_id];
 
-        require(
-            p.status == Status.DisetujuiKalurahan,
-            "Permohonan belum disetujui oleh Kalurahan."
-        );
-
-        _hapusByStatus(_id, Status.DisetujuiKalurahan);
+        if (p.jenis == JenisPermohonan.Pindah) {
+            require(
+                p.status == Status.DisetujuiKalurahanTujuan,
+                "Permohonan pindah belum disetujui Kalurahan Tujuan."
+            );
+            _hapusByStatus(_id, Status.DisetujuiKalurahanTujuan);
+        } else {
+            require(
+                p.status == Status.DisetujuiKalurahan,
+                "Permohonan belum disetujui Kalurahan."
+            );
+            _hapusByStatus(_id, Status.DisetujuiKalurahan);
+        }
 
         if (_disetujui) {
             p.status = Status.DisetujuiDukcapil;
