@@ -47,6 +47,7 @@ contract PencatatanSipil is KontrolAkses {
     mapping(uint256 => Permohonan) permohonans;
     mapping(address => uint256[]) public daftarPermohonanPemohon;
     mapping(uint8 => uint256[]) public daftarPermohonanKalurahanAsal;
+    mapping(uint8 => uint256[]) daftarPermohonanKalurahanTujuan;
     mapping(Status => uint256[]) public daftarPermohonanPerStatus;
     mapping(uint256 => string) public cidDokumenResmi;
 
