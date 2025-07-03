@@ -283,6 +283,50 @@ contract PencatatanSipil is KontrolAkses {
         );
     }
 
+    function verifikasiKalurahanTujuanPindah(
+        uint256 _id,
+        bool _disetujui,
+        string calldata _alasan
+    ) external onlyKalurahan {
+        Permohonan storage p = permohonans[_id];
+
+        require(p.jenis == JenisPermohonan.Pindah, "Bukan permohonan pindah.");
+
+        require(
+            p.status == Status.DisetujuiKalurahanAsal,
+            "Belum diverifikasi Kalurahan Asal."
+        );
+
+        require(
+            idKalurahanByAddress[msg.sender] == p.idKalurahanTujuan,
+            "Hanya kalurahan tujuan yang dapat memverifikasi."
+        );
+
+        _hapusByStatus(_id, Status.DisetujuiKalurahanAsal);
+
+        if (_disetujui) {
+            p.status = Status.DisetujuiKalurahanTujuan;
+            daftarPermohonanPerStatus[Status.DisetujuiKalurahanTujuan].push(
+                _id
+            );
+        } else {
+            p.status = Status.DitolakKalurahanTujuan;
+            p.alasanPenolakan = _alasan;
+            daftarPermohonanPerStatus[Status.DitolakKalurahanTujuan].push(_id);
+        }
+
+        p.verifikatorKalurahanTujuan = msg.sender;
+        p.waktuVerifikasiKalurahanTujuan = block.timestamp;
+
+        emit VerifikasiKalurahan(
+            _id,
+            msg.sender,
+            _disetujui,
+            _alasan,
+            block.timestamp
+        );
+    }
+
     function verifikasiDukcapil(
         uint256 _id,
         bool _disetujui,
