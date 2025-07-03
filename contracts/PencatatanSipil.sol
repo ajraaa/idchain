@@ -14,12 +14,14 @@ contract PencatatanSipil is KontrolAkses {
 
     enum Status {
         Diajukan,
-        DiprosesKalurahan,
         DisetujuiKalurahan,
         DitolakKalurahan,
-        DiprosesDukcapil,
         DisetujuiDukcapil,
         DitolakDukcapil,
+        DisetujuiKalurahanAsal,
+        DitolakKalurahanAsal,
+        DisetujuiKalurahanTujuan,
+        DitolakKalurahanTujuan,
         DibatalkanPemohon
     }
 
@@ -99,12 +101,17 @@ contract PencatatanSipil is KontrolAkses {
         Status s = permohonans[_id].status;
 
         if (s == Status.Diajukan) return "Diajukan";
-        if (s == Status.DiprosesKalurahan) return "Diproses Kalurahan";
         if (s == Status.DisetujuiKalurahan) return "Disetujui Kalurahan";
         if (s == Status.DitolakKalurahan) return "Ditolak Kalurahan";
-        if (s == Status.DiprosesDukcapil) return "Diproses Dukcapil";
         if (s == Status.DisetujuiDukcapil) return "Disetujui Dukcapil";
         if (s == Status.DitolakDukcapil) return "Ditolak Dukcapil";
+        if (s == Status.DisetujuiKalurahanAsal)
+            return "Disetujui Kalurahan Asal";
+        if (s == Status.DitolakKalurahanAsal) return "Ditolak Kalurahan Asal";
+        if (s == Status.DisetujuiKalurahanTujuan)
+            return "Disetujui Kalurahan Tujuan";
+        if (s == Status.DitolakKalurahanTujuan)
+            return "Ditolak Kalurahan Tujuan";
         if (s == Status.DibatalkanPemohon) return "Dibatalkan oleh Pemohon";
 
         return "Status Tidak Dikenal";
