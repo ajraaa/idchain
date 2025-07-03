@@ -146,13 +146,26 @@ contract PencatatanSipil is KontrolAkses {
     function submitPermohonan(
         JenisPermohonan _jenis,
         string calldata _cidIPFS,
-        uint8 _idKalurahanAsal
+        uint8 _idKalurahanAsal,
+        uint8 _idKalurahanTujuan // Hanya wajib jika jenis == Pindah
     ) external {
         require(bytes(_cidIPFS).length > 0, "CID IPFS tidak boleh kosong.");
         require(
             addressKalurahanById[_idKalurahanAsal] != address(0),
-            "ID tidak valid!"
+            "ID Kalurahan Asal tidak valid."
         );
+
+        // Validasi tambahan jika jenisnya Pindah
+        if (_jenis == JenisPermohonan.Pindah) {
+            require(
+                _idKalurahanTujuan != 0,
+                "ID Kalurahan Tujuan harus diisi."
+            );
+            require(
+                addressKalurahanById[_idKalurahanTujuan] != address(0),
+                "ID Kalurahan Tujuan tidak valid."
+            );
+        }
 
         uint256 idBaru = jumlahPermohonan++;
 
@@ -171,12 +184,19 @@ contract PencatatanSipil is KontrolAkses {
             jenis: _jenis,
             status: Status.Diajukan,
             idKalurahanAsal: _idKalurahanAsal,
-            idKalurahanTujuan: 0
+            idKalurahanTujuan: _jenis == JenisPermohonan.Pindah
+                ? _idKalurahanTujuan
+                : 0
         });
 
         daftarPermohonanPemohon[msg.sender].push(idBaru);
         daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
         daftarPermohonanPerStatus[Status.Diajukan].push(idBaru);
+
+        // Tambahkan ke mapping kalurahan tujuan jika jenisnya Pindah
+        if (_jenis == JenisPermohonan.Pindah) {
+            daftarPermohonanKalurahanTujuan[_idKalurahanTujuan].push(idBaru);
+        }
 
         emit PermohonanDiajukan(
             idBaru,
@@ -444,6 +464,16 @@ contract PencatatanSipil is KontrolAkses {
         }
 
         return hasil;
+    }
+
+    function getPermohonanByKalurahanTujuan()
+        external
+        view
+        onlyKalurahan
+        returns (uint256[] memory)
+    {
+        uint8 idTujuan = idKalurahanByAddress[msg.sender];
+        return daftarPermohonanKalurahanTujuan[idTujuan];
     }
 
     function getPermohonanForDukcapil(
