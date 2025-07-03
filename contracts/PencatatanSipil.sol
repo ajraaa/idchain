@@ -366,6 +366,11 @@ contract PencatatanSipil is KontrolAkses {
             bytes(cidDokumenResmi[_id]).length > 0,
             "Belum ada dokumen resmi."
         );
+        require(
+            msg.sender == permohonans[_id].pemohon || dukcapil[msg.sender],
+            "Akses ditolak: bukan pemohon atau petugas Dukcapil."
+        );
+
         return cidDokumenResmi[_id];
     }
 }
