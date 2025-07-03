@@ -43,6 +43,7 @@ contract PencatatanSipil is KontrolAkses {
     mapping(address => uint256[]) public daftarPermohonanPemohon;
     mapping(uint8 => uint256[]) public daftarPermohonanKalurahanAsal;
     mapping(Status => uint256[]) public daftarPermohonanPerStatus;
+    mapping(uint256 => string) public cidDokumenResmi;
 
     event PermohonanDiajukan(
         uint256 indexed id,
@@ -71,6 +72,12 @@ contract PencatatanSipil is KontrolAkses {
         address indexed verifikator,
         bool disetujui,
         string alasan,
+        uint256 waktu
+    );
+
+    event DokumenResmiDiunggah(
+        uint256 indexed idPermohonan,
+        string cidDokumen,
         uint256 waktu
     );
 
@@ -335,5 +342,30 @@ contract PencatatanSipil is KontrolAkses {
         Status _status
     ) external view onlyDukcapil returns (uint256[] memory) {
         return daftarPermohonanPerStatus[_status];
+    }
+
+    function unggahDokumenResmi(
+        uint256 _id,
+        string calldata _cidDokumen
+    ) external onlyDukcapil {
+        require(
+            permohonans[_id].status == Status.DisetujuiDukcapil,
+            "Permohonan belum disetujui Dukcapil."
+        );
+        require(bytes(_cidDokumen).length > 0, "CID tidak boleh kosong.");
+
+        cidDokumenResmi[_id] = _cidDokumen;
+
+        emit DokumenResmiDiunggah(_id, _cidDokumen, block.timestamp);
+    }
+
+    function getDokumenResmi(
+        uint256 _id
+    ) external view returns (string memory) {
+        require(
+            bytes(cidDokumenResmi[_id]).length > 0,
+            "Belum ada dokumen resmi."
+        );
+        return cidDokumenResmi[_id];
     }
 }
