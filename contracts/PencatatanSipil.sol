@@ -25,17 +25,20 @@ contract PencatatanSipil is KontrolAkses {
 
     struct Permohonan {
         uint256 id; // ID permohonan
-        address pemohon; // alamat pemohon
-        JenisPermohonan jenis; // jenis permohonan
-        string cidIPFS; // cid ipfs dari dokumen formulir terenkripsi
-        uint8 idKalurahanAsal; // ID untuk mapping kalurahan asal
-        Status status; // status permohonan terkini
         uint256 waktuPengajuan; // waktu pengajuan permohonan
-        string alasanPenolakan; // alasan penolakan
-        address verifikatorKalurahan; // alamat verifikator kalurahan
         uint256 waktuVerifikasiKalurahan; // waktu permohonan diverifikasi di kalurahan
-        address verifikatorDukcapil; // alamat verifikator dukcapil
+        uint256 waktuVerifikasiKalurahanTujuan; // waktu permohonan diverifikasi di kalurahan tujuan
         uint256 waktuVerifikasiDukcapil; // waktu permohonan diverifikasi di dukcapil
+        address pemohon; // alamat pemohon
+        address verifikatorKalurahan; // alamat verifikator kalurahan
+        address verifikatorKalurahanTujuan; // alamat verifikator kalurahan tujuan
+        address verifikatorDukcapil; // alamat verifikator dukcapil
+        string cidIPFS; // cid ipfs dari dokumen formulir terenkripsi
+        string alasanPenolakan; // alasan penolakan
+        JenisPermohonan jenis; // jenis permohonan
+        Status status; // status permohonan terkini
+        uint8 idKalurahanAsal; // ID untuk mapping kalurahan asal
+        uint8 idKalurahanTujuan; // ID untuk permohonan pindah
     }
 
     uint256 public jumlahPermohonan;
@@ -147,17 +150,20 @@ contract PencatatanSipil is KontrolAkses {
 
         permohonans[idBaru] = Permohonan({
             id: idBaru,
-            pemohon: msg.sender,
-            jenis: _jenis,
-            cidIPFS: _cidIPFS,
-            idKalurahanAsal: _idKalurahanAsal,
-            status: Status.Diajukan,
             waktuPengajuan: block.timestamp,
-            alasanPenolakan: "",
-            verifikatorKalurahan: address(0),
             waktuVerifikasiKalurahan: 0,
+            waktuVerifikasiKalurahanTujuan: 0,
+            waktuVerifikasiDukcapil: 0,
+            pemohon: msg.sender,
+            verifikatorKalurahan: address(0),
+            verifikatorKalurahanTujuan: address(0),
             verifikatorDukcapil: address(0),
-            waktuVerifikasiDukcapil: 0
+            cidIPFS: _cidIPFS,
+            alasanPenolakan: "",
+            jenis: _jenis,
+            status: Status.Diajukan,
+            idKalurahanAsal: _idKalurahanAsal,
+            idKalurahanTujuan: 0
         });
 
         daftarPermohonanPemohon[msg.sender].push(idBaru);
@@ -274,33 +280,39 @@ contract PencatatanSipil is KontrolAkses {
         view
         returns (
             uint256 id,
-            address pemohon,
-            JenisPermohonan jenis,
-            string memory cidIPFS,
-            uint8 idKalurahanAsal,
-            Status status,
             uint256 waktuPengajuan,
-            string memory alasanPenolakan,
-            address verifikatorKalurahan,
             uint256 waktuVerifikasiKalurahan,
+            uint256 waktuVerifikasiKalurahanTujuan,
+            uint256 waktuVerifikasiDukcapil,
+            address pemohon,
+            address verifikatorKalurahan,
+            address verifikatorKalurahanTujuan,
             address verifikatorDukcapil,
-            uint256 waktuVerifikasiDukcapil
+            string memory cidIPFS,
+            string memory alasanPenolakan,
+            JenisPermohonan jenis,
+            Status status,
+            uint8 idKalurahanAsal,
+            uint8 idKalurahanTujuan
         )
     {
         Permohonan memory p = permohonans[_id];
         return (
             p.id,
-            p.pemohon,
-            p.jenis,
-            p.cidIPFS,
-            p.idKalurahanAsal,
-            p.status,
             p.waktuPengajuan,
-            p.alasanPenolakan,
-            p.verifikatorKalurahan,
             p.waktuVerifikasiKalurahan,
+            p.waktuVerifikasiKalurahanTujuan,
+            p.waktuVerifikasiDukcapil,
+            p.pemohon,
+            p.verifikatorKalurahan,
+            p.verifikatorKalurahanTujuan,
             p.verifikatorDukcapil,
-            p.waktuVerifikasiDukcapil
+            p.cidIPFS,
+            p.alasanPenolakan,
+            p.jenis,
+            p.status,
+            p.idKalurahanAsal,
+            p.idKalurahanTujuan
         );
     }
 
