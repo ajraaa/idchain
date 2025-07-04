@@ -148,7 +148,7 @@ contract PencatatanSipil is KontrolAkses {
         string calldata _cidIPFS,
         uint8 _idKalurahanAsal,
         uint8 _idKalurahanTujuan // Hanya wajib jika jenis == Pindah
-    ) external {
+    ) external onlyWargaTerdaftar {
         require(bytes(_cidIPFS).length > 0, "CID IPFS tidak boleh kosong.");
         require(
             addressKalurahanById[_idKalurahanAsal] != address(0),
@@ -207,7 +207,7 @@ contract PencatatanSipil is KontrolAkses {
         );
     }
 
-    function batalkanPermohonan(uint256 _id) external {
+    function batalkanPermohonan(uint256 _id) external onlyWargaTerdaftar {
         Permohonan storage p = permohonans[_id];
 
         require(p.pemohon == msg.sender, "Bukan pemilik permohonan.");
