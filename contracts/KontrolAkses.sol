@@ -38,6 +38,14 @@ contract KontrolAkses {
         _;
     }
 
+    modifier onlyWargaTerdaftar() {
+        require(
+            bytes(nikByWallet[msg.sender]).length > 0,
+            "Belum terdaftar sebagai warga"
+        );
+        _;
+    }
+
     function tambahKalurahanById(uint8 _id, address _akun) external onlyOwner {
         require(_akun != address(0), "Alamat tidak boleh kosong!"); // Cek apakah address yang diinput kosong atau tidak
         require(addressKalurahanById[_id] == address(0), "ID sudah dipakai!"); // Cek apakah ID nya sudah dipakai atau belum
