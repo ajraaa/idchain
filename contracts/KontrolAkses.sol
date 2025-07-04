@@ -7,11 +7,13 @@ contract KontrolAkses {
     mapping(address => bool) public kalurahan;
     mapping(address => bool) public dukcapil;
 
-    mapping(address => string) public nikByWallet;
-    mapping(string => address) public walletByNik;
+    mapping(address => string) public nikByWallet; // Mapping wallet ke nik
+    mapping(string => address) public walletByNik; // Mapping nik ke wallet
 
     mapping(uint8 => address) public addressKalurahanById; // Mapping id kalurahan ke wallet kalurahan
     mapping(address => uint8) public idKalurahanByAddress; // Mapping wallet kalurahan ke id kalurahan
+
+    event WargaTerdaftar(address indexed wallet, string nik); // Event warga terdaftar
 
     constructor() {
         owner = msg.sender;
@@ -78,5 +80,21 @@ contract KontrolAkses {
 
     function hapusDukcapil(address _akun) external onlyOwner {
         dukcapil[_akun] = false;
+    }
+
+    function registerWarga(string memory _nik) external {
+        require(
+            walletByNik[_nik] == address(0),
+            "NIK sudah diklaim wallet lain"
+        );
+        require(
+            bytes(nikByWallet[msg.sender]).length == 0,
+            "Wallet ini sudah digunakan"
+        );
+
+        walletByNik[_nik] = msg.sender;
+        nikByWallet[msg.sender] = _nik;
+
+        emit WargaTerdaftar(msg.sender, _nik);
     }
 }
