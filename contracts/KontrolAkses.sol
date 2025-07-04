@@ -7,6 +7,9 @@ contract KontrolAkses {
     mapping(address => bool) public kalurahan;
     mapping(address => bool) public dukcapil;
 
+    mapping(address => string) public nikByWallet;
+    mapping(string => address) public walletByNik;
+
     mapping(uint8 => address) public addressKalurahanById; // Mapping id kalurahan ke wallet kalurahan
     mapping(address => uint8) public idKalurahanByAddress; // Mapping wallet kalurahan ke id kalurahan
 
