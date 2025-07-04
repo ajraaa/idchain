@@ -16,6 +16,8 @@ describe("PencatatanSipil", function () {
         await pencatatan.tambahKalurahan(kalurahan.address);
         await pencatatan.tambahDukcapil(dukcapil.address);
         await pencatatan.tambahKalurahanById(1, kalurahan.address);
+        // Register warga for all tests unless the test is specifically for unregistered
+        await pencatatan.connect(warga).registerWarga("NIK123");
     });
 
     it("warga dapat mengajukan permohonan", async () => {
@@ -82,7 +84,7 @@ describe("PencatatanSipil", function () {
 
         await expect(
             pencatatan.connect(warga).verifikasiKalurahan(ids[0], true, "")
-        ).to.be.revertedWith("Hanya petugas kalurahan yang diizinkan melakukan ini.");
+        ).to.be.revertedWithCustomError(pencatatan, "OnlyKalurahan");
     });
 
     it("warga tidak boleh memverifikasi permohonan", async () => {
@@ -91,7 +93,7 @@ describe("PencatatanSipil", function () {
 
         await expect(
             pencatatan.connect(warga).verifikasiKalurahan(ids[0], true, "")
-        ).to.be.revertedWith("Hanya petugas kalurahan yang diizinkan melakukan ini.");
+        ).to.be.revertedWithCustomError(pencatatan, "OnlyKalurahan");
     });
 
     it("kalurahan tidak boleh memverifikasi jika status bukan Diajukan", async () => {
@@ -104,7 +106,7 @@ describe("PencatatanSipil", function () {
         // Coba verifikasi ulang
         await expect(
             pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "")
-        ).to.be.revertedWith("Permohonan bukan dalam status Diajukan.");
+        ).to.be.revertedWithCustomError(pencatatan, "PermohonanBukanDiajukan");
     });
 
     it("emit event saat permohonan diajukan", async () => {
@@ -130,7 +132,7 @@ describe("PencatatanSipil", function () {
 
         await expect(
             pencatatan.connect(warga).verifikasiDukcapil(ids[0], true, "")
-        ).to.be.revertedWith("Hanya petugas dukcapil yang diizinkan melakukan ini.");
+        ).to.be.revertedWithCustomError(pencatatan, "OnlyDukcapil");
     });
 
     it("emit event saat verifikasi kalurahan", async () => {
@@ -169,9 +171,11 @@ describe("PencatatanSipil", function () {
     it("tidak bisa membatalkan permohonan yang bukan milik sendiri", async () => {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_batal2", 1, 0);
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+        // Register kalurahan as warga so it passes onlyWargaTerdaftar but fails BukanPemilikPermohonan
+        await pencatatan.connect(kalurahan).registerWarga("NIK_KALURAHAN");
         await expect(
             pencatatan.connect(kalurahan).batalkanPermohonan(ids[0])
-        ).to.be.revertedWith("Bukan pemilik permohonan.");
+        ).to.be.revertedWithCustomError(pencatatan, "BukanPemilikPermohonan");
     });
 
     it("kalurahan dapat mengambil daftar permohonan asalnya", async () => {
@@ -208,7 +212,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "");
         await expect(
             pencatatan.connect(warga).getDokumenResmi(0)
-        ).to.be.revertedWith("Belum ada dokumen resmi.");
+        ).to.be.revertedWithCustomError(pencatatan, "BelumAdaDokumenResmi");
     });
 
     it("jumlahPermohonan bertambah setiap submit", async () => {
@@ -233,6 +237,8 @@ describe("Fitur Permohonan Pindah", function () {
         await pencatatan.tambahDukcapil(dukcapil.address);
         await pencatatan.tambahKalurahanById(1, kalurahanAsal.address);
         await pencatatan.tambahKalurahanById(2, kalurahanTujuan.address);
+        // Register warga for all tests unless the test is specifically for unregistered
+        await pencatatan.connect(warga).registerWarga("NIK123");
     });
 
     // A. Pengujian Pemohon
@@ -261,16 +267,16 @@ describe("Fitur Permohonan Pindah", function () {
     it("A2. Gagal: ID Kalurahan Tujuan tidak valid", async () => {
         await expect(
             pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 0)
-        ).to.be.revertedWith("ID Kalurahan Tujuan harus diisi.");
+        ).to.be.revertedWithCustomError(pencatatan, "TujuanTidakValid");
         await expect(
             pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 99)
-        ).to.be.revertedWith("ID Kalurahan Tujuan tidak valid.");
+        ).to.be.revertedWithCustomError(pencatatan, "IdKalurahanTujuanTidakDikenal");
     });
 
     it("A3. Gagal: Tidak mengisi CID", async () => {
         await expect(
             pencatatan.connect(warga).submitPermohonan(4, "", 1, 2)
-        ).to.be.revertedWith("CID IPFS tidak boleh kosong.");
+        ).to.be.revertedWithCustomError(pencatatan, "CidKosong");
     });
 
     // B. Pengujian Kalurahan Asal
@@ -314,7 +320,7 @@ describe("Fitur Permohonan Pindah", function () {
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
         await expect(
             pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2)
-        ).to.be.revertedWith("Permohonan bukan dalam status Diajukan.");
+        ).to.be.revertedWithCustomError(pencatatan, "PermohonanBukanDiajukan");
     });
 
     it("B8. Gagal: Verifikasi tanpa ID Kalurahan Tujuan (disetujui)", async () => {
@@ -323,7 +329,7 @@ describe("Fitur Permohonan Pindah", function () {
 
         await expect(
             pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 0)
-        ).to.be.revertedWith("Tujuan tidak valid!");
+        ).to.be.revertedWithCustomError(pencatatan, "TujuanTidakValid");
     });
 
     // C. Pengujian Kalurahan Tujuan
@@ -357,7 +363,7 @@ describe("Fitur Permohonan Pindah", function () {
 
         await expect(
             pencatatan.connect(kalurahanAsal).verifikasiKalurahanTujuanPindah(ids[0], true, "")
-        ).to.be.revertedWith("Hanya kalurahan tujuan yang dapat memverifikasi.");
+        ).to.be.revertedWithCustomError(pencatatan, "HanyaKalurahanTujuan");
     });
 
     it("C12. Gagal: Verifikasi saat status bukan DisetujuiKalurahanAsal", async () => {
@@ -366,7 +372,7 @@ describe("Fitur Permohonan Pindah", function () {
 
         await expect(
             pencatatan.connect(kalurahanTujuan).verifikasiKalurahanTujuanPindah(ids[0], true, "")
-        ).to.be.revertedWith("Belum diverifikasi Kalurahan Asal.");
+        ).to.be.revertedWithCustomError(pencatatan, "BelumDiverifikasiKalurahanAsal");
     });
 
     // D. Pengujian Akses Data
@@ -408,5 +414,83 @@ describe("Fitur Permohonan Pindah", function () {
         await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "");
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(3); // DisetujuiDukcapil
+    });
+});
+
+describe("KontrolAkses - registerWarga", function () {
+    let kontrol, owner, warga1, warga2;
+
+    beforeEach(async () => {
+        [owner, warga1, warga2] = await ethers.getSigners();
+        const KontrolAkses = await ethers.getContractFactory("KontrolAkses");
+        kontrol = await KontrolAkses.deploy();
+        await kontrol.waitForDeployment();
+    });
+
+    it("berhasil register warga baru", async () => {
+        await expect(kontrol.connect(warga1).registerWarga("1234567890"))
+            .to.emit(kontrol, "WargaTerdaftar")
+            .withArgs(warga1.address, "1234567890");
+
+        expect(await kontrol.nikByWallet(warga1.address)).to.equal("1234567890");
+        expect(await kontrol.walletByNik("1234567890")).to.equal(warga1.address);
+    });
+
+    it("gagal jika NIK sudah diklaim wallet lain", async () => {
+        await kontrol.connect(warga1).registerWarga("1234567890");
+        await expect(
+            kontrol.connect(warga2).registerWarga("1234567890")
+        ).to.be.revertedWithCustomError(kontrol, "NikSudahDiklaim");
+    });
+
+    it("gagal jika wallet sudah digunakan", async () => {
+        await kontrol.connect(warga1).registerWarga("1234567890");
+        await expect(
+            kontrol.connect(warga1).registerWarga("0987654321")
+        ).to.be.revertedWithCustomError(kontrol, "WalletSudahDigunakan");
+    });
+});
+
+describe("PencatatanSipil - onlyWargaTerdaftar", function () {
+    let pencatatan, kontrol, owner, kalurahan, warga;
+
+    beforeEach(async () => {
+        [owner, kalurahan, , warga] = await ethers.getSigners();
+        const Pencatatan = await ethers.getContractFactory("PencatatanSipil");
+        pencatatan = await Pencatatan.deploy();
+        await pencatatan.waitForDeployment();
+
+        // Setup role
+        await pencatatan.tambahKalurahan(kalurahan.address);
+        await pencatatan.tambahKalurahanById(1, kalurahan.address);
+        // Register warga for all tests unless the test is specifically for unregistered
+        await pencatatan.connect(warga).registerWarga("NIK123");
+    });
+
+    it("gagal submitPermohonan jika belum registerWarga", async () => {
+        // Use a new signer that is not registered
+        const [, , , , wargaBaru] = await ethers.getSigners();
+        await expect(
+            pencatatan.connect(wargaBaru).submitPermohonan(0, "cid_x", 1, 0)
+        ).to.be.revertedWithCustomError(pencatatan, "OnlyWargaTerdaftar");
+    });
+
+    it("berhasil submitPermohonan setelah registerWarga", async () => {
+        const tx = await pencatatan.connect(warga).submitPermohonan(0, "cid_x", 1, 0);
+        await tx.wait();
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+        expect(ids.length).to.equal(1);
+    });
+
+    it("gagal batalkanPermohonan jika belum registerWarga", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_x", 1, 0);
+        const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
+
+        // Buat akun baru yang belum register
+        const [, , , , wargaBaru] = await ethers.getSigners();
+        // Jangan register wargaBaru
+        await expect(
+            pencatatan.connect(wargaBaru).batalkanPermohonan(ids[0])
+        ).to.be.revertedWithCustomError(pencatatan, "OnlyWargaTerdaftar");
     });
 });
