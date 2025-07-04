@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+error OnlyOwner();
+error OnlyKalurahan();
+error OnlyDukcapil();
+error OnlyWargaTerdaftar();
+error AddressZero();
+error IdSudahDipakai();
+error AddressSudahDipakai();
+error NikSudahDiklaim();
+error WalletSudahDigunakan();
+
 contract KontrolAkses {
     address public owner;
 
@@ -20,41 +30,35 @@ contract KontrolAkses {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Hanya owner yang dapat melakukan ini.");
+        require(msg.sender == owner, OnlyOwner());
         _;
     }
 
     modifier onlyKalurahan() {
-        require(
-            kalurahan[msg.sender],
-            "Hanya petugas kalurahan yang diizinkan melakukan ini."
-        );
+        require(kalurahan[msg.sender], OnlyKalurahan());
         _;
     }
 
     modifier onlyDukcapil() {
-        require(
-            dukcapil[msg.sender],
-            "Hanya petugas dukcapil yang diizinkan melakukan ini."
-        );
+        require(dukcapil[msg.sender], OnlyDukcapil());
         _;
     }
 
     modifier onlyWargaTerdaftar() {
         require(
             bytes(nikByWallet[msg.sender]).length > 0,
-            "Belum terdaftar sebagai warga"
+            OnlyWargaTerdaftar()
         );
         _;
     }
 
     function tambahKalurahanById(uint8 _id, address _akun) external onlyOwner {
-        require(_akun != address(0), "Alamat tidak boleh kosong!"); // Cek apakah address yang diinput kosong atau tidak
-        require(addressKalurahanById[_id] == address(0), "ID sudah dipakai!"); // Cek apakah ID nya sudah dipakai atau belum
+        require(_akun != address(0), AddressZero());
+        require(addressKalurahanById[_id] == address(0), IdSudahDipakai());
         require(
             idKalurahanByAddress[_akun] == 0 && _id != 0,
-            "Address sudah dipakai!"
-        ); // Cek apakah address sudah dipakai atau belum
+            AddressSudahDipakai()
+        );
 
         addressKalurahanById[_id] = _akun;
         idKalurahanByAddress[_akun] = _id;
@@ -83,13 +87,10 @@ contract KontrolAkses {
     }
 
     function registerWarga(string memory _nik) external {
-        require(
-            walletByNik[_nik] == address(0),
-            "NIK sudah diklaim wallet lain"
-        );
+        require(walletByNik[_nik] == address(0), NikSudahDiklaim());
         require(
             bytes(nikByWallet[msg.sender]).length == 0,
-            "Wallet ini sudah digunakan"
+            WalletSudahDigunakan()
         );
 
         walletByNik[_nik] = msg.sender;
