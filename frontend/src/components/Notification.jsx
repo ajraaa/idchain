@@ -42,15 +42,16 @@ const Notification = ({ message, type = 'info', onClose, autoClose = true, durat
   };
 
   return (
-    <div className={getClassName()}>
-      <div className="notification-content">
-        <span className="notification-icon">{getIcon()}</span>
-        <span className="notification-message">{message}</span>
+    <div className={getClassName()} style={{marginTop: '1rem', borderRadius: '14px', boxShadow: '0 4px 24px rgba(0,0,0,0.13)', padding: '1.1rem 2rem 1.1rem 1.5rem', minWidth: 340, maxWidth: '90vw'}}>
+      <div className="notification-content" style={{display: 'flex', alignItems: 'center', gap: '0.7rem', flex: 1}}>
+        <span className="notification-icon" style={{fontSize: '1.5rem'}}>{getIcon()}</span>
+        <span className="notification-message" style={{flex: 1}}>{message}</span>
       </div>
       <button 
         onClick={handleClose}
         className="notification-close"
         aria-label="Close notification"
+        style={{background: 'none', border: 'none', color: '#888', fontSize: '1.3rem', cursor: 'pointer', marginLeft: '1rem', transition: 'color 0.2s', borderRadius: '6px'}}
       >
         ×
       </button>

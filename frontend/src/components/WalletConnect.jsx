@@ -30,14 +30,15 @@ const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, w
 
   if (typeof window.ethereum === 'undefined') {
     return (
-      <div className="wallet-connect">
-        <div className="wallet-error">
-          <p>MetaMask tidak terinstall. Silakan install MetaMask terlebih dahulu.</p>
+      <div className="wallet-connect" style={{padding: '1.5rem 0'}}>
+        <div className="wallet-error" style={{borderRadius: '10px', padding: '1.5rem', margin: '1rem 0'}}>
+          <p style={{marginBottom: '1rem'}}>MetaMask tidak terinstall. Silakan install MetaMask terlebih dahulu.</p>
           <a 
             href="https://metamask.io/download/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="metamask-link"
+            style={{display: 'inline-block', borderRadius: '25px', padding: '0.75rem 1.5rem', fontWeight: 600, marginTop: '1rem'}}
           >
             Download MetaMask
           </a>
@@ -47,31 +48,32 @@ const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, w
   }
 
   return (
-    <div className="wallet-connect">
+    <div className="wallet-connect" style={{padding: '1.5rem 0'}}>
       {!isConnected ? (
         <button 
           onClick={connectWallet} 
           disabled={isConnecting}
           className="connect-button"
+          style={{borderRadius: '12px', padding: '0.8rem 2.2rem', fontWeight: 700, fontSize: '1.1rem', marginTop: '0.5rem'}}
         >
           {isConnecting ? 'Menghubungkan...' : 'Hubungkan Wallet'}
         </button>
       ) : (
-        <div className="wallet-info">
-          <span className="wallet-address">
+        <div className="wallet-info" style={{display: 'flex', alignItems: 'center', gap: '0.7rem', justifyContent: 'center', marginTop: '0.5rem'}}>
+          <span className="wallet-address" style={{fontFamily: 'Fira Mono, monospace', background: '#f3f4f6', borderRadius: '6px', padding: '0.2rem 0.7rem', fontSize: '1.05rem'}}>
             {formatAddress(walletAddress)}
           </span>
           <button 
             onClick={disconnectWallet}
             className="disconnect-button"
+            style={{borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 600, marginLeft: '0.7rem'}}
           >
             Putuskan
           </button>
         </div>
       )}
-      
       {error && (
-        <div className="error-message">
+        <div className="error-message" style={{color: '#e74c3c', marginTop: '1rem'}}>
           {error}
         </div>
       )}

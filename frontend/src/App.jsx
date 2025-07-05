@@ -3,15 +3,24 @@ import WalletConnect from './components/WalletConnect'
 import IdentityForm from './components/IdentityForm'
 import Notification from './components/Notification'
 import './App.css'
+import { FaWallet, FaIdCard } from 'react-icons/fa';
 
 function Dashboard({ walletAddress, nik }) {
   return (
-    <div className="dashboard">
-      <h2>Dashboard</h2>
-      <p>Selamat datang!</p>
-      <div className="dashboard-info">
-        <div><b>Wallet:</b> {walletAddress}</div>
-        <div><b>NIK:</b> {nik}</div>
+    <div className="dashboard-card">
+      <h2 className="dashboard-title">Dashboard</h2>
+      <p className="dashboard-welcome">Selamat datang!</p>
+      <div className="dashboard-info-list">
+        <div className="dashboard-info-item">
+          <FaWallet className="dashboard-icon" />
+          <span className="dashboard-label">Wallet:</span>
+          <span className="dashboard-value">{walletAddress}</span>
+        </div>
+        <div className="dashboard-info-item">
+          <FaIdCard className="dashboard-icon" />
+          <span className="dashboard-label">NIK:</span>
+          <span className="dashboard-value">{nik}</span>
+        </div>
       </div>
     </div>
   )
