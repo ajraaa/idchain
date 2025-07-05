@@ -1,34 +1,174 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState, useEffect } from 'react'
+import WalletConnect from './components/WalletConnect'
+import IdentityForm from './components/IdentityForm'
+import Notification from './components/Notification'
 import './App.css'
 
+function Dashboard({ walletAddress, nik }) {
+  return (
+    <div className="dashboard">
+      <h2>Dashboard</h2>
+      <p>Selamat datang!</p>
+      <div className="dashboard-info">
+        <div><b>Wallet:</b> {walletAddress}</div>
+        <div><b>NIK:</b> {nik}</div>
+      </div>
+    </div>
+  )
+}
+
+function Gateway({ onWalletConnected }) {
+  return (
+    <div className="main-card" style={{marginTop: '4rem'}}>
+      <h2>Gateway</h2>
+      <p>Silakan hubungkan wallet Anda untuk melanjutkan.</p>
+      <WalletConnect onWalletConnected={onWalletConnected} />
+    </div>
+  )
+}
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [contractService, setContractService] = useState(null)
+  const [walletAddress, setWalletAddress] = useState('')
+  const [notification, setNotification] = useState(null)
+  const [nikTeregistrasi, setNikTeregistrasi] = useState(null) // null: belum dicek, string: sudah teregistrasi, false: belum
+  const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const [isCheckingNIK, setIsCheckingNIK] = useState(false)
+
+  // Cek NIK wallet setelah connect
+  useEffect(() => {
+    const checkNIK = async () => {
+      if (
+        contractService &&
+        contractService.contract &&
+        walletAddress
+      ) {
+        setIsCheckingNIK(true)
+        try {
+          console.log('[Gateway] Checking NIK for wallet:', walletAddress)
+          const nik = await contractService.contract.nikByWallet(walletAddress)
+          console.log('[Gateway] Result NIK:', nik)
+          if (nik && nik !== '') {
+            setNikTeregistrasi(nik)
+            console.log('[Gateway] Wallet is registered with NIK:', nik)
+          } else {
+            setNikTeregistrasi(false)
+            console.log('[Gateway] Wallet is NOT registered')
+          }
+        } catch (err) {
+          setNikTeregistrasi(false)
+          console.log('[Gateway] Error checking NIK:', err)
+        } finally {
+          setIsCheckingNIK(false)
+        }
+      } else {
+        setNikTeregistrasi(null)
+        setIsCheckingNIK(false)
+      }
+    }
+    checkNIK()
+  }, [contractService, walletAddress])
+
+  const handleWalletConnected = (address, service) => {
+    console.log('App: handleWalletConnected', address, service);
+    setWalletAddress(prev => (prev === address ? prev : address));
+    setContractService(prev => (prev === service ? prev : service));
+    setIsWalletConnected(true);
+    showNotification('Wallet berhasil terhubung!', 'success');
+  }
+
+  const handleWalletDisconnected = () => {
+    setWalletAddress('')
+    setContractService(null)
+    setIsWalletConnected(false)
+    setNikTeregistrasi(null)
+    setIsCheckingNIK(false)
+    showNotification('Wallet terputus', 'info')
+  }
+
+  const handleVerificationSuccess = (result) => {
+    setNikTeregistrasi(result.nik)
+    showNotification(
+      `Identitas berhasil diverifikasi! NIK ${result.nik} telah terdaftar dengan wallet ${result.wallet}. Transaction: ${result.transactionHash}`,
+      'success',
+      false
+    )
+  }
+
+  const handleVerificationError = (error) => {
+    showNotification(error, 'error')
+  }
+
+  const showNotification = (message, type = 'info', autoClose = true) => {
+    setNotification({
+      message,
+      type,
+      autoClose,
+      id: Date.now()
+    })
+  }
+
+  const closeNotification = () => {
+    setNotification(null)
+  }
+
+  // Render logic
+  let mainContent
+  if (!isWalletConnected) {
+    mainContent = <Gateway onWalletConnected={handleWalletConnected} />
+  } else if (isCheckingNIK || nikTeregistrasi === null) {
+    mainContent = <div className="main-card" style={{textAlign:'center',marginTop:'4rem'}}><p>Memeriksa status wallet...</p></div>
+  } else if (nikTeregistrasi) {
+    mainContent = <Dashboard walletAddress={walletAddress} nik={nikTeregistrasi} />
+  } else {
+    mainContent = (
+      <div className="main-card">
+        <section className="wallet-section">
+          <h2>Hubungkan Wallet</h2>
+          <WalletConnect
+            onWalletConnected={handleWalletConnected}
+            onWalletDisconnected={handleWalletDisconnected}
+            isConnected={isWalletConnected}
+            walletAddress={walletAddress}
+          />
+        </section>
+        <section className="identity-section">
+          <IdentityForm
+            contractService={contractService}
+            onSuccess={handleVerificationSuccess}
+            onError={handleVerificationError}
+          />
+        </section>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="app">
+      <header className="app-header">
+        <h1>IDChain - Sistem Identitas Digital</h1>
+        <p>Sistem pencatatan sipil terdesentralisasi berbasis blockchain</p>
+      </header>
+
+      <main className="app-main">
+        <div className="container">
+          {mainContent}
+        </div>
+      </main>
+
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={closeNotification}
+          autoClose={notification.autoClose}
+        />
+      )}
+
+      <footer className="app-footer">
+        <p>&copy; 2024 IDChain - Sistem Identitas Digital Terdesentralisasi</p>
+      </footer>
+    </div>
   )
 }
 
