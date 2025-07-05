@@ -5,7 +5,7 @@ import Notification from './components/Notification'
 import './App.css'
 import { FaWallet, FaIdCard } from 'react-icons/fa';
 
-function Dashboard({ walletAddress, nik }) {
+function Dashboard({ walletAddress, nik, onDisconnect }) {
   return (
     <div className="dashboard-card">
       <h2 className="dashboard-title">Dashboard</h2>
@@ -22,6 +22,13 @@ function Dashboard({ walletAddress, nik }) {
           <span className="dashboard-value">{nik}</span>
         </div>
       </div>
+      <button 
+        className="disconnect-button" 
+        style={{marginTop: '2rem', width: '100%'}} 
+        onClick={onDisconnect}
+      >
+        Putuskan Wallet
+      </button>
     </div>
   )
 }
@@ -128,7 +135,7 @@ function App() {
   } else if (isCheckingNIK || nikTeregistrasi === null) {
     mainContent = <div className="main-card" style={{textAlign:'center',marginTop:'4rem'}}><p>Memeriksa status wallet...</p></div>
   } else if (nikTeregistrasi) {
-    mainContent = <Dashboard walletAddress={walletAddress} nik={nikTeregistrasi} />
+    mainContent = <Dashboard walletAddress={walletAddress} nik={nikTeregistrasi} onDisconnect={handleWalletDisconnected} />
   } else {
     mainContent = (
       <div className="main-card">
