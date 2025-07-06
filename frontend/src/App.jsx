@@ -35,7 +35,7 @@ function Dashboard({ walletAddress, nik, onDisconnect }) {
 
 function Gateway({ onWalletConnected }) {
   return (
-    <div className="main-card" style={{marginTop: '4rem'}}>
+    <div className="main-card gateway">
       <h2>Gateway</h2>
       <p>Silakan hubungkan wallet Anda untuk melanjutkan.</p>
       <WalletConnect onWalletConnected={onWalletConnected} />
@@ -133,21 +133,23 @@ function App() {
   if (!isWalletConnected) {
     mainContent = <Gateway onWalletConnected={handleWalletConnected} />
   } else if (isCheckingNIK || nikTeregistrasi === null) {
-    mainContent = <div className="main-card" style={{textAlign:'center',marginTop:'4rem'}}><p>Memeriksa status wallet...</p></div>
+    mainContent = <div className="main-card" style={{textAlign:'center'}}><p>Memeriksa status wallet...</p></div>
   } else if (nikTeregistrasi) {
     mainContent = <Dashboard walletAddress={walletAddress} nik={nikTeregistrasi} onDisconnect={handleWalletDisconnected} />
   } else {
     mainContent = (
       <div className="main-card">
-        <section className="wallet-section">
-          <h2>Hubungkan Wallet</h2>
-          <WalletConnect
-            onWalletConnected={handleWalletConnected}
-            onWalletDisconnected={handleWalletDisconnected}
-            isConnected={isWalletConnected}
-            walletAddress={walletAddress}
-          />
-        </section>
+        <div className="wallet-section-box">
+          <section className="wallet-section">
+            <h2>Hubungkan Wallet</h2>
+            <WalletConnect
+              onWalletConnected={handleWalletConnected}
+              onWalletDisconnected={handleWalletDisconnected}
+              isConnected={isWalletConnected}
+              walletAddress={walletAddress}
+            />
+          </section>
+        </div>
         <section className="identity-section">
           <IdentityForm
             contractService={contractService}
@@ -167,9 +169,7 @@ function App() {
       </header>
 
       <main className="app-main">
-        <div className="container">
           {mainContent}
-        </div>
       </main>
 
       {notification && (

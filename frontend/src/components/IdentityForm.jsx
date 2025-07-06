@@ -191,17 +191,6 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       >
         {isLoading ? 'Memverifikasi...' : 'Verifikasi Identitas'}
       </button>
-      <div className="verification-steps">
-        <h3>Proses Verifikasi:</h3>
-        <ol>
-          <li>Memeriksa status registrasi NIK dan wallet</li>
-          <li>Memuat mapping NIK ke CID IPFS</li>
-          <li>Mengambil file terenkripsi dari IPFS</li>
-          <li>Mendekripsi data secara otomatis</li>
-          <li>Memverifikasi kecocokan data keluarga</li>
-          <li>Mendaftarkan identitas ke blockchain</li>
-        </ol>
-      </div>
       {downloadUrl && (
         <div style={{ marginTop: '2rem', textAlign: 'center' }}>
           <a href={downloadUrl} download="nikToCidKK.json" className="connect-button">

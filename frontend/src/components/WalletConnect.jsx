@@ -30,7 +30,7 @@ const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, w
 
   if (typeof window.ethereum === 'undefined') {
     return (
-      <div className="wallet-connect" style={{padding: '1.5rem 0'}}>
+      <div className="wallet-connect">
         <div className="wallet-error" style={{borderRadius: '10px', padding: '1.5rem', margin: '1rem 0'}}>
           <p style={{marginBottom: '1rem'}}>MetaMask tidak terinstall. Silakan install MetaMask terlebih dahulu.</p>
           <a 
@@ -59,14 +59,14 @@ const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, w
           {isConnecting ? 'Menghubungkan...' : 'Hubungkan Wallet'}
         </button>
       ) : (
-        <div className="wallet-info" style={{display: 'flex', alignItems: 'center', gap: '0.7rem', justifyContent: 'center', marginTop: '0.5rem'}}>
+        <div className="wallet-info" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.7rem', marginTop: '0.5rem'}}>
           <span className="wallet-address" style={{fontFamily: 'Fira Mono, monospace', background: '#f3f4f6', borderRadius: '6px', padding: '0.2rem 0.7rem', fontSize: '1.05rem'}}>
             {formatAddress(walletAddress)}
           </span>
           <button 
             onClick={disconnectWallet}
             className="disconnect-button"
-            style={{borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 600, marginLeft: '0.7rem'}}
+            style={{borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 600, marginLeft: 0, marginTop: '0.5rem'}}
           >
             Putuskan
           </button>
