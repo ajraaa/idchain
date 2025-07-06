@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FaCrown, FaUserPlus, FaUserMinus, FaIdCard, FaBuilding, FaUserCircle, FaPowerOff } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import { handleContractError } from '../utils/errorHandler.js';
+import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 
 const sidebarMenus = [
   { key: 'dukcapil', label: 'Kelola Dukcapil', icon: <FaIdCard /> },

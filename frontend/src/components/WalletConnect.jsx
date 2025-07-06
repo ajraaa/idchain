@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ContractService } from '../utils/contract.js';
 import { handleContractError } from '../utils/errorHandler.js';
+import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 
 const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, walletAddress }) => {
   const [isConnecting, setIsConnecting] = useState(false);

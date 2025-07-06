@@ -4,6 +4,7 @@ import { loadNIKMapping, fetchFromIPFS } from '../utils/ipfs.js';
 import { uploadToPinata } from '../utils/pinata.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 import { handleContractError } from '../utils/errorHandler.js';
+import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 
 const IdentityForm = ({ contractService, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
@@ -60,12 +61,16 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       const isNIKRegistered = await contractService.checkIfNIKRegistered(formData.nik);
       console.log('[Step 1] Is NIK registered:', isNIKRegistered);
       if (isNIKRegistered) {
-        throw new Error('NIK sudah terdaftar dalam sistem');
+        onError?.('NIK sudah terdaftar dalam sistem');
+        setIsLoading(false);
+        return;
       }
       const isWalletRegistered = await contractService.checkIfWalletRegistered();
       console.log('[Step 2] Is wallet registered:', isWalletRegistered);
       if (isWalletRegistered) {
-        throw new Error('Wallet ini sudah terdaftar dengan NIK lain');
+        onError?.('Wallet ini sudah terdaftar dengan NIK lain');
+        setIsLoading(false);
+        return;
       }
       // 2. Lanjutkan proses: load mapping, fetch IPFS, dekripsi, verifikasi, update wallet, enkripsi ulang, upload, update mapping, dst.
       let mapping = nikToCidMapping;
@@ -78,7 +83,9 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       const cid = mapping[formData.nik];
       console.log('[Step 4] CID for NIK', formData.nik, ':', cid);
       if (!cid) {
-        throw new Error('NIK tidak ditemukan dalam database');
+        onError?.('NIK tidak ditemukan dalam database');
+        setIsLoading(false);
+        return;
       }
       const encryptedData = await fetchFromIPFS(cid);
       console.log('[Step 5] Encrypted data from IPFS:', encryptedData, 'Using secret key:', CRYPTO_CONFIG.SECRET_KEY);
@@ -87,7 +94,9 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       const isValidMember = verifyFamilyMember(decryptedData, formData.nik, formData.dateOfBirth);
       console.log('[Step 7] Is valid member:', isValidMember);
       if (!isValidMember) {
-        throw new Error('NIK atau tanggal lahir tidak cocok dengan data keluarga');
+        onError?.('NIK atau tanggal lahir tidak cocok dengan data keluarga');
+        setIsLoading(false);
+        return;
       }
       const userWallet = await contractService.signer.getAddress();
       console.log('[Step 8] User wallet address:', userWallet);
@@ -127,6 +136,7 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
       console.log('[Step 13] Download URL for new mapping:', url);
+      // Hanya error dari smart contract yang dilempar ke handler blockchain
       const result = await contractService.registerWarga(formData.nik);
       console.log('[Step 14] Smart contract register result:', result);
       onSuccess?.(result);

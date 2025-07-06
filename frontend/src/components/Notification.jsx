@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react';
+import { enhanceNotificationMessage, getNotificationDuration, getNotificationAutoClose } from '../utils/notificationHelper.js';
 
-const Notification = ({ message, type = 'info', onClose, autoClose = true, duration = 5000 }) => {
+const Notification = ({ message, type = 'info', onClose, autoClose = true, duration = 5000, context = '' }) => {
   const [isVisible, setIsVisible] = useState(true);
 
+  // Enhance message dan set default values
+  const enhancedMessage = enhanceNotificationMessage(message, type, context);
+  const finalDuration = duration || getNotificationDuration(type, context);
+  const finalAutoClose = autoClose !== undefined ? autoClose : getNotificationAutoClose(type);
+
   useEffect(() => {
-    if (autoClose && duration > 0) {
+    if (finalAutoClose && finalDuration > 0) {
       const timer = setTimeout(() => {
         setIsVisible(false);
         onClose?.();
-      }, duration);
+      }, finalDuration);
 
       return () => clearTimeout(timer);
     }
-  }, [autoClose, duration, onClose]);
+  }, [finalAutoClose, finalDuration, onClose]);
 
   const handleClose = () => {
     setIsVisible(false);
@@ -24,6 +30,12 @@ const Notification = ({ message, type = 'info', onClose, autoClose = true, durat
   }
 
   const getIcon = () => {
+    // Jika message sudah memiliki emoji, tidak perlu tambah lagi
+    if (enhancedMessage.startsWith('✅') || enhancedMessage.startsWith('❌') || 
+        enhancedMessage.startsWith('⚠️') || enhancedMessage.startsWith('ℹ️')) {
+      return '';
+    }
+    
     switch (type) {
       case 'success':
         return '✅';
@@ -45,7 +57,7 @@ const Notification = ({ message, type = 'info', onClose, autoClose = true, durat
     <div className={getClassName()} style={{marginTop: '1rem', borderRadius: '14px', boxShadow: '0 4px 24px rgba(0,0,0,0.13)', padding: '1.1rem 2rem 1.1rem 1.5rem', minWidth: 340, maxWidth: '90vw'}}>
       <div className="notification-content" style={{display: 'flex', alignItems: 'center', gap: '0.7rem', flex: 1}}>
         <span className="notification-icon" style={{fontSize: '1.5rem'}}>{getIcon()}</span>
-        <span className="notification-message" style={{flex: 1}}>{message}</span>
+        <span className="notification-message" style={{flex: 1}}>{enhancedMessage}</span>
       </div>
       <button 
         onClick={handleClose}

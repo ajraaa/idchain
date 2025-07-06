@@ -6,6 +6,7 @@ import OwnerAppHeader from './components/OwnerAppHeader'
 import Notification from './components/Notification'
 import './App.css'
 import { FaWallet, FaIdCard } from 'react-icons/fa';
+import { enhanceNotificationMessage } from './utils/notificationHelper.js';
 
 function Dashboard({ walletAddress, nik, onDisconnect }) {
   return (
@@ -111,7 +112,7 @@ function App() {
     setWalletAddress(prev => (prev === address ? prev : address));
     setContractService(prev => (prev === service ? prev : service));
     setIsWalletConnected(true);
-    showNotification('Wallet berhasil terhubung!', 'success');
+    showNotification('Wallet berhasil terhubung!', 'success', true, 'wallet');
   }
 
   const handleWalletDisconnected = () => {
@@ -122,7 +123,7 @@ function App() {
     setIsOwner(false)
     setIsCheckingNIK(false)
     setIsCheckingOwner(false)
-    showNotification('Wallet terputus', 'info')
+    showNotification('Wallet terputus', 'info', true, 'wallet')
   }
 
   const handleVerificationSuccess = (result) => {
@@ -130,27 +131,29 @@ function App() {
     showNotification(
       `Identitas berhasil diverifikasi! NIK ${result.nik} telah terdaftar dengan wallet ${result.wallet}. Transaction: ${result.transactionHash}`,
       'success',
-      false
+      false,
+      'verification'
     )
   }
 
   const handleVerificationError = (error) => {
-    showNotification(error, 'error')
+    showNotification(error, 'error', false, 'verification')
   }
 
   const handleOwnerSuccess = (message) => {
-    showNotification(message, 'success')
+    showNotification(message, 'success', true, 'owner')
   }
 
   const handleOwnerError = (error) => {
-    showNotification(error, 'error')
+    showNotification(error, 'error', false, 'owner')
   }
 
-  const showNotification = (message, type = 'info', autoClose = true) => {
+  const showNotification = (message, type = 'info', autoClose = true, context = '') => {
     setNotification({
       message,
       type,
       autoClose,
+      context,
       id: Date.now()
     })
   }
@@ -232,6 +235,7 @@ function App() {
           type={notification.type}
           onClose={closeNotification}
           autoClose={notification.autoClose}
+          context={notification.context}
         />
       )}
 
