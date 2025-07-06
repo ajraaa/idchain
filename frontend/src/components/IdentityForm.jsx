@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { validateNIK, validateDateOfBirth, decryptAes256CbcNodeStyle, encryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { loadNIKMapping, fetchFromIPFS } from '../utils/ipfs.js';
 import { uploadToPinata } from '../utils/pinata.js';
-
-const AUTO_SECRET_KEY = 'skripsi_azzra_2025';
+import { CRYPTO_CONFIG } from '../config/crypto.js';
 
 const IdentityForm = ({ contractService, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
@@ -81,8 +80,8 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
         throw new Error('NIK tidak ditemukan dalam database');
       }
       const encryptedData = await fetchFromIPFS(cid);
-      console.log('[Step 5] Encrypted data from IPFS:', encryptedData, 'Using secret key:', AUTO_SECRET_KEY);
-      const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, AUTO_SECRET_KEY);
+      console.log('[Step 5] Encrypted data from IPFS:', encryptedData, 'Using secret key:', CRYPTO_CONFIG.SECRET_KEY);
+      const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
       console.log('[Step 6] Decrypted data:', decryptedData);
       const isValidMember = verifyFamilyMember(decryptedData, formData.nik, formData.dateOfBirth);
       console.log('[Step 7] Is valid member:', isValidMember);
@@ -106,7 +105,7 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
         updatedKK = decryptedData;
       }
       console.log('[Step 9] Updated KK with wallet:', updatedKK);
-      const encryptedNew = await encryptAes256CbcNodeStyle(updatedKK, AUTO_SECRET_KEY);
+      const encryptedNew = await encryptAes256CbcNodeStyle(updatedKK, CRYPTO_CONFIG.SECRET_KEY);
       console.log('[Step 10] Re-encrypted KK:', encryptedNew);
       const fakeName = `${crypto.randomUUID()}.enc`;
       const newCid = await uploadToPinata(encryptedNew, fakeName);

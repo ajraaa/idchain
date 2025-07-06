@@ -47,8 +47,23 @@ cd frontend
 npm install
 ```
 
-### 2. Konfigurasi Contract
+### 2. Setup Konfigurasi
 
+#### 2.1 Konfigurasi Crypto (Secret Key)
+```bash
+# Copy template file
+cp src/config/crypto.example.js src/config/crypto.js
+
+# Edit file dan isi SECRET_KEY dengan nilai yang sesuai
+```
+
+#### 2.2 Konfigurasi Pinata (IPFS)
+```bash
+# Buat file pinata.js dengan JWT token dari Pinata
+echo 'export const PINATA_JWT = "Bearer YOUR_JWT_TOKEN_HERE";' > src/config/pinata.js
+```
+
+#### 2.3 Konfigurasi Contract
 Edit file `src/config/contract.js`:
 
 ```javascript
@@ -57,6 +72,9 @@ export const CONTRACT_CONFIG = {
   // ... konfigurasi lainnya
 };
 ```
+
+**⚠️ PENTING**: File `crypto.js` dan `pinata.js` tidak termasuk dalam git karena berisi secret key dan token.
+Lihat `src/config/README.md` untuk detail lebih lanjut tentang keamanan konfigurasi.
 
 ### 3. Setup Data
 
@@ -112,9 +130,24 @@ Aplikasi ini terintegrasi dengan smart contract `PencatatanSipil.sol` yang memil
 ## Keamanan
 
 - Data keluarga dienkripsi menggunakan AES-256-CBC
-- Secret key diperlukan untuk dekripsi
+- Secret key disimpan di file konfigurasi terpisah (tidak di-commit ke git)
 - Verifikasi dilakukan di browser untuk privasi
 - Smart contract memastikan satu NIK per wallet
+- File konfigurasi sensitif di-ignore dari git repository
+
+### Praktik Keamanan yang Diterapkan
+
+1. **Secret Management**: Secret key dan token API disimpan di file terpisah
+2. **Git Ignore**: File sensitif tidak masuk ke repository
+3. **Template Files**: File contoh disediakan untuk setup
+4. **Documentation**: Panduan keamanan tersedia di `src/config/README.md`
+
+### Rekomendasi untuk Production
+
+1. **Environment Variables**: Gunakan environment variables untuk secret key
+2. **Backend Storage**: Pertimbangkan menyimpan secret key di backend server
+3. **Key Rotation**: Ganti secret key secara berkala
+4. **Access Control**: Batasi akses ke file konfigurasi
 
 ## Deployment
 
