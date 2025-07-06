@@ -25,3 +25,6 @@ dist-ssr
 
 src/config/pinata.js
 src/config/crypto.js
+
+# Sensitive data files
+public/data/nikToCidKK.json
