@@ -878,6 +878,18 @@ html, body {
   border-top: 1px solid #e5e7eb;
 }
 
+/* Date input calendar button styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Responsive design for owner dashboard */
 @media (max-width: 768px) {
   .owner-dashboard {
