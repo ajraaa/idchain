@@ -42,6 +42,12 @@ export const CONTRACT_ABI = [
     "function tambahDukcapil(address _akun) external",
     "function hapusKalurahan(address _akun) external",
     "function hapusDukcapil(address _akun) external",
+    "function submitPermohonan(uint8 _jenis, string calldata _cidIPFS, uint8 _idKalurahanAsal, uint8 _idKalurahanTujuan) external",
+    "function daftarPermohonanPemohon(address) external view returns (uint256[])",
+    "function permohonans(uint256) external view returns (uint256 id, uint256 waktuPengajuan, uint256 waktuVerifikasiKalurahan, uint256 waktuVerifikasiKalurahanTujuan, uint256 waktuVerifikasiDukcapil, address pemohon, address verifikatorKalurahan, address verifikatorKalurahanTujuan, address verifikatorDukcapil, string cidIPFS, string alasanPenolakan, uint8 jenis, uint8 status, uint8 idKalurahanAsal, uint8 idKalurahanTujuan)",
+    "function getStatusPermohonan(uint256 _id) external view returns (string memory)",
+    "function getJenisPermohonan(uint256 _id) external view returns (string memory)",
+    "function cidDokumenResmi(uint256) external view returns (string memory)",
     "event WargaTerdaftar(address indexed wallet, string nik)"
 ];
 

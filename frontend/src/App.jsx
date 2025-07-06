@@ -3,38 +3,14 @@ import WalletConnect from './components/WalletConnect'
 import IdentityForm from './components/IdentityForm'
 import OwnerDashboard from './components/OwnerDashboard'
 import OwnerAppHeader from './components/OwnerAppHeader'
+import CitizenDashboard from './components/CitizenDashboard'
+import CitizenAppHeader from './components/CitizenAppHeader'
 import Notification from './components/Notification'
 import './App.css'
 import { FaWallet, FaIdCard } from 'react-icons/fa';
 import { enhanceNotificationMessage } from './utils/notificationHelper.js';
 
-function Dashboard({ walletAddress, nik, onDisconnect }) {
-  return (
-    <div className="dashboard-card">
-      <h2 className="dashboard-title">Dashboard</h2>
-      <p className="dashboard-welcome">Selamat datang!</p>
-      <div className="dashboard-info-list">
-        <div className="dashboard-info-item">
-          <FaWallet className="dashboard-icon" />
-          <span className="dashboard-label">Wallet:</span>
-          <span className="dashboard-value">{walletAddress}</span>
-        </div>
-        <div className="dashboard-info-item">
-          <FaIdCard className="dashboard-icon" />
-          <span className="dashboard-label">NIK:</span>
-          <span className="dashboard-value">{nik}</span>
-        </div>
-      </div>
-      <button 
-        className="disconnect-button" 
-        style={{width: '100%'}} 
-        onClick={onDisconnect}
-      >
-        Putuskan Wallet
-      </button>
-    </div>
-  )
-}
+
 
 function Gateway({ onWalletConnected }) {
   return (
@@ -55,6 +31,7 @@ function App() {
   const [isCheckingNIK, setIsCheckingNIK] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [isCheckingOwner, setIsCheckingOwner] = useState(false)
+  const [citizenName, setCitizenName] = useState('')
 
   // Cek NIK wallet dan owner status setelah connect
   useEffect(() => {
@@ -190,7 +167,25 @@ function App() {
   } else if (isCheckingNIK || nikTeregistrasi === null) {
     mainContent = <div className="main-card" style={{textAlign:'center'}}><p>Memeriksa status wallet...</p></div>
   } else if (nikTeregistrasi) {
-    mainContent = <Dashboard walletAddress={walletAddress} nik={nikTeregistrasi} onDisconnect={handleWalletDisconnected} />
+    appHeader = (
+      <CitizenAppHeader 
+        walletAddress={walletAddress}
+        citizenName={citizenName || `NIK: ${nikTeregistrasi}`}
+        onDisconnect={handleWalletDisconnected}
+        isLoading={isCheckingOwner || isCheckingNIK}
+      />
+    )
+    mainContent = (
+      <CitizenDashboard 
+        walletAddress={walletAddress} 
+        contractService={contractService}
+        onDisconnect={handleWalletDisconnected}
+        onSuccess={handleOwnerSuccess}
+        onError={handleOwnerError}
+        isLoading={isCheckingOwner || isCheckingNIK}
+        onCitizenNameLoaded={setCitizenName}
+      />
+    )
   } else {
     mainContent = (
       <div className="main-card">

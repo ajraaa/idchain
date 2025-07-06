@@ -253,4 +253,151 @@ export class ContractService {
             throw new Error(errorMessage);
         }
     }
+
+    // Citizen Dashboard Functions
+    async getCitizenData(walletAddress) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            let address = walletAddress;
+            if (!address && this.signer) {
+                address = await this.signer.getAddress();
+            }
+            if (!address) {
+                throw new Error('Wallet address not available');
+            }
+
+            const nik = await this.contract.nikByWallet(address);
+            if (!nik || nik === '') {
+                throw new Error('NIK not found for this wallet');
+            }
+
+            return { nik, walletAddress: address };
+        } catch (error) {
+            console.error('Failed to get citizen data:', error);
+            throw new Error('Failed to get citizen data');
+        }
+    }
+
+    async submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan = 0) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to submit permohonan:', error);
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
+        }
+    }
+
+    async getDaftarPermohonan(walletAddress) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            let address = walletAddress;
+            if (!address && this.signer) {
+                address = await this.signer.getAddress();
+            }
+            if (!address) {
+                throw new Error('Wallet address not available');
+            }
+
+            const permohonanIds = await this.contract.daftarPermohonanPemohon(address);
+            const permohonans = [];
+
+            for (const id of permohonanIds) {
+                const permohonan = await this.contract.permohonans(id);
+                const status = await this.contract.getStatusPermohonan(id);
+                const jenis = await this.contract.getJenisPermohonan(id);
+
+                permohonans.push({
+                    id: id.toString(),
+                    jenis: jenis,
+                    status: status,
+                    waktuPengajuan: new Date(permohonan.waktuPengajuan * 1000),
+                    idKalurahanAsal: permohonan.idKalurahanAsal,
+                    idKalurahanTujuan: permohonan.idKalurahanTujuan,
+                    cidIPFS: permohonan.cidIPFS,
+                    alasanPenolakan: permohonan.alasanPenolakan
+                });
+            }
+
+            return permohonans;
+        } catch (error) {
+            console.error('Failed to get daftar permohonan:', error);
+            throw new Error('Failed to get daftar permohonan');
+        }
+    }
+
+    async getDokumenResmi(walletAddress) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            let address = walletAddress;
+            if (!address && this.signer) {
+                address = await this.signer.getAddress();
+            }
+            if (!address) {
+                throw new Error('Wallet address not available');
+            }
+
+            const permohonanIds = await this.contract.daftarPermohonanPemohon(address);
+            const dokumenResmi = [];
+
+            for (const id of permohonanIds) {
+                try {
+                    const cidDokumen = await this.contract.cidDokumenResmi(id);
+                    if (cidDokumen && cidDokumen !== '') {
+                        dokumenResmi.push({
+                            id: id.toString(),
+                            cidDokumen: cidDokumen
+                        });
+                    }
+                } catch (error) {
+                    // Skip if no official document for this application
+                    console.log(`No official document for application ${id}`);
+                }
+            }
+
+            return dokumenResmi;
+        } catch (error) {
+            console.error('Failed to get dokumen resmi:', error);
+            throw new Error('Failed to get dokumen resmi');
+        }
+    }
+
+    async getPermohonanDetail(id) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const permohonan = await this.contract.permohonans(id);
+            const status = await this.contract.getStatusPermohonan(id);
+            const jenis = await this.contract.getJenisPermohonan(id);
+
+            return {
+                id: id.toString(),
+                jenis: jenis,
+                status: status,
+                waktuPengajuan: new Date(permohonan.waktuPengajuan * 1000),
+                idKalurahanAsal: permohonan.idKalurahanAsal,
+                idKalurahanTujuan: permohonan.idKalurahanTujuan,
+                cidIPFS: permohonan.cidIPFS,
+                alasanPenolakan: permohonan.alasanPenolakan
+            };
+        } catch (error) {
+            console.error('Failed to get permohonan detail:', error);
+            throw new Error('Failed to get permohonan detail');
+        }
+    }
 } 
