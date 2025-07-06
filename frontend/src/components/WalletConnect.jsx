@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ContractService } from '../utils/contract.js';
+import { handleContractError } from '../utils/errorHandler.js';
 
 const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, walletAddress }) => {
   const [isConnecting, setIsConnecting] = useState(false);
@@ -14,7 +15,8 @@ const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, w
       console.log('WalletConnect: onWalletConnected dipanggil (manual)', address, service);
       onWalletConnected?.(address, service);
     } catch (error) {
-      setError(error.message);
+      const errorMessage = handleContractError(error);
+      setError(errorMessage);
     } finally {
       setIsConnecting(false);
     }

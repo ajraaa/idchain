@@ -3,6 +3,7 @@ import { validateNIK, validateDateOfBirth, decryptAes256CbcNodeStyle, encryptAes
 import { loadNIKMapping, fetchFromIPFS } from '../utils/ipfs.js';
 import { uploadToPinata } from '../utils/pinata.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
+import { handleContractError } from '../utils/errorHandler.js';
 
 const IdentityForm = ({ contractService, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
@@ -131,7 +132,8 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       onSuccess?.(result);
     } catch (error) {
       console.error('Identity verification failed:', error);
-      onError?.(error.message);
+      const errorMessage = handleContractError(error);
+      onError?.(errorMessage);
     } finally {
       setIsLoading(false);
     }

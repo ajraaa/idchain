@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { CONTRACT_CONFIG, CONTRACT_ABI } from '../config/contract.js';
+import { handleContractError } from './errorHandler.js';
 
 export class ContractService {
     constructor() {
@@ -65,7 +66,8 @@ export class ContractService {
             };
         } catch (error) {
             console.error('Registration failed:', error);
-            throw new Error('Failed to register warga on blockchain');
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
         }
     }
 
@@ -175,7 +177,8 @@ export class ContractService {
             };
         } catch (error) {
             console.error('Failed to add kalurahan by ID:', error);
-            throw new Error('Gagal menambahkan kalurahan dengan ID');
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
         }
     }
 
@@ -192,7 +195,8 @@ export class ContractService {
             };
         } catch (error) {
             console.error('Failed to add kalurahan:', error);
-            throw new Error('Gagal menambahkan kalurahan');
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
         }
     }
 
@@ -209,7 +213,8 @@ export class ContractService {
             };
         } catch (error) {
             console.error('Failed to add dukcapil:', error);
-            throw new Error('Gagal menambahkan dukcapil');
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
         }
     }
 
@@ -226,7 +231,8 @@ export class ContractService {
             };
         } catch (error) {
             console.error('Failed to remove kalurahan:', error);
-            throw new Error('Gagal menghapus kalurahan');
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
         }
     }
 
@@ -243,7 +249,8 @@ export class ContractService {
             };
         } catch (error) {
             console.error('Failed to remove dukcapil:', error);
-            throw new Error('Gagal menghapus dukcapil');
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
         }
     }
 } 

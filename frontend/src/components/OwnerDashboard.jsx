@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FaCrown, FaUserPlus, FaUserMinus, FaIdCard, FaBuilding, FaUserCircle, FaPowerOff } from 'react-icons/fa';
 import Sidebar from './Sidebar';
+import { handleContractError } from '../utils/errorHandler.js';
 
 const sidebarMenus = [
   { key: 'dukcapil', label: 'Kelola Dukcapil', icon: <FaIdCard /> },
@@ -41,7 +42,8 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
       setDukcapilAddress('');
     } catch (error) {
       console.error('[OwnerDashboard] Error menambahkan Dukcapil:', error);
-      onError(error.message);
+      const errorMessage = handleContractError(error);
+      onError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +69,8 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
       setRemoveDukcapilAddress('');
     } catch (error) {
       console.error('[OwnerDashboard] Error menghapus Dukcapil:', error);
-      onError(error.message);
+      const errorMessage = handleContractError(error);
+      onError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +119,8 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
       setKalurahanId('');
     } catch (error) {
       console.error('[OwnerDashboard] Error menambahkan Kalurahan:', error);
-      onError(error.message);
+      const errorMessage = handleContractError(error);
+      onError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +146,8 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
       setRemoveKalurahanAddress('');
     } catch (error) {
       console.error('[OwnerDashboard] Error menghapus Kalurahan:', error);
-      onError(error.message);
+      const errorMessage = handleContractError(error);
+      onError(errorMessage);
     } finally {
       setIsLoading(false);
     }
