@@ -9,6 +9,7 @@ const sidebarMenus = [
 
 const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, isLoading }) => {
   const [activeTab, setActiveTab] = useState('dukcapil');
+  const [isLoadingLocal, setIsLoading] = useState(false);
   
   // Form states for Dukcapil
   const [dukcapilAddress, setDukcapilAddress] = useState('');
@@ -23,16 +24,23 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
   const handleAddDukcapil = async (e) => {
     e.preventDefault();
     if (!dukcapilAddress.trim()) {
+      console.log('[OwnerDashboard] Error: Alamat wallet Dukcapil kosong');
       onError('Alamat wallet Dukcapil tidak boleh kosong');
       return;
     }
 
+    console.log('[OwnerDashboard] Menambahkan Dukcapil:', dukcapilAddress.trim());
     setIsLoading(true);
     try {
       const result = await contractService.tambahDukcapil(dukcapilAddress.trim());
+      console.log('[OwnerDashboard] Dukcapil berhasil ditambahkan:', {
+        address: dukcapilAddress.trim(),
+        transactionHash: result.transactionHash
+      });
       onSuccess(`Dukcapil berhasil ditambahkan! Transaction: ${result.transactionHash}`);
       setDukcapilAddress('');
     } catch (error) {
+      console.error('[OwnerDashboard] Error menambahkan Dukcapil:', error);
       onError(error.message);
     } finally {
       setIsLoading(false);
@@ -42,16 +50,23 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
   const handleRemoveDukcapil = async (e) => {
     e.preventDefault();
     if (!removeDukcapilAddress.trim()) {
+      console.log('[OwnerDashboard] Error: Alamat wallet Dukcapil kosong');
       onError('Alamat wallet Dukcapil tidak boleh kosong');
       return;
     }
 
+    console.log('[OwnerDashboard] Menghapus Dukcapil:', removeDukcapilAddress.trim());
     setIsLoading(true);
     try {
       const result = await contractService.hapusDukcapil(removeDukcapilAddress.trim());
+      console.log('[OwnerDashboard] Dukcapil berhasil dihapus:', {
+        address: removeDukcapilAddress.trim(),
+        transactionHash: result.transactionHash
+      });
       onSuccess(`Dukcapil berhasil dihapus! Transaction: ${result.transactionHash}`);
       setRemoveDukcapilAddress('');
     } catch (error) {
+      console.error('[OwnerDashboard] Error menghapus Dukcapil:', error);
       onError(error.message);
     } finally {
       setIsLoading(false);
@@ -61,27 +76,46 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
   const handleAddKalurahan = async (e) => {
     e.preventDefault();
     if (!kalurahanAddress.trim()) {
+      console.log('[OwnerDashboard] Error: Alamat wallet Kalurahan kosong');
       onError('Alamat wallet Kalurahan tidak boleh kosong');
       return;
     }
 
     if (useKalurahanId && !kalurahanId.trim()) {
+      console.log('[OwnerDashboard] Error: ID Kalurahan kosong');
       onError('ID Kalurahan tidak boleh kosong');
       return;
     }
 
+    const kalurahanData = {
+      address: kalurahanAddress.trim(),
+      useId: useKalurahanId,
+      id: useKalurahanId ? parseInt(kalurahanId) : null
+    };
+    
+    console.log('[OwnerDashboard] Menambahkan Kalurahan:', kalurahanData);
     setIsLoading(true);
     try {
       let result;
       if (useKalurahanId) {
         result = await contractService.tambahKalurahanById(parseInt(kalurahanId), kalurahanAddress.trim());
+        console.log('[OwnerDashboard] Kalurahan berhasil ditambahkan dengan ID:', {
+          address: kalurahanAddress.trim(),
+          id: parseInt(kalurahanId),
+          transactionHash: result.transactionHash
+        });
       } else {
         result = await contractService.tambahKalurahan(kalurahanAddress.trim());
+        console.log('[OwnerDashboard] Kalurahan berhasil ditambahkan tanpa ID:', {
+          address: kalurahanAddress.trim(),
+          transactionHash: result.transactionHash
+        });
       }
       onSuccess(`Kalurahan berhasil ditambahkan! Transaction: ${result.transactionHash}`);
       setKalurahanAddress('');
       setKalurahanId('');
     } catch (error) {
+      console.error('[OwnerDashboard] Error menambahkan Kalurahan:', error);
       onError(error.message);
     } finally {
       setIsLoading(false);
@@ -91,16 +125,23 @@ const OwnerDashboard = ({ walletAddress, contractService, onDisconnect, onSucces
   const handleRemoveKalurahan = async (e) => {
     e.preventDefault();
     if (!removeKalurahanAddress.trim()) {
+      console.log('[OwnerDashboard] Error: Alamat wallet Kalurahan kosong');
       onError('Alamat wallet Kalurahan tidak boleh kosong');
       return;
     }
 
+    console.log('[OwnerDashboard] Menghapus Kalurahan:', removeKalurahanAddress.trim());
     setIsLoading(true);
     try {
       const result = await contractService.hapusKalurahan(removeKalurahanAddress.trim());
+      console.log('[OwnerDashboard] Kalurahan berhasil dihapus:', {
+        address: removeKalurahanAddress.trim(),
+        transactionHash: result.transactionHash
+      });
       onSuccess(`Kalurahan berhasil dihapus! Transaction: ${result.transactionHash}`);
       setRemoveKalurahanAddress('');
     } catch (error) {
+      console.error('[OwnerDashboard] Error menghapus Kalurahan:', error);
       onError(error.message);
     } finally {
       setIsLoading(false);

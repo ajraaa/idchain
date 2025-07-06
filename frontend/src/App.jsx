@@ -138,6 +138,14 @@ function App() {
     showNotification(error, 'error')
   }
 
+  const handleOwnerSuccess = (message) => {
+    showNotification(message, 'success')
+  }
+
+  const handleOwnerError = (error) => {
+    showNotification(error, 'error')
+  }
+
   const showNotification = (message, type = 'info', autoClose = true) => {
     setNotification({
       message,
@@ -167,8 +175,8 @@ function App() {
         walletAddress={walletAddress} 
         contractService={contractService}
         onDisconnect={handleWalletDisconnected}
-        onSuccess={handleVerificationSuccess}
-        onError={handleVerificationError}
+        onSuccess={handleOwnerSuccess}
+        onError={handleOwnerError}
         isLoading={isCheckingOwner || isCheckingNIK}
       />
     )
