@@ -66,7 +66,7 @@ const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, w
           <button 
             onClick={disconnectWallet}
             className="disconnect-button"
-            style={{borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 600, marginLeft: 0, marginTop: '0.5rem'}}
+            style={{borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 600}}
           >
             Putuskan
           </button>

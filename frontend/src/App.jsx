@@ -24,7 +24,7 @@ function Dashboard({ walletAddress, nik, onDisconnect }) {
       </div>
       <button 
         className="disconnect-button" 
-        style={{marginTop: '2rem', width: '100%'}} 
+        style={{width: '100%'}} 
         onClick={onDisconnect}
       >
         Putuskan Wallet
