@@ -423,21 +423,25 @@ html, body {
 
 /* Dashboard specific styles */
 .dashboard-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 0.3rem;
   color: #232323;
+  text-align: center;
 }
 
 .dashboard-welcome {
   color: #6b7280;
   margin-bottom: 1.5rem;
+  text-align: center;
 }
 
 .dashboard-info-list {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
+  width: 100%;
+  margin-bottom: 2rem;
 }
 
 .dashboard-info-item {
@@ -445,12 +449,14 @@ html, body {
   align-items: center;
   gap: 0.7rem;
   font-size: 1.1rem;
+  justify-content: flex-start;
 }
 
 .dashboard-label {
   font-weight: 600;
   color: #232323;
   min-width: 60px;
+  text-align: right;
 }
 
 .dashboard-value {
@@ -458,13 +464,35 @@ html, body {
   color: #232323;
   background: #f3f4f6;
   border-radius: 6px;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.7rem;
   margin-left: 0.2rem;
+  text-align: left;
+  word-break: break-all;
 }
 
 .dashboard-icon {
   color: #6b7280;
   font-size: 1.3rem;
+  min-width: 24px;
+  text-align: left;
+}
+
+.disconnect-button {
+  background: #f3f4f6;
+  color: #232323;
+  border: 1.5px solid #d1d5db;
+  font-weight: 600;
+  padding: 0.9rem 1.5rem;
+  margin-top: 2rem;
+  width: 100%;
+  border-radius: 12px;
+  font-size: 1.1rem;
+}
+
+.disconnect-button:hover {
+  background: #e5e7eb;
+  color: #111;
+  border: 1.5px solid #232323;
 }
 
 /* Responsive Design */
@@ -518,16 +546,27 @@ html, body {
   }
   
   .dashboard-title {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
   }
   
   .main-card, .dashboard-card {
-    max-width: 100%;
-    padding: 1.5rem 1rem;
+    max-width: 99vw;
+    padding: 1.2rem 0.7rem;
   }
   
+  .identity-section {
+    align-items: center;
+    text-align: center;
+    padding: 0.7rem 0.2rem;
+  }
   .identity-form {
-    padding: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  .identity-form h2,
+  .identity-form .form-description,
+  .identity-form label {
+    text-align: center;
   }
   
   .app-header h1 {
@@ -552,6 +591,13 @@ html, body {
     max-width: calc(100vw - 1rem);
     font-size: 1rem;
     padding: 1rem 1.5rem 1rem 1rem;
+  }
+  .dashboard-info-list {
+    gap: 0.7rem;
+  }
+  .disconnect-button {
+    font-size: 1rem;
+    padding: 0.7rem 1rem;
   }
 }
 
@@ -580,7 +626,7 @@ html, body {
 }
 
 .wallet-section-box {
-  background: #FFF9E5;
+  background: #FFA680;
   border-radius: 14px;
   padding: 1.5rem 1.2rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -591,7 +637,7 @@ html, body {
 }
 
 .identity-section {
-  padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
   text-align: left;
   display: flex;
   flex-direction: column;
