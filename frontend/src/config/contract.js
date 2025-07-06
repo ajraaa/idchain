@@ -34,6 +34,14 @@ export const CONTRACT_ABI = [
     "function registerWarga(string memory _nik) external",
     "function nikByWallet(address wallet) external view returns (string memory)",
     "function walletByNik(string memory nik) external view returns (address)",
+    "function owner() external view returns (address)",
+    "function kalurahan(address) external view returns (bool)",
+    "function dukcapil(address) external view returns (bool)",
+    "function tambahKalurahanById(uint8 _id, address _akun) external",
+    "function tambahKalurahan(address _akun) external",
+    "function tambahDukcapil(address _akun) external",
+    "function hapusKalurahan(address _akun) external",
+    "function hapusDukcapil(address _akun) external",
     "event WargaTerdaftar(address indexed wallet, string nik)"
 ];
 

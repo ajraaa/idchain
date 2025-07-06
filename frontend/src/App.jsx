@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import WalletConnect from './components/WalletConnect'
 import IdentityForm from './components/IdentityForm'
+import OwnerDashboard from './components/OwnerDashboard'
+import OwnerAppHeader from './components/OwnerAppHeader'
 import Notification from './components/Notification'
 import './App.css'
 import { FaWallet, FaIdCard } from 'react-icons/fa';
@@ -50,39 +52,58 @@ function App() {
   const [nikTeregistrasi, setNikTeregistrasi] = useState(null) // null: belum dicek, string: sudah teregistrasi, false: belum
   const [isWalletConnected, setIsWalletConnected] = useState(false)
   const [isCheckingNIK, setIsCheckingNIK] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
+  const [isCheckingOwner, setIsCheckingOwner] = useState(false)
 
-  // Cek NIK wallet setelah connect
+  // Cek NIK wallet dan owner status setelah connect
   useEffect(() => {
-    const checkNIK = async () => {
+    const checkWalletStatus = async () => {
       if (
         contractService &&
         contractService.contract &&
         walletAddress
       ) {
         setIsCheckingNIK(true)
+        setIsCheckingOwner(true)
         try {
-          console.log('[Gateway] Checking NIK for wallet:', walletAddress)
-          const nik = await contractService.contract.nikByWallet(walletAddress)
-          console.log('[Gateway] Result NIK:', nik)
-          if (nik && nik !== '') {
-            setNikTeregistrasi(nik)
-            console.log('[Gateway] Wallet is registered with NIK:', nik)
+          // Check if wallet is owner
+          console.log('[Gateway] Checking owner status for wallet:', walletAddress)
+          const ownerStatus = await contractService.checkIfOwner(walletAddress)
+          setIsOwner(ownerStatus)
+          console.log('[Gateway] Owner status:', ownerStatus)
+          
+          // If not owner, check NIK registration
+          if (!ownerStatus) {
+            console.log('[Gateway] Checking NIK for wallet:', walletAddress)
+            const nik = await contractService.contract.nikByWallet(walletAddress)
+            console.log('[Gateway] Result NIK:', nik)
+            if (nik && nik !== '') {
+              setNikTeregistrasi(nik)
+              console.log('[Gateway] Wallet is registered with NIK:', nik)
+            } else {
+              setNikTeregistrasi(false)
+              console.log('[Gateway] Wallet is NOT registered')
+            }
           } else {
-            setNikTeregistrasi(false)
-            console.log('[Gateway] Wallet is NOT registered')
+            // If owner, set NIK to null since owner doesn't need NIK registration
+            setNikTeregistrasi(null)
           }
         } catch (err) {
           setNikTeregistrasi(false)
-          console.log('[Gateway] Error checking NIK:', err)
+          setIsOwner(false)
+          console.log('[Gateway] Error checking wallet status:', err)
         } finally {
           setIsCheckingNIK(false)
+          setIsCheckingOwner(false)
         }
       } else {
         setNikTeregistrasi(null)
+        setIsOwner(false)
         setIsCheckingNIK(false)
+        setIsCheckingOwner(false)
       }
     }
-    checkNIK()
+    checkWalletStatus()
   }, [contractService, walletAddress])
 
   const handleWalletConnected = (address, service) => {
@@ -98,7 +119,9 @@ function App() {
     setContractService(null)
     setIsWalletConnected(false)
     setNikTeregistrasi(null)
+    setIsOwner(false)
     setIsCheckingNIK(false)
+    setIsCheckingOwner(false)
     showNotification('Wallet terputus', 'info')
   }
 
@@ -130,8 +153,29 @@ function App() {
 
   // Render logic
   let mainContent
-  if (!isWalletConnected) {
+  let appHeader = null
+  if (isOwner) {
+    appHeader = (
+      <OwnerAppHeader 
+        walletAddress={walletAddress}
+        onDisconnect={handleWalletDisconnected}
+        isLoading={isCheckingOwner || isCheckingNIK}
+      />
+    )
+    mainContent = (
+      <OwnerDashboard 
+        walletAddress={walletAddress} 
+        contractService={contractService}
+        onDisconnect={handleWalletDisconnected}
+        onSuccess={handleVerificationSuccess}
+        onError={handleVerificationError}
+        isLoading={isCheckingOwner || isCheckingNIK}
+      />
+    )
+  } else if (!isWalletConnected) {
     mainContent = <Gateway onWalletConnected={handleWalletConnected} />
+  } else if (isCheckingOwner) {
+    mainContent = <div className="main-card" style={{textAlign:'center'}}><p>Memeriksa status wallet...</p></div>
   } else if (isCheckingNIK || nikTeregistrasi === null) {
     mainContent = <div className="main-card" style={{textAlign:'center'}}><p>Memeriksa status wallet...</p></div>
   } else if (nikTeregistrasi) {
@@ -163,10 +207,12 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>IDChain - Sistem Identitas Digital</h1>
-        <p>Sistem pencatatan sipil terdesentralisasi berbasis blockchain</p>
-      </header>
+      {appHeader ? appHeader : (
+        <header className="app-header">
+          <h1>IDChain - Sistem Identitas Digital</h1>
+          <p>Sistem pencatatan sipil terdesentralisasi berbasis blockchain</p>
+        </header>
+      )}
 
       <main className="app-main">
           {mainContent}

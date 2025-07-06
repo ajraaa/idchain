@@ -103,4 +103,147 @@ export class ContractService {
             return false;
         }
     }
+
+    async checkIfOwner(walletAddress) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            let address = walletAddress;
+            if (!address && this.signer) {
+                address = await this.signer.getAddress();
+            }
+            if (!address) {
+                return false;
+            }
+            const owner = await this.contract.owner();
+            return address.toLowerCase() === owner.toLowerCase();
+        } catch (error) {
+            console.error('Failed to check owner status:', error);
+            return false;
+        }
+    }
+
+    async checkIfKalurahan(walletAddress) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            let address = walletAddress;
+            if (!address && this.signer) {
+                address = await this.signer.getAddress();
+            }
+            if (!address) {
+                return false;
+            }
+            return await this.contract.kalurahan(address);
+        } catch (error) {
+            console.error('Failed to check kalurahan status:', error);
+            return false;
+        }
+    }
+
+    async checkIfDukcapil(walletAddress) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            let address = walletAddress;
+            if (!address && this.signer) {
+                address = await this.signer.getAddress();
+            }
+            if (!address) {
+                return false;
+            }
+            return await this.contract.dukcapil(address);
+        } catch (error) {
+            console.error('Failed to check dukcapil status:', error);
+            return false;
+        }
+    }
+
+    async tambahKalurahanById(id, address) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.tambahKalurahanById(id, address);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to add kalurahan by ID:', error);
+            throw new Error('Gagal menambahkan kalurahan dengan ID');
+        }
+    }
+
+    async tambahKalurahan(address) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.tambahKalurahan(address);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to add kalurahan:', error);
+            throw new Error('Gagal menambahkan kalurahan');
+        }
+    }
+
+    async tambahDukcapil(address) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.tambahDukcapil(address);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to add dukcapil:', error);
+            throw new Error('Gagal menambahkan dukcapil');
+        }
+    }
+
+    async hapusKalurahan(address) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.hapusKalurahan(address);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to remove kalurahan:', error);
+            throw new Error('Gagal menghapus kalurahan');
+        }
+    }
+
+    async hapusDukcapil(address) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.hapusDukcapil(address);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to remove dukcapil:', error);
+            throw new Error('Gagal menghapus dukcapil');
+        }
+    }
 } 
