@@ -18,6 +18,6 @@ contract PencatatanSipil is PermohonanManager, DokumenResmiManager {
         uint256 _id
     ) external view returns (string memory) {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
-        return _getDokumenResmi(_id, p.pemohon, dukcapil[msg.sender]);
+        return _getDokumenResmi(_id, p.pemohon, msg.sender == dukcapil);
     }
 }

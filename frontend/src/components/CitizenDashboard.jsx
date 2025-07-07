@@ -431,26 +431,26 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   };
 
   return (
-    <div className="owner-app-root">
-      <div className="owner-app-body">
+    <div className="dukcapil-app-root">
+      <div className="dukcapil-app-body">
         <Sidebar
           menus={sidebarMenus}
           activeMenu={activeTab}
           onMenuClick={setActiveTab}
           walletAddress={walletAddress}
         />
-        <main className="owner-main-area">
-          <div className="owner-main-card">
+        <main className="dukcapil-main-area">
+          <div className="dukcapil-main-card">
             {/* Judul dinamis */}
             <div className="card-title-dynamic">
               <h2 style={{margin: 0, fontWeight: 700, fontSize: '1.35rem'}}>{getCardTitle()}</h2>
             </div>
-            <div className="owner-header-main">
+            <div className="dukcapil-header-main">
               {/* Subjudul tetap */}
-              {activeTab === 'profile' && <p className="owner-subtitle-main">Kelola data dan identitas warga</p>}
-              {activeTab === 'ajukan' && <p className="owner-subtitle-main">Ajukan permohonan baru sesuai kebutuhan Anda</p>}
-              {activeTab === 'daftar' && <p className="owner-subtitle-main">Lihat riwayat permohonan yang pernah diajukan</p>}
-              {activeTab === 'dokumen' && <p className="owner-subtitle-main">Daftar dokumen resmi yang Anda miliki</p>}
+              {activeTab === 'profile' && <p className="dukcapil-subtitle-main">Kelola data dan identitas warga</p>}
+              {activeTab === 'ajukan' && <p className="dukcapil-subtitle-main">Ajukan permohonan baru sesuai kebutuhan Anda</p>}
+              {activeTab === 'daftar' && <p className="dukcapil-subtitle-main">Lihat riwayat permohonan yang pernah diajukan</p>}
+              {activeTab === 'dokumen' && <p className="dukcapil-subtitle-main">Daftar dokumen resmi yang Anda miliki</p>}
             </div>
             <div className="tab-content">
               {activeTab === 'profile' && renderProfile()}

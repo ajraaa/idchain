@@ -654,7 +654,7 @@ html, body {
 }
 
 /* Owner Dashboard styles */
-.owner-dashboard {
+.dukcapil-dashboard {
   background: white;
   border-radius: 16px;
   padding: 1.2rem;
@@ -663,7 +663,7 @@ html, body {
   margin: 0 auto;
 }
 
-.owner-topbar {
+.dukcapil-topbar {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -674,7 +674,7 @@ html, body {
   border-bottom: 2px solid #e5e7eb;
 }
 
-.owner-header {
+.dukcapil-header {
   text-align: left;
   margin-bottom: 0;
   padding-bottom: 0;
@@ -682,7 +682,7 @@ html, body {
   min-width: 260px;
 }
 
-.owner-title {
+.dukcapil-title {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -690,25 +690,25 @@ html, body {
   margin-bottom: 0.5rem;
 }
 
-.owner-title h2 {
+.dukcapil-title h2 {
   margin: 0;
   color: #1f2937;
   font-size: 1.875rem;
   font-weight: 700;
 }
 
-.owner-icon {
+.dukcapil-icon {
   color: #f59e0b;
   font-size: 1.5rem;
 }
 
-.owner-subtitle {
+.dukcapil-subtitle {
   color: #6b7280;
   margin: 0 0 1rem 0;
   font-size: 1.1rem;
 }
 
-.owner-wallet-info {
+.dukcapil-wallet-info {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -729,7 +729,7 @@ html, body {
   font-weight: 700;
 }
 
-.owner-tabs {
+.dukcapil-tabs {
   display: flex;
   gap: 0.5rem;
   border-bottom: none;
@@ -872,7 +872,7 @@ html, body {
   cursor: not-allowed;
 }
 
-.owner-actions {
+.dukcapil-actions {
   text-align: center;
   padding-top: 0.7rem;
   border-top: 1px solid #e5e7eb;
@@ -892,7 +892,7 @@ input[type="date"]::-webkit-outer-spin-button {
 
 /* Responsive design for owner dashboard */
 @media (max-width: 768px) {
-  .owner-dashboard {
+  .dukcapil-dashboard {
     padding: 0.7rem;
   }
   
@@ -901,7 +901,7 @@ input[type="date"]::-webkit-outer-spin-button {
     grid-template-columns: 1fr;
   }
   
-  .owner-tabs {
+  .dukcapil-tabs {
     flex-direction: column;
   }
   
@@ -911,24 +911,24 @@ input[type="date"]::-webkit-outer-spin-button {
 }
 
 @media (max-width: 900px) {
-  .owner-topbar {
+  .dukcapil-topbar {
     flex-direction: column;
     align-items: stretch;
     gap: 1.2rem;
     margin-bottom: 1.2rem;
     padding-bottom: 1rem;
   }
-  .owner-header {
+  .dukcapil-header {
     min-width: 0;
   }
-  .owner-tabs {
+  .dukcapil-tabs {
     justify-content: flex-start;
     align-items: flex-start;
     margin-top: 0.5rem;
   }
 }
 
-.owner-layout {
+.dukcapil-layout {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -936,7 +936,7 @@ input[type="date"]::-webkit-outer-spin-button {
   margin-bottom: 1rem;
 }
 
-.owner-header {
+.dukcapil-header {
   flex: 0 0 260px;
   min-width: 220px;
   max-width: 320px;
@@ -947,14 +947,14 @@ input[type="date"]::-webkit-outer-spin-button {
   border: 1px solid #e5e7eb;
 }
 
-.owner-main-content {
+.dukcapil-main-content {
   flex: 1 1 0%;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.owner-tabs {
+.dukcapil-tabs {
   display: flex;
   gap: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
@@ -967,35 +967,35 @@ input[type="date"]::-webkit-outer-spin-button {
 }
 
 @media (max-width: 900px) {
-  .owner-layout {
+  .dukcapil-layout {
     flex-direction: column;
     gap: 1.2rem;
     margin-bottom: 1.2rem;
   }
-  .owner-header {
+  .dukcapil-header {
     max-width: 100%;
     min-width: 0;
     margin-bottom: 0.5rem;
   }
-  .owner-main-content {
+  .dukcapil-main-content {
     width: 100%;
   }
-  .owner-tabs {
+  .dukcapil-tabs {
     justify-content: flex-start;
     align-items: flex-start;
     margin-top: 0.5rem;
   }
 }
 
-.owner-disconnect-btn {
-  margin-top: 1.1rem;
+.dukcapil-disconnect-btn {
   padding: 0.5rem 1.1rem;
   font-size: 0.98rem;
   border-radius: 8px;
   width: auto;
   min-width: 0;
   max-width: 100%;
-  align-self: flex-start;
+  display: flex;
+  align-items: center;
 }
 
 .dashboard-flex-root {
@@ -1004,7 +1004,7 @@ input[type="date"]::-webkit-outer-spin-button {
   min-height: 70vh;
 }
 
-.owner-app-header {
+.dukcapil-app-header {
   position: fixed;
   top: 0;
   left: 0;
@@ -1044,7 +1044,7 @@ input[type="date"]::-webkit-outer-spin-button {
   min-width: 0;
 }
 
-.owner-role {
+.dukcapil-role {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -1065,7 +1065,6 @@ input[type="date"]::-webkit-outer-spin-button {
   width: auto;
   min-width: 0;
   max-width: 100%;
-  align-self: flex-start;
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -1079,14 +1078,14 @@ input[type="date"]::-webkit-outer-spin-button {
   border: 1.5px solid #232323;
 }
 
-.owner-app-root {
+.dukcapil-app-root {
   display: flex;
   flex-direction: row;
   width: 100%;
   overflow-x: hidden;
 }
 
-.owner-app-body {
+.dukcapil-app-body {
   display: flex;
   flex-direction: row;
   flex: 1 1 0%;
@@ -1094,7 +1093,7 @@ input[type="date"]::-webkit-outer-spin-button {
   margin-top: 56px;
 }
 
-.owner-sidebar.custom-sidebar {
+.dukcapil-sidebar.custom-sidebar {
   position: fixed;
   top: 56px;
   left: 0;
@@ -1172,7 +1171,7 @@ input[type="date"]::-webkit-outer-spin-button {
   word-break: break-all;
 }
 
-.owner-main-area {
+.dukcapil-main-area {
   flex: 1 1 0%;
   display: flex;
   flex-direction: column;
@@ -1183,7 +1182,7 @@ input[type="date"]::-webkit-outer-spin-button {
   margin-left: 260px;
   padding-top: 0;
 }
-.owner-main-card {
+.dukcapil-main-card {
   width: 100%;
   max-width: 700px;
   background: #fff;
@@ -1193,16 +1192,16 @@ input[type="date"]::-webkit-outer-spin-button {
   margin-bottom: 2rem;
   margin-top: 0;
 }
-.owner-header-main {
+.dukcapil-header-main {
   margin-bottom: 1.2rem;
 }
-.owner-title-main {
+.dukcapil-title-main {
   margin: 0;
   color: #1f2937;
   font-size: 1.5rem;
   font-weight: 700;
 }
-.owner-subtitle-main {
+.dukcapil-subtitle-main {
   color: #6b7280;
   margin: 0.2rem 0 0.7rem 0;
   font-size: 1.05rem;
@@ -1221,20 +1220,20 @@ input[type="date"]::-webkit-outer-spin-button {
     overflow-y: auto;
     height: auto;
   }
-  .owner-app-root {
+  .dukcapil-app-root {
     flex-direction: column;
     width: 100%;
   }
-  .owner-app-header {
+  .dukcapil-app-header {
     position: static;
     padding: 0.7rem 1rem;
   }
-  .owner-app-body {
+  .dukcapil-app-body {
     flex-direction: column;
     margin-top: 0;
     width: 100%;
   }
-  .owner-sidebar.custom-sidebar {
+  .dukcapil-sidebar.custom-sidebar {
     position: static;
     width: 100%;
     min-height: 0;
@@ -1247,12 +1246,12 @@ input[type="date"]::-webkit-outer-spin-button {
     left: unset;
     bottom: unset;
   }
-  .owner-main-area {
+  .dukcapil-main-area {
     margin-left: 0;
     padding: 0 0 0 0;
     padding-top: 0;
   }
-  .owner-main-card {
+  .dukcapil-main-card {
     padding: 1.2rem 0.7rem 1rem 0.7rem;
     margin-top: 0;
   }

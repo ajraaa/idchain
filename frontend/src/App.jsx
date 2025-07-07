@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import WalletConnect from './components/WalletConnect'
 import IdentityForm from './components/IdentityForm'
-import OwnerDashboard from './components/OwnerDashboard'
-import OwnerAppHeader from './components/OwnerAppHeader'
+import DukcapilDashboard from './components/DukcapilDashboard'
+import DukcapilAppHeader from './components/DukcapilAppHeader'
 import CitizenDashboard from './components/CitizenDashboard'
 import CitizenAppHeader from './components/CitizenAppHeader'
 import Notification from './components/Notification'
@@ -29,11 +29,11 @@ function App() {
   const [nikTeregistrasi, setNikTeregistrasi] = useState(null) // null: belum dicek, string: sudah teregistrasi, false: belum
   const [isWalletConnected, setIsWalletConnected] = useState(false)
   const [isCheckingNIK, setIsCheckingNIK] = useState(false)
-  const [isOwner, setIsOwner] = useState(false)
-  const [isCheckingOwner, setIsCheckingOwner] = useState(false)
+  const [isDukcapil, setIsDukcapil] = useState(false)
+  const [isCheckingDukcapil, setIsCheckingDukcapil] = useState(false)
   const [citizenName, setCitizenName] = useState('')
 
-  // Cek NIK wallet dan owner status setelah connect
+  // Cek NIK wallet dan dukcapil status setelah connect
   useEffect(() => {
     const checkWalletStatus = async () => {
       if (
@@ -42,16 +42,15 @@ function App() {
         walletAddress
       ) {
         setIsCheckingNIK(true)
-        setIsCheckingOwner(true)
+        setIsCheckingDukcapil(true)
         try {
-          // Check if wallet is owner
-          console.log('[Gateway] Checking owner status for wallet:', walletAddress)
-          const ownerStatus = await contractService.checkIfOwner(walletAddress)
-          setIsOwner(ownerStatus)
-          console.log('[Gateway] Owner status:', ownerStatus)
-          
-          // If not owner, check NIK registration
-          if (!ownerStatus) {
+          // Check if wallet is dukcapil
+          console.log('[Gateway] Checking dukcapil status for wallet:', walletAddress)
+          const dukcapilStatus = await contractService.checkIfDukcapil(walletAddress)
+          setIsDukcapil(dukcapilStatus)
+          console.log('[Gateway] Dukcapil status:', dukcapilStatus)
+          // If not dukcapil, check NIK registration
+          if (!dukcapilStatus) {
             console.log('[Gateway] Checking NIK for wallet:', walletAddress)
             const nik = await contractService.contract.nikByWallet(walletAddress)
             console.log('[Gateway] Result NIK:', nik)
@@ -63,22 +62,22 @@ function App() {
               console.log('[Gateway] Wallet is NOT registered')
             }
           } else {
-            // If owner, set NIK to null since owner doesn't need NIK registration
+            // If dukcapil, set NIK to null since dukcapil doesn't need NIK registration
             setNikTeregistrasi(null)
           }
         } catch (err) {
           setNikTeregistrasi(false)
-          setIsOwner(false)
+          setIsDukcapil(false)
           console.log('[Gateway] Error checking wallet status:', err)
         } finally {
           setIsCheckingNIK(false)
-          setIsCheckingOwner(false)
+          setIsCheckingDukcapil(false)
         }
       } else {
         setNikTeregistrasi(null)
-        setIsOwner(false)
+        setIsDukcapil(false)
         setIsCheckingNIK(false)
-        setIsCheckingOwner(false)
+        setIsCheckingDukcapil(false)
       }
     }
     checkWalletStatus()
@@ -97,9 +96,9 @@ function App() {
     setContractService(null)
     setIsWalletConnected(false)
     setNikTeregistrasi(null)
-    setIsOwner(false)
+    setIsDukcapil(false)
     setIsCheckingNIK(false)
-    setIsCheckingOwner(false)
+    setIsCheckingDukcapil(false)
     showNotification('Wallet terputus', 'info', true, 'wallet')
   }
 
@@ -117,12 +116,12 @@ function App() {
     showNotification(error, 'error', false, 'verification')
   }
 
-  const handleOwnerSuccess = (message) => {
-    showNotification(message, 'success', true, 'owner')
+  const handleDukcapilSuccess = (message) => {
+    showNotification(message, 'success', true, 'dukcapil')
   }
 
-  const handleOwnerError = (error) => {
-    showNotification(error, 'error', false, 'owner')
+  const handleDukcapilError = (error) => {
+    showNotification(error, 'error', false, 'dukcapil')
   }
 
   const showNotification = (message, type = 'info', autoClose = true, context = '') => {
@@ -142,29 +141,27 @@ function App() {
   // Render logic
   let mainContent
   let appHeader = null
-  if (isOwner) {
+  if (isDukcapil) {
     appHeader = (
-      <OwnerAppHeader 
+      <DukcapilAppHeader 
         walletAddress={walletAddress}
         onDisconnect={handleWalletDisconnected}
-        isLoading={isCheckingOwner || isCheckingNIK}
+        isLoading={isCheckingDukcapil || isCheckingNIK}
       />
     )
     mainContent = (
-      <OwnerDashboard 
+      <DukcapilDashboard 
         walletAddress={walletAddress} 
         contractService={contractService}
         onDisconnect={handleWalletDisconnected}
-        onSuccess={handleOwnerSuccess}
-        onError={handleOwnerError}
-        isLoading={isCheckingOwner || isCheckingNIK}
+        onSuccess={handleDukcapilSuccess}
+        onError={handleDukcapilError}
+        isLoading={isCheckingDukcapil || isCheckingNIK}
       />
     )
   } else if (!isWalletConnected) {
     mainContent = <Gateway onWalletConnected={handleWalletConnected} />
-  } else if (isCheckingOwner) {
-    mainContent = <div className="main-card" style={{textAlign:'center'}}><p>Memeriksa status wallet...</p></div>
-  } else if (isCheckingNIK || nikTeregistrasi === null) {
+  } else if (isCheckingDukcapil || nikTeregistrasi === null) {
     mainContent = <div className="main-card" style={{textAlign:'center'}}><p>Memeriksa status wallet...</p></div>
   } else if (nikTeregistrasi) {
     appHeader = (
@@ -172,7 +169,7 @@ function App() {
         walletAddress={walletAddress}
         citizenName={citizenName || `NIK: ${nikTeregistrasi}`}
         onDisconnect={handleWalletDisconnected}
-        isLoading={isCheckingOwner || isCheckingNIK}
+        isLoading={isCheckingDukcapil || isCheckingNIK}
       />
     )
     mainContent = (
@@ -180,9 +177,9 @@ function App() {
         walletAddress={walletAddress} 
         contractService={contractService}
         onDisconnect={handleWalletDisconnected}
-        onSuccess={handleOwnerSuccess}
-        onError={handleOwnerError}
-        isLoading={isCheckingOwner || isCheckingNIK}
+        onSuccess={handleVerificationSuccess}
+        onError={handleVerificationError}
+        isLoading={isCheckingDukcapil || isCheckingNIK}
         onCitizenNameLoaded={setCitizenName}
       />
     )

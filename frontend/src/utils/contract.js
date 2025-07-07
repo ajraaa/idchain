@@ -106,7 +106,7 @@ export class ContractService {
         }
     }
 
-    async checkIfOwner(walletAddress) {
+    async checkIfDukcapil(walletAddress) {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
@@ -118,10 +118,10 @@ export class ContractService {
             if (!address) {
                 return false;
             }
-            const owner = await this.contract.owner();
-            return address.toLowerCase() === owner.toLowerCase();
+            const dukcapilAddress = await this.contract.dukcapil();
+            return address.toLowerCase() === dukcapilAddress.toLowerCase();
         } catch (error) {
-            console.error('Failed to check owner status:', error);
+            console.error('Failed to check dukcapil status:', error);
             return false;
         }
     }
@@ -141,25 +141,6 @@ export class ContractService {
             return await this.contract.kalurahan(address);
         } catch (error) {
             console.error('Failed to check kalurahan status:', error);
-            return false;
-        }
-    }
-
-    async checkIfDukcapil(walletAddress) {
-        if (!this.contract) {
-            throw new Error('Contract not initialized');
-        }
-        try {
-            let address = walletAddress;
-            if (!address && this.signer) {
-                address = await this.signer.getAddress();
-            }
-            if (!address) {
-                return false;
-            }
-            return await this.contract.dukcapil(address);
-        } catch (error) {
-            console.error('Failed to check dukcapil status:', error);
             return false;
         }
     }

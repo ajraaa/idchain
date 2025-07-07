@@ -5,7 +5,7 @@
 
 export const ERROR_SIGNATURES = {
     // KontrolAkses errors
-    '0x24775acc': 'OnlyOwner',
+    //'0x24775acc': 'OnlyOwner',
     '0x64e3211f': 'OnlyKalurahan',
     '0xad4577c5': 'OnlyDukcapil',
     '0x59bda38f': 'OnlyWargaTerdaftar',

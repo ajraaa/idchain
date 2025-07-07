@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-error OnlyOwner();
-error OnlyKalurahan();
 error OnlyDukcapil();
+error OnlyKalurahan();
 error OnlyWargaTerdaftar();
 error AddressZero();
 error IdSudahDipakai();
@@ -12,10 +11,8 @@ error NikSudahDiklaim();
 error WalletSudahDigunakan();
 
 contract KontrolAkses {
-    address public owner;
-
+    address public dukcapil;
     mapping(address => bool) public kalurahan;
-    mapping(address => bool) public dukcapil;
 
     mapping(address => string) public nikByWallet; // Mapping wallet ke nik
     mapping(string => address) public walletByNik; // Mapping nik ke wallet
@@ -26,21 +23,16 @@ contract KontrolAkses {
     event WargaTerdaftar(address indexed wallet, string nik); // Event warga terdaftar
 
     constructor() {
-        owner = msg.sender;
+        dukcapil = msg.sender; // Deployer adalah dukcapil
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, OnlyOwner());
+    modifier onlyDukcapil() {
+        require(msg.sender == dukcapil, OnlyDukcapil());
         _;
     }
 
     modifier onlyKalurahan() {
         require(kalurahan[msg.sender], OnlyKalurahan());
-        _;
-    }
-
-    modifier onlyDukcapil() {
-        require(dukcapil[msg.sender], OnlyDukcapil());
         _;
     }
 
@@ -52,7 +44,10 @@ contract KontrolAkses {
         _;
     }
 
-    function tambahKalurahanById(uint8 _id, address _akun) external onlyOwner {
+    function tambahKalurahanById(
+        uint8 _id,
+        address _akun
+    ) external onlyDukcapil {
         require(_akun != address(0), AddressZero());
         require(addressKalurahanById[_id] == address(0), IdSudahDipakai());
         require(
@@ -65,25 +60,17 @@ contract KontrolAkses {
         kalurahan[_akun] = true;
     }
 
-    function tambahKalurahan(address _akun) external onlyOwner {
+    function tambahKalurahan(address _akun) external onlyDukcapil {
         kalurahan[_akun] = true;
     }
 
-    function tambahDukcapil(address _akun) external onlyOwner {
-        dukcapil[_akun] = true;
-    }
-
-    function hapusKalurahan(address _akun) external onlyOwner {
+    function hapusKalurahan(address _akun) external onlyDukcapil {
         kalurahan[_akun] = false;
         uint8 id = idKalurahanByAddress[_akun];
         if (id != 0) {
             delete addressKalurahanById[id];
             delete idKalurahanByAddress[_akun];
         }
-    }
-
-    function hapusDukcapil(address _akun) external onlyOwner {
-        dukcapil[_akun] = false;
     }
 
     function registerWarga(string memory _nik) external {

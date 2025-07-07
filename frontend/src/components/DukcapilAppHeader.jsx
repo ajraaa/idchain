@@ -1,21 +1,21 @@
 import { FaCrown, FaUserCircle, FaPowerOff } from 'react-icons/fa';
 
-const OwnerAppHeader = ({ walletAddress, onDisconnect, isLoading }) => {
+const DukcapilAppHeader = ({ walletAddress, onDisconnect, isLoading }) => {
   const formatAddress = (address) => {
     if (!address) return '';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   return (
-    <header className="owner-app-header">
+    <header className="dukcapil-app-header">
       <div className="header-left">
         <FaCrown className="header-crown" />
-        <span className="header-title">IDChain Dashboard</span>
+        <span className="header-title">Dashboard Dukcapil</span>
       </div>
       <div className="header-right">
-        <span className="owner-role"><FaUserCircle className="owner-profile-icon" /> Owner</span>
+        <span className="dukcapil-role"><FaUserCircle className="owner-profile-icon" /> Dukcapil</span>
         <button 
-          className="disconnect-button header-disconnect-btn" 
+          className="disconnect-button dukcapil-disconnect-btn" 
           onClick={onDisconnect}
           disabled={isLoading}
           title="Putuskan Wallet"
@@ -27,4 +27,4 @@ const OwnerAppHeader = ({ walletAddress, onDisconnect, isLoading }) => {
   );
 };
 
-export default OwnerAppHeader; 
+export default DukcapilAppHeader; 

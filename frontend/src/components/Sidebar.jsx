@@ -5,7 +5,7 @@ const Sidebar = ({ menus, activeMenu, onMenuClick, walletAddress }) => {
   };
 
   return (
-    <aside className="owner-sidebar custom-sidebar">
+    <aside className="dukcapil-sidebar custom-sidebar">
       <nav className="sidebar-menu">
         {menus.map(menu => (
           <button

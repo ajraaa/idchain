@@ -51,7 +51,7 @@ export function handleContractError(error) {
 function getCustomErrorMessage(errorName) {
     const errorMessages = {
         // KontrolAkses errors
-        'OnlyOwner': 'Hanya owner yang dapat melakukan aksi ini',
+        //'OnlyOwner': 'Hanya owner yang dapat melakukan aksi ini',
         'OnlyKalurahan': 'Hanya kalurahan yang dapat melakukan aksi ini',
         'OnlyDukcapil': 'Hanya dukcapil yang dapat melakukan aksi ini',
         'OnlyWargaTerdaftar': 'Hanya warga terdaftar yang dapat melakukan aksi ini',
@@ -106,8 +106,6 @@ function extractCustomErrorFromMessage(message) {
 
     return null;
 }
-
-
 
 /**
  * Get pesan error generik berdasarkan tipe error

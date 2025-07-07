@@ -6,7 +6,7 @@
  * Enhance notification message berdasarkan tipe dan konteks
  * @param {string} message - Pesan asli
  * @param {string} type - Tipe notifikasi (success, error, warning, info)
- * @param {string} context - Konteks operasi (wallet, verification, owner, etc.)
+ * @param {string} context - Konteks operasi (wallet, verification, dukcapil, etc.)
  * @returns {string} Pesan yang sudah di-enhance
  */
 export function enhanceNotificationMessage(message, type = 'info', context = '') {
