@@ -31,12 +31,16 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   
   // Additional form states for Pindah
   const [alasanPindah, setAlasanPindah] = useState('');
+  const [alasanPindahLainnya, setAlasanPindahLainnya] = useState('');
   const [pindahSemua, setPindahSemua] = useState(false);
   const [anggotaPindah, setAnggotaPindah] = useState([]);
   const [jenisPindah, setJenisPindah] = useState('');
   const [nikKepalaKeluargaBaru, setNikKepalaKeluargaBaru] = useState('');
   const [nikKepalaKeluargaTujuan, setNikKepalaKeluargaTujuan] = useState('');
   const [alamatBaru, setAlamatBaru] = useState('');
+
+  // Tambahkan state untuk kalurahan
+  const [kalurahanBaru, setKalurahanBaru] = useState('');
 
   // Load citizen data on component mount
   useEffect(() => {
@@ -119,8 +123,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       }
       // Validasi field sesuai alur
       if (jenisPindah === '0') { // Seluruh keluarga
-        if (!alamatBaru) {
-          onError('Alamat baru wajib diisi');
+        if (!alamatBaru || !kalurahanBaru || !alasanPindah) {
+          onError('Alamat lengkap, kalurahan, dan alasan pindah wajib diisi');
+          return;
+        }
+        if (alasanPindah === 'Lainnya' && !alasanPindahLainnya) {
+          onError('Alasan pindah lainnya wajib diisi');
           return;
         }
       } else if (jenisPindah === '1') { // Mandiri
@@ -132,8 +140,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           onError('Pilih kepala keluarga baru');
           return;
         }
-        if (!alamatBaru) {
-          onError('Alamat baru wajib diisi');
+        if (!alamatBaru || !kalurahanBaru || !alasanPindah) {
+          onError('Alamat lengkap, kalurahan, dan alasan pindah wajib diisi');
+          return;
+        }
+        if (alasanPindah === 'Lainnya' && !alasanPindahLainnya) {
+          onError('Alasan pindah lainnya wajib diisi');
           return;
         }
       } else if (jenisPindah === '2') { // Gabung KK
@@ -145,6 +157,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           onError('NIK kepala keluarga tujuan wajib diisi');
           return;
         }
+        if (!alasanPindah) {
+          onError('Alasan pindah wajib diisi');
+          return;
+        }
+        if (alasanPindah === 'Lainnya' && !alasanPindahLainnya) {
+          onError('Alasan pindah lainnya wajib diisi');
+          return;
+        }
       }
       setIsLoading(true);
       try {
@@ -153,6 +173,11 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         const idKalurahanTujuan = 2;
         // Dummy CID IPFS
         const cidIPFS = 'dummy-cid';
+        
+        // Buat alamat lengkap
+        const alamatLengkap = `${alamatBaru}, ${kalurahanBaru}, Gamping, Sleman, Daerah Istimewa Yogyakarta`;
+        const alasanFinal = alasanPindah === 'Lainnya' ? alasanPindahLainnya : alasanPindah;
+        
         const result = await contractService.submitPermohonanPindah(
           cidIPFS,
           idKalurahanAsal,
@@ -161,7 +186,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           anggotaPindah,
           jenisPindah === '1' ? nikKepalaKeluargaBaru : '',
           jenisPindah === '2' ? nikKepalaKeluargaTujuan : '',
-          jenisPindah === '0' || jenisPindah === '1' ? alamatBaru : ''
+          jenisPindah === '0' || jenisPindah === '1' ? alamatLengkap : ''
         );
         onSuccess(`Permohonan pindah berhasil diajukan! Transaction: ${result.transactionHash}`);
         // Reset form
@@ -172,6 +197,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         setNikKepalaKeluargaBaru('');
         setNikKepalaKeluargaTujuan('');
         setAlamatBaru('');
+        setKalurahanBaru('');
+        setAlasanPindah('');
+        setAlasanPindahLainnya('');
         // Reload data
         loadDaftarPermohonan();
       } catch (error) {
@@ -769,6 +797,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       setNikKepalaKeluargaBaru('');
                       setNikKepalaKeluargaTujuan('');
                       setAlamatBaru('');
+                      setKalurahanBaru('');
+                      setAlasanPindah('');
+                      setAlasanPindahLainnya('');
                     }}
                     className="form-input"
                     required
@@ -784,17 +815,96 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                 {jenisPindah === '0' && (
                   <>
                     <div className="form-group">
-                      <label htmlFor="alamatBaru">Alamat Baru</label>
+                      <label htmlFor="alamatBaru">Alamat Tujuan</label>
                       <input
                         type="text"
                         id="alamatBaru"
                         value={alamatBaru}
                         onChange={e => setAlamatBaru(e.target.value)}
                         className="form-input"
-                        placeholder="Masukkan alamat baru"
+                        placeholder="Masukkan alamat tujuan"
                         required
                       />
                     </div>
+                    <div className="form-group">
+                      <label htmlFor="kalurahanBaru">Kalurahan Tujuan</label>
+                      <select
+                        id="kalurahanBaru"
+                        value={kalurahanBaru}
+                        onChange={e => setKalurahanBaru(e.target.value)}
+                        className="form-input"
+                        required
+                      >
+                        <option value="">Pilih Kalurahan</option>
+                        <option value="Ambarketawang">Ambarketawang</option>
+                        <option value="Balecatur">Balecatur</option>
+                        <option value="Banyuraden">Banyuraden</option>
+                        <option value="Nogotirto">Nogotirto</option>
+                        <option value="Trihanggo">Trihanggo</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="kecamatanBaru">Kecamatan Tujuan</label>
+                      <select
+                        id="kecamatanBaru"
+                        className="form-input"
+                        disabled
+                      >
+                        <option value="Gamping">Gamping</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="kabupatenBaru">Kabupaten Tujuan</label>
+                      <select
+                        id="kabupatenBaru"
+                        className="form-input"
+                        disabled
+                      >
+                        <option value="Sleman">Sleman</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="provinsiBaru">Provinsi Tujuan</label>
+                      <select
+                        id="provinsiBaru"
+                        className="form-input"
+                        disabled
+                      >
+                        <option value="Daerah Istimewa Yogyakarta">Daerah Istimewa Yogyakarta</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="alasanPindah">Alasan Pindah</label>
+                      <select
+                        id="alasanPindah"
+                        value={alasanPindah}
+                        onChange={(e) => setAlasanPindah(e.target.value)}
+                        className="form-input"
+                        required
+                      >
+                        <option value="">Pilih Alasan Pindah</option>
+                        <option value="Pekerjaan">Pekerjaan</option>
+                        <option value="Pendidikan">Pendidikan</option>
+                        <option value="Ekonomi">Ekonomi</option>
+                        <option value="Lingkungan">Lingkungan</option>
+                        <option value="Kesehatan">Kesehatan</option>
+                        <option value="Lainnya">Lainnya</option>
+                      </select>
+                    </div>
+                    {alasanPindah === 'Lainnya' && (
+                      <div className="form-group">
+                        <label htmlFor="alasanPindahLainnya">Alasan Pindah (Lainnya)</label>
+                        <input
+                          type="text"
+                          id="alasanPindahLainnya"
+                          value={alasanPindahLainnya}
+                          onChange={e => setAlasanPindahLainnya(e.target.value)}
+                          className="form-input"
+                          placeholder="Jelaskan alasan pindah"
+                          required
+                        />
+                      </div>
+                    )}
                     <div className="form-group">
                       <label>Anggota Keluarga yang Ikut Pindah</label>
                       <div className="info-text">Seluruh anggota keluarga akan ikut pindah.</div>
@@ -861,17 +971,96 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       </select>
                     </div>
                     <div className="form-group">
-                      <label htmlFor="alamatBaru">Alamat Baru</label>
+                      <label htmlFor="alamatBaru">Alamat Tujuan</label>
                       <input
                         type="text"
                         id="alamatBaru"
                         value={alamatBaru}
                         onChange={e => setAlamatBaru(e.target.value)}
                         className="form-input"
-                        placeholder="Masukkan alamat baru"
+                        placeholder="Masukkan alamat tujuan"
                         required
                       />
                     </div>
+                    <div className="form-group">
+                      <label htmlFor="kalurahanBaru">Kalurahan Tujuan</label>
+                      <select
+                        id="kalurahanBaru"
+                        value={kalurahanBaru}
+                        onChange={e => setKalurahanBaru(e.target.value)}
+                        className="form-input"
+                        required
+                      >
+                        <option value="">Pilih Kalurahan</option>
+                        <option value="Ambarketawang">Ambarketawang</option>
+                        <option value="Balecatur">Balecatur</option>
+                        <option value="Banyuraden">Banyuraden</option>
+                        <option value="Nogotirto">Nogotirto</option>
+                        <option value="Trihanggo">Trihanggo</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="kecamatanBaru">Kecamatan Tujuan</label>
+                      <select
+                        id="kecamatanBaru"
+                        className="form-input"
+                        disabled
+                      >
+                        <option value="Gamping">Gamping</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="kabupatenBaru">Kabupaten Tujuan</label>
+                      <select
+                        id="kabupatenBaru"
+                        className="form-input"
+                        disabled
+                      >
+                        <option value="Sleman">Sleman</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="provinsiBaru">Provinsi Tujuan</label>
+                      <select
+                        id="provinsiBaru"
+                        className="form-input"
+                        disabled
+                      >
+                        <option value="Daerah Istimewa Yogyakarta">Daerah Istimewa Yogyakarta</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="alasanPindah">Alasan Pindah</label>
+                      <select
+                        id="alasanPindah"
+                        value={alasanPindah}
+                        onChange={(e) => setAlasanPindah(e.target.value)}
+                        className="form-input"
+                        required
+                      >
+                        <option value="">Pilih Alasan Pindah</option>
+                        <option value="Pekerjaan">Pekerjaan</option>
+                        <option value="Pendidikan">Pendidikan</option>
+                        <option value="Ekonomi">Ekonomi</option>
+                        <option value="Lingkungan">Lingkungan</option>
+                        <option value="Kesehatan">Kesehatan</option>
+                        <option value="Lainnya">Lainnya</option>
+                      </select>
+                    </div>
+                    {alasanPindah === 'Lainnya' && (
+                      <div className="form-group">
+                        <label htmlFor="alasanPindahLainnya">Alasan Pindah (Lainnya)</label>
+                        <input
+                          type="text"
+                          id="alasanPindahLainnya"
+                          value={alasanPindahLainnya}
+                          onChange={e => setAlasanPindahLainnya(e.target.value)}
+                          className="form-input"
+                          placeholder="Jelaskan alasan pindah"
+                          required
+                        />
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -925,6 +1114,38 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         required
                       />
                     </div>
+                    <div className="form-group">
+                      <label htmlFor="alasanPindah">Alasan Pindah</label>
+                      <select
+                        id="alasanPindah"
+                        value={alasanPindah}
+                        onChange={(e) => setAlasanPindah(e.target.value)}
+                        className="form-input"
+                        required
+                      >
+                        <option value="">Pilih Alasan Pindah</option>
+                        <option value="Pekerjaan">Pekerjaan</option>
+                        <option value="Pendidikan">Pendidikan</option>
+                        <option value="Ekonomi">Ekonomi</option>
+                        <option value="Lingkungan">Lingkungan</option>
+                        <option value="Kesehatan">Kesehatan</option>
+                        <option value="Lainnya">Lainnya</option>
+                      </select>
+                    </div>
+                    {alasanPindah === 'Lainnya' && (
+                      <div className="form-group">
+                        <label htmlFor="alasanPindahLainnya">Alasan Pindah (Lainnya)</label>
+                        <input
+                          type="text"
+                          id="alasanPindahLainnya"
+                          value={alasanPindahLainnya}
+                          onChange={e => setAlasanPindahLainnya(e.target.value)}
+                          className="form-input"
+                          placeholder="Jelaskan alasan pindah"
+                          required
+                        />
+                      </div>
+                    )}
                   </>
                 )}
                 <button
