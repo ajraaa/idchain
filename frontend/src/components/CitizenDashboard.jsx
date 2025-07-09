@@ -179,17 +179,55 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     return jenisMap[jenis] || jenis;
   };
 
+  const [parentNames, setParentNames] = useState({ ayah: '-', ibu: '-' });
+  const [parentLoading, setParentLoading] = useState(false);
+
+  // Cari anggota dan anggotaArr di level atas agar bisa dipakai useEffect
+  const kkData = citizenData?.kkData;
+  const nikUser = citizenData?.nik;
+  const anggotaArr = Array.isArray(kkData?.anggota) ? kkData.anggota : [];
+  const anggota = anggotaArr.find(member => member.nik === nikUser) || null;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchParents() {
+      if (!anggota) {
+        setParentNames({ ayah: '-', ibu: '-' });
+        return;
+      }
+      setParentLoading(true);
+      const mapping = await loadNIKMapping();
+      async function lookupParentName(nik) {
+        if (!nik) return '-';
+        const cid = mapping[nik];
+        if (!cid) return '-';
+        try {
+          const encrypted = await fetchFromIPFS(cid);
+          const data = await decryptAes256CbcNodeStyle(encrypted, CRYPTO_CONFIG.SECRET_KEY);
+          const arr = Array.isArray(data?.anggota) ? data.anggota : [];
+          const found = arr.find(m => m.nik === nik);
+          return found?.nama || '-';
+        } catch {
+          return '-';
+        }
+      }
+      const [ayah, ibu] = await Promise.all([
+        lookupParentName(anggota.nikAyah),
+        lookupParentName(anggota.nikIbu)
+      ]);
+      if (!cancelled) setParentNames({ ayah, ibu });
+      setParentLoading(false);
+    }
+    fetchParents();
+    return () => { cancelled = true; };
+  }, [anggota?.nikAyah, anggota?.nikIbu, kkData]);
+
   const renderProfile = () => {
     if (!citizenData) {
       return <div className="loading">Memuat data warga...</div>;
     }
 
-    const kkData = citizenData.kkData;
-    const nikUser = citizenData.nik;
-    // Cari anggota yang sesuai dengan NIK user
-    const anggotaArr = Array.isArray(kkData?.anggota) ? kkData.anggota : [];
-    const anggota = anggotaArr.find(member => member.nik === nikUser) || null;
-
+    // Gunakan parentNames dan parentLoading di sini
     // Gabungkan alamat lengkap
     let alamatLengkap = '';
     if (kkData && kkData.alamatLengkap) {
@@ -220,13 +258,15 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               <div className="info-pair"><span className="info-label">Nama</span><span className="info-value">{anggota?.nama || '-'}</span></div>
               <div className="info-pair"><span className="info-label">Tempat, Tanggal Lahir</span><span className="info-value">{tempatTanggalLahir}</span></div>
               <div className="info-pair"><span className="info-label">Jenis Kelamin</span><span className="info-value">{jenisKelamin}</span></div>
+              <div className="info-pair"><span className="info-label">Pendidikan</span><span className="info-value">{anggota?.pendidikan || '-'}</span></div>
             </div>
             <div className="profile-divider" />
             <div className="profile-col profile-col-right">
-              <div className="info-pair"><span className="info-label">Pendidikan</span><span className="info-value">{anggota?.pendidikan || '-'}</span></div>
               <div className="info-pair"><span className="info-label">Jenis Pekerjaan</span><span className="info-value">{anggota?.jenisPekerjaan || '-'}</span></div>
               <div className="info-pair"><span className="info-label">Kewarganegaraan</span><span className="info-value">{anggota?.kewarganegaraan || '-'}</span></div>
               <div className="info-pair"><span className="info-label">Hubungan Keluarga</span><span className="info-value">{anggota?.statusHubunganKeluarga || '-'}</span></div>
+              <div className="info-pair"><span className="info-label">Nama Ayah</span><span className="info-value">{parentLoading ? 'Memuat...' : parentNames.ayah}</span></div>
+              <div className="info-pair"><span className="info-label">Nama Ibu</span><span className="info-value">{parentLoading ? 'Memuat...' : parentNames.ibu}</span></div>
               <div className="info-pair"><span className="info-label">Alamat Wallet</span><span className="info-value">{formatAddress(citizenData.walletAddress)}</span></div>
             </div>
           </div>
