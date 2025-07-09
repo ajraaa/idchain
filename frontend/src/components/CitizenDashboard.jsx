@@ -201,12 +201,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
     return (
       <div className="profile-section">
-        {/* DEBUG UI */}
-        <div style={{marginBottom: '1rem', color: 'red', fontSize: '0.95rem'}}>
-          <b>DEBUG NIK user:</b> {nikUser}<br/>
-          <b>DEBUG array NIK anggota:</b> {anggotaArr.map(a => a.nik).join(', ')}<br/>
-          <b>DEBUG anggota ditemukan:</b> {anggota ? anggota.nama : 'null'}
-        </div>
         <div className="management-card">
           <div className="profile-info-2col">
             <div className="profile-col profile-col-left">
