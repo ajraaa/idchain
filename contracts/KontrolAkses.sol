@@ -20,6 +20,10 @@ contract KontrolAkses {
     mapping(uint8 => address) public addressKalurahanById; // Mapping id kalurahan ke wallet kalurahan
     mapping(address => uint8) public idKalurahanByAddress; // Mapping wallet kalurahan ke id kalurahan
 
+    // ====== CID Mapping Kalurahan di IPFS ======
+    string public kalurahanMappingCID;
+    event KalurahanMappingCIDUpdated(string newCID);
+
     event WargaTerdaftar(address indexed wallet, string nik); // Event warga terdaftar
 
     constructor() {
@@ -60,10 +64,6 @@ contract KontrolAkses {
         kalurahan[_akun] = true;
     }
 
-    function tambahKalurahan(address _akun) external onlyDukcapil {
-        kalurahan[_akun] = true;
-    }
-
     function hapusKalurahan(address _akun) external onlyDukcapil {
         kalurahan[_akun] = false;
         uint8 id = idKalurahanByAddress[_akun];
@@ -84,5 +84,16 @@ contract KontrolAkses {
         nikByWallet[msg.sender] = _nik;
 
         emit WargaTerdaftar(msg.sender, _nik);
+    }
+
+    function setKalurahanMappingCID(
+        string calldata _cid
+    ) external onlyDukcapil {
+        kalurahanMappingCID = _cid;
+        emit KalurahanMappingCIDUpdated(_cid);
+    }
+
+    function getKalurahanMappingCID() external view returns (string memory) {
+        return kalurahanMappingCID;
     }
 }
