@@ -13,7 +13,7 @@ const WalletConnect = ({ onWalletConnected, onWalletDisconnected, isConnected, w
     try {
       const service = new ContractService();
       const address = await service.connectWallet();
-      console.log('WalletConnect: onWalletConnected dipanggil (manual)', address, service);
+
       onWalletConnected?.(address, service);
     } catch (error) {
       const errorMessage = handleContractError(error);

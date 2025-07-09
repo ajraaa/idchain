@@ -40,15 +40,19 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   const loadCitizenData = async () => {
     try {
+      console.log('🔄 [CitizenDashboard] Loading citizen data for wallet:', walletAddress);
       const data = await contractService.getCitizenData(walletAddress);
+      console.log('✅ [CitizenDashboard] Citizen data loaded:', data);
       setCitizenData(data);
       
       // Load KK data from IPFS
       const mapping = await loadNIKMapping();
       const cid = mapping[data.nik];
       if (cid) {
+        console.log('📁 [CitizenDashboard] Loading KK data from IPFS CID:', cid);
         const encryptedData = await fetchFromIPFS(cid);
         const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+        console.log('✅ [CitizenDashboard] KK data decrypted successfully');
         setCitizenData(prev => ({ ...prev, kkData: decryptedData }));
         
         // Extract citizen name from KK data for header
@@ -58,30 +62,36 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           ) || decryptedData.anggota[0];
           onCitizenNameLoaded?.(kepalaKeluarga.nama);
         }
+      } else {
+        console.log('⚠️ [CitizenDashboard] No CID found for NIK:', data.nik);
       }
     } catch (error) {
-      console.error('Failed to load citizen data:', error);
+      console.error('❌ [CitizenDashboard] Failed to load citizen data:', error);
       onError('Gagal memuat data warga');
     }
   };
 
   const loadDaftarPermohonan = async () => {
     try {
+      console.log('📋 [CitizenDashboard] Loading daftar permohonan for wallet:', walletAddress);
       const data = await contractService.getDaftarPermohonan(walletAddress);
+      console.log('✅ [CitizenDashboard] Daftar permohonan loaded:', data.length, 'items');
       setPermohonans(data);
     } catch (error) {
-      console.error('Failed to load daftar permohonan:', error);
-      onError('Gagal memuat daftar permohonan');
+      console.log('⚠️ [CitizenDashboard] No permohonan data available, setting empty array');
+      setPermohonans([]);
     }
   };
 
   const loadDokumenResmi = async () => {
     try {
+      console.log('📄 [CitizenDashboard] Loading dokumen resmi for wallet:', walletAddress);
       const data = await contractService.getDokumenResmi(walletAddress);
+      console.log('✅ [CitizenDashboard] Dokumen resmi loaded:', data.length, 'items');
       setDokumenResmi(data);
     } catch (error) {
-      console.error('Failed to load dokumen resmi:', error);
-      onError('Gagal memuat dokumen resmi');
+      console.log('⚠️ [CitizenDashboard] No dokumen resmi available, setting empty array');
+      setDokumenResmi([]);
     }
   };
 
@@ -94,6 +104,13 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
     setIsLoading(true);
     try {
+      console.log('📝 [CitizenDashboard] Submitting permohonan:', {
+        jenis: jenisPermohonan,
+        idKalurahanAsal,
+        idKalurahanTujuan,
+        cidIPFS
+      });
+      
       const result = await contractService.submitPermohonan(
         parseInt(jenisPermohonan),
         cidIPFS,
@@ -101,6 +118,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         jenisPermohonan === '4' ? parseInt(idKalurahanTujuan) : 0
       );
       
+      console.log('✅ [CitizenDashboard] Permohonan submitted successfully:', result);
       onSuccess(`Permohonan berhasil diajukan! Transaction: ${result.transactionHash}`);
       
       // Reset form
@@ -112,7 +130,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       // Reload data
       loadDaftarPermohonan();
     } catch (error) {
-      console.error('Failed to submit permohonan:', error);
+      console.error('❌ [CitizenDashboard] Failed to submit permohonan:', error);
       const errorMessage = handleContractError(error);
       onError(errorMessage);
     } finally {
@@ -167,17 +185,10 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     }
 
     const kkData = citizenData.kkData;
-    // Log seluruh isi file JSON
-    console.log('DEBUG isi kkData:', kkData);
     const nikUser = citizenData.nik;
     // Cari anggota yang sesuai dengan NIK user
     const anggotaArr = Array.isArray(kkData?.anggota) ? kkData.anggota : [];
     const anggota = anggotaArr.find(member => member.nik === nikUser) || null;
-
-    // Debug log
-    console.log('DEBUG NIK user:', nikUser);
-    console.log('DEBUG array NIK anggota:', anggotaArr.map(a => a.nik));
-    console.log('DEBUG anggota ditemukan:', anggota);
 
     // Gabungkan alamat lengkap
     let alamatLengkap = '';

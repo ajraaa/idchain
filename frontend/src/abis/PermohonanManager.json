@@ -1,0 +1,891 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "PermohonanManager",
+  "sourceName": "contracts/PermohonanManager.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "AddressSudahDipakai",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "AddressZero",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BelumDiverifikasiKalurahanAsal",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BukanPemilikPermohonan",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BukanPermohonanPindah",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CidKosong",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "HanyaKalurahanTujuan",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "IdKalurahanTujuanTidakDikenal",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "IdSudahDipakai",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NikSudahDiklaim",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyDukcapil",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyKalurahan",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyWargaTerdaftar",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PermohonanBelumDisetujuiKalurahan",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PermohonanBukanDiajukan",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PermohonanPindahBelumDisetujuiKalurahanTujuan",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TidakDapatDibatalkan",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TujuanTidakValid",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "WalletSudahDigunakan",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "idPermohonan",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "cidDokumen",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "waktu",
+          "type": "uint256"
+        }
+      ],
+      "name": "DokumenResmiDiunggah",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "pemohon",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "enum PencatatanTypes.JenisPermohonan",
+          "name": "jenis",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "cidIPFS",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "waktu",
+          "type": "uint256"
+        }
+      ],
+      "name": "PermohonanDiajukan",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "pemohon",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "waktu",
+          "type": "uint256"
+        }
+      ],
+      "name": "PermohonanDibatalkan",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "verifikator",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "disetujui",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "alasan",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "waktu",
+          "type": "uint256"
+        }
+      ],
+      "name": "VerifikasiDukcapil",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "verifikator",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "disetujui",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "alasan",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "waktu",
+          "type": "uint256"
+        }
+      ],
+      "name": "VerifikasiKalurahan",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "nik",
+          "type": "string"
+        }
+      ],
+      "name": "WargaTerdaftar",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "name": "addressKalurahanById",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        }
+      ],
+      "name": "batalkanPermohonan",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "daftarPermohonanKalurahanAsal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "daftarPermohonanPemohon",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum PencatatanTypes.Status",
+          "name": "",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "daftarPermohonanPerStatus",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dukcapil",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getJenisPermohonan",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getPermohonan",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuPengajuan",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuVerifikasiKalurahan",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuVerifikasiKalurahanTujuan",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuVerifikasiDukcapil",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "pemohon",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "verifikatorKalurahan",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "verifikatorKalurahanTujuan",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "verifikatorDukcapil",
+              "type": "address"
+            },
+            {
+              "internalType": "string",
+              "name": "cidIPFS",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "alasanPenolakan",
+              "type": "string"
+            },
+            {
+              "internalType": "enum PencatatanTypes.JenisPermohonan",
+              "name": "jenis",
+              "type": "uint8"
+            },
+            {
+              "internalType": "enum PencatatanTypes.Status",
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "idKalurahanAsal",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "idKalurahanTujuan",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct PencatatanTypes.Permohonan",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum PencatatanTypes.Status",
+          "name": "_status",
+          "type": "uint8"
+        }
+      ],
+      "name": "getPermohonanBelumVerifikasiKalurahan",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getPermohonanByKalurahanAsal",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getPermohonanByKalurahanTujuan",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum PencatatanTypes.Status",
+          "name": "_status",
+          "type": "uint8"
+        }
+      ],
+      "name": "getPermohonanForDukcapil",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_pemohon",
+          "type": "address"
+        }
+      ],
+      "name": "getPermohonanIDsByPemohon",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getStatusPermohonan",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_akun",
+          "type": "address"
+        }
+      ],
+      "name": "hapusKalurahan",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "idKalurahanByAddress",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "jumlahPermohonan",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "kalurahan",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "nikByWallet",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_nik",
+          "type": "string"
+        }
+      ],
+      "name": "registerWarga",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum PencatatanTypes.JenisPermohonan",
+          "name": "_jenis",
+          "type": "uint8"
+        },
+        {
+          "internalType": "string",
+          "name": "_cidIPFS",
+          "type": "string"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_idKalurahanAsal",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_idKalurahanTujuan",
+          "type": "uint8"
+        }
+      ],
+      "name": "submitPermohonan",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_akun",
+          "type": "address"
+        }
+      ],
+      "name": "tambahKalurahan",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "_id",
+          "type": "uint8"
+        },
+        {
+          "internalType": "address",
+          "name": "_akun",
+          "type": "address"
+        }
+      ],
+      "name": "tambahKalurahanById",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_disetujui",
+          "type": "bool"
+        },
+        {
+          "internalType": "string",
+          "name": "_alasan",
+          "type": "string"
+        }
+      ],
+      "name": "verifikasiDukcapil",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_disetujui",
+          "type": "bool"
+        },
+        {
+          "internalType": "string",
+          "name": "_alasan",
+          "type": "string"
+        }
+      ],
+      "name": "verifikasiKalurahan",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_disetujui",
+          "type": "bool"
+        },
+        {
+          "internalType": "string",
+          "name": "_alasan",
+          "type": "string"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_idKalurahanTujuan",
+          "type": "uint8"
+        }
+      ],
+      "name": "verifikasiKalurahanAsalPindah",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_disetujui",
+          "type": "bool"
+        },
+        {
+          "internalType": "string",
+          "name": "_alasan",
+          "type": "string"
+        }
+      ],
+      "name": "verifikasiKalurahanTujuanPindah",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "name": "walletByNik",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

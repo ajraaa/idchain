@@ -292,30 +292,47 @@ export class ContractService {
                 throw new Error('Wallet address not available');
             }
 
-            const permohonanIds = await this.contract.daftarPermohonanPemohon(address);
+            console.log('🔍 [ContractService] Checking wallet registration for:', address);
+            // Cek apakah wallet terdaftar
+            const nik = await this.contract.nikByWallet(address);
+            if (!nik || nik === '') {
+                console.log('⚠️ [ContractService] Wallet not registered, returning empty array');
+                return [];
+            }
+
+            console.log('📋 [ContractService] Getting permohonan IDs for wallet:', address);
+            const permohonanIds = await this.contract.getPermohonanIDsByPemohon(address);
+            console.log('📋 [ContractService] Found permohonan IDs:', permohonanIds);
+
             const permohonans = [];
 
             for (const id of permohonanIds) {
-                const permohonan = await this.contract.permohonans(id);
-                const status = await this.contract.getStatusPermohonan(id);
-                const jenis = await this.contract.getJenisPermohonan(id);
+                try {
+                    console.log('🔍 [ContractService] Loading details for permohonan ID:', id.toString());
+                    const permohonan = await this.contract.getPermohonan(id);
+                    const status = await this.contract.getStatusPermohonan(id);
+                    const jenis = await this.contract.getJenisPermohonan(id);
 
-                permohonans.push({
-                    id: id.toString(),
-                    jenis: jenis,
-                    status: status,
-                    waktuPengajuan: new Date(permohonan.waktuPengajuan * 1000),
-                    idKalurahanAsal: permohonan.idKalurahanAsal,
-                    idKalurahanTujuan: permohonan.idKalurahanTujuan,
-                    cidIPFS: permohonan.cidIPFS,
-                    alasanPenolakan: permohonan.alasanPenolakan
-                });
+                    permohonans.push({
+                        id: id.toString(),
+                        jenis: jenis,
+                        status: status,
+                        waktuPengajuan: new Date(permohonan.waktuPengajuan * 1000),
+                        idKalurahanAsal: permohonan.idKalurahanAsal,
+                        idKalurahanTujuan: permohonan.idKalurahanTujuan,
+                        cidIPFS: permohonan.cidIPFS,
+                        alasanPenolakan: permohonan.alasanPenolakan
+                    });
+                } catch (error) {
+                    console.log(`⚠️ [ContractService] Error getting permohonan ${id}:`, error);
+                }
             }
 
+            console.log('✅ [ContractService] Successfully loaded', permohonans.length, 'permohonan');
             return permohonans;
         } catch (error) {
-            console.error('Failed to get daftar permohonan:', error);
-            throw new Error('Failed to get daftar permohonan');
+            console.error('❌ [ContractService] Failed to get daftar permohonan:', error);
+            return [];
         }
     }
 
@@ -332,7 +349,14 @@ export class ContractService {
                 throw new Error('Wallet address not available');
             }
 
-            const permohonanIds = await this.contract.daftarPermohonanPemohon(address);
+            // Cek apakah wallet terdaftar
+            const nik = await this.contract.nikByWallet(address);
+            if (!nik || nik === '') {
+                // Wallet belum terdaftar, return array kosong
+                return [];
+            }
+
+            const permohonanIds = await this.contract.getPermohonanIDsByPemohon(address);
             const dokumenResmi = [];
 
             for (const id of permohonanIds) {
@@ -353,7 +377,8 @@ export class ContractService {
             return dokumenResmi;
         } catch (error) {
             console.error('Failed to get dokumen resmi:', error);
-            throw new Error('Failed to get dokumen resmi');
+            // Return array kosong jika ada error
+            return [];
         }
     }
 
@@ -362,7 +387,7 @@ export class ContractService {
             throw new Error('Contract not initialized');
         }
         try {
-            const permohonan = await this.contract.permohonans(id);
+            const permohonan = await this.contract.getPermohonan(id);
             const status = await this.contract.getStatusPermohonan(id);
             const jenis = await this.contract.getJenisPermohonan(id);
 

@@ -40,33 +40,30 @@ function App() {
       contractService.contract &&
       walletAddress
     ) {
+      console.log('🔍 [App] Checking wallet status for:', walletAddress);
       setIsCheckingNIK(true)
       setIsCheckingDukcapil(true)
       try {
         // Check if wallet is dukcapil
-        console.log('[Gateway] Checking dukcapil status for wallet:', walletAddress)
         const dukcapilStatus = await contractService.checkIfDukcapil(walletAddress)
+        console.log('👤 [App] Dukcapil status:', dukcapilStatus);
         setIsDukcapil(dukcapilStatus)
-        console.log('[Gateway] Dukcapil status:', dukcapilStatus)
         // If not dukcapil, check NIK registration
         if (!dukcapilStatus) {
-          console.log('[Gateway] Checking NIK for wallet:', walletAddress)
           const nik = await contractService.contract.nikByWallet(walletAddress)
-          console.log('[Gateway] Result NIK:', nik)
+          console.log('🆔 [App] NIK found:', nik);
           if (nik && nik !== '') {
             setNikTeregistrasi(nik)
-            console.log('[Gateway] Wallet is registered with NIK:', nik)
           } else {
             setNikTeregistrasi(false)
-            console.log('[Gateway] Wallet is NOT registered')
           }
         } else {
           setNikTeregistrasi(null)
         }
       } catch (err) {
+        console.log('⚠️ [App] Error checking wallet status:', err);
         setNikTeregistrasi(false)
         setIsDukcapil(false)
-        console.log('[Gateway] Error checking wallet status:', err)
       } finally {
         setIsCheckingNIK(false)
         setIsCheckingDukcapil(false)
@@ -85,7 +82,7 @@ function App() {
   }, [contractService, walletAddress])
 
   const handleWalletConnected = (address, service) => {
-    console.log('App: handleWalletConnected', address, service);
+    console.log('🔗 [App] Wallet connected:', address);
     setWalletAddress(prev => (prev === address ? prev : address));
     setContractService(prev => (prev === service ? prev : service));
     setIsWalletConnected(true);
