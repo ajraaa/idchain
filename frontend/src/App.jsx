@@ -33,53 +33,54 @@ function App() {
   const [isCheckingDukcapil, setIsCheckingDukcapil] = useState(false)
   const [citizenName, setCitizenName] = useState('')
 
-  // Cek NIK wallet dan dukcapil status setelah connect
-  useEffect(() => {
-    const checkWalletStatus = async () => {
-      if (
-        contractService &&
-        contractService.contract &&
-        walletAddress
-      ) {
-        setIsCheckingNIK(true)
-        setIsCheckingDukcapil(true)
-        try {
-          // Check if wallet is dukcapil
-          console.log('[Gateway] Checking dukcapil status for wallet:', walletAddress)
-          const dukcapilStatus = await contractService.checkIfDukcapil(walletAddress)
-          setIsDukcapil(dukcapilStatus)
-          console.log('[Gateway] Dukcapil status:', dukcapilStatus)
-          // If not dukcapil, check NIK registration
-          if (!dukcapilStatus) {
-            console.log('[Gateway] Checking NIK for wallet:', walletAddress)
-            const nik = await contractService.contract.nikByWallet(walletAddress)
-            console.log('[Gateway] Result NIK:', nik)
-            if (nik && nik !== '') {
-              setNikTeregistrasi(nik)
-              console.log('[Gateway] Wallet is registered with NIK:', nik)
-            } else {
-              setNikTeregistrasi(false)
-              console.log('[Gateway] Wallet is NOT registered')
-            }
+  // Pindahkan checkWalletStatus ke luar useEffect agar bisa dipanggil manual
+  const checkWalletStatus = async () => {
+    if (
+      contractService &&
+      contractService.contract &&
+      walletAddress
+    ) {
+      setIsCheckingNIK(true)
+      setIsCheckingDukcapil(true)
+      try {
+        // Check if wallet is dukcapil
+        console.log('[Gateway] Checking dukcapil status for wallet:', walletAddress)
+        const dukcapilStatus = await contractService.checkIfDukcapil(walletAddress)
+        setIsDukcapil(dukcapilStatus)
+        console.log('[Gateway] Dukcapil status:', dukcapilStatus)
+        // If not dukcapil, check NIK registration
+        if (!dukcapilStatus) {
+          console.log('[Gateway] Checking NIK for wallet:', walletAddress)
+          const nik = await contractService.contract.nikByWallet(walletAddress)
+          console.log('[Gateway] Result NIK:', nik)
+          if (nik && nik !== '') {
+            setNikTeregistrasi(nik)
+            console.log('[Gateway] Wallet is registered with NIK:', nik)
           } else {
-            // If dukcapil, set NIK to null since dukcapil doesn't need NIK registration
-            setNikTeregistrasi(null)
+            setNikTeregistrasi(false)
+            console.log('[Gateway] Wallet is NOT registered')
           }
-        } catch (err) {
-          setNikTeregistrasi(false)
-          setIsDukcapil(false)
-          console.log('[Gateway] Error checking wallet status:', err)
-        } finally {
-          setIsCheckingNIK(false)
-          setIsCheckingDukcapil(false)
+        } else {
+          setNikTeregistrasi(null)
         }
-      } else {
-        setNikTeregistrasi(null)
+      } catch (err) {
+        setNikTeregistrasi(false)
         setIsDukcapil(false)
+        console.log('[Gateway] Error checking wallet status:', err)
+      } finally {
         setIsCheckingNIK(false)
         setIsCheckingDukcapil(false)
       }
+    } else {
+      setNikTeregistrasi(null)
+      setIsDukcapil(false)
+      setIsCheckingNIK(false)
+      setIsCheckingDukcapil(false)
     }
+  }
+
+  // useEffect tetap, tapi panggil checkWalletStatus
+  useEffect(() => {
     checkWalletStatus()
   }, [contractService, walletAddress])
 
@@ -102,14 +103,15 @@ function App() {
     showNotification('Wallet terputus', 'info', true, 'wallet')
   }
 
-  const handleVerificationSuccess = (result) => {
-    setNikTeregistrasi(result.nik)
+  // Ubah handleVerificationSuccess agar panggil checkWalletStatus setelah register
+  const handleVerificationSuccess = async (result) => {
+    await checkWalletStatus(); // Paksa refresh status wallet dari smart contract
     showNotification(
       `Identitas berhasil diverifikasi! NIK ${result.nik} telah terdaftar dengan wallet ${result.wallet}. Transaction: ${result.transactionHash}`,
       'success',
       false,
       'verification'
-    )
+    );
   }
 
   const handleVerificationError = (error) => {

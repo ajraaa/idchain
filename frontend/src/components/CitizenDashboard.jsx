@@ -167,11 +167,17 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     }
 
     const kkData = citizenData.kkData;
+    // Log seluruh isi file JSON
+    console.log('DEBUG isi kkData:', kkData);
     const nikUser = citizenData.nik;
     // Cari anggota yang sesuai dengan NIK user
-    const anggota = Array.isArray(kkData?.anggota)
-      ? kkData.anggota.find(member => member.nik === nikUser)
-      : null;
+    const anggotaArr = Array.isArray(kkData?.anggota) ? kkData.anggota : [];
+    const anggota = anggotaArr.find(member => member.nik === nikUser) || null;
+
+    // Debug log
+    console.log('DEBUG NIK user:', nikUser);
+    console.log('DEBUG array NIK anggota:', anggotaArr.map(a => a.nik));
+    console.log('DEBUG anggota ditemukan:', anggota);
 
     // Gabungkan alamat lengkap
     let alamatLengkap = '';
@@ -195,6 +201,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
     return (
       <div className="profile-section">
+        {/* DEBUG UI */}
+        <div style={{marginBottom: '1rem', color: 'red', fontSize: '0.95rem'}}>
+          <b>DEBUG NIK user:</b> {nikUser}<br/>
+          <b>DEBUG array NIK anggota:</b> {anggotaArr.map(a => a.nik).join(', ')}<br/>
+          <b>DEBUG anggota ditemukan:</b> {anggota ? anggota.nama : 'null'}
+        </div>
         <div className="management-card">
           <div className="profile-info-2col">
             <div className="profile-col profile-col-left">
