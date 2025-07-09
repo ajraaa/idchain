@@ -28,6 +28,11 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const [idKalurahanAsal, setIdKalurahanAsal] = useState('');
   const [idKalurahanTujuan, setIdKalurahanTujuan] = useState('');
   const [cidIPFS, setCidIPFS] = useState('');
+  
+  // Additional form states for Pindah
+  const [alasanPindah, setAlasanPindah] = useState('');
+  const [pindahSemua, setPindahSemua] = useState(false);
+  const [anggotaPindah, setAnggotaPindah] = useState([]);
 
   // Load citizen data on component mount
   useEffect(() => {
@@ -283,7 +288,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     return (
       <div className="ajukan-section">
         <div className="management-card">
-          <h3>Ajukan Permohonan</h3>
           <form onSubmit={handleSubmitPermohonan} className="management-form">
             <div className="form-group">
               <label htmlFor="jenisPermohonan">Jenis Permohonan:</label>
@@ -304,59 +308,529 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="idKalurahanAsal">ID Kalurahan Asal:</label>
-              <input
-                type="number"
-                id="idKalurahanAsal"
-                value={idKalurahanAsal}
-                onChange={(e) => setIdKalurahanAsal(e.target.value)}
-                placeholder="1, 2, 3, ..."
-                className="form-input"
-                disabled={isLoading}
-                required
-                min="1"
-              />
-            </div>
-
-            {jenisPermohonan === '4' && (
-              <div className="form-group">
-                <label htmlFor="idKalurahanTujuan">ID Kalurahan Tujuan:</label>
-                <input
-                  type="number"
-                  id="idKalurahanTujuan"
-                  value={idKalurahanTujuan}
-                  onChange={(e) => setIdKalurahanTujuan(e.target.value)}
-                  placeholder="1, 2, 3, ..."
-                  className="form-input"
+            {jenisPermohonan === '0' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="namaAnak">Nama Lengkap Anak</label>
+                  <input
+                    type="text"
+                    id="namaAnak"
+                    name="namaAnak"
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="tempatLahirAnak">Tempat Lahir</label>
+                  <input
+                    type="text"
+                    id="tempatLahirAnak"
+                    name="tempatLahirAnak"
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="tanggalLahirAnak">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    id="tanggalLahirAnak"
+                    name="tanggalLahirAnak"
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="jamLahirAnak">Jam Lahir</label>
+                  <input
+                    type="time"
+                    id="jamLahirAnak"
+                    name="jamLahirAnak"
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikAyah">NIK Ayah</label>
+                  <input
+                    type="text"
+                    id="nikAyah"
+                    name="nikAyah"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikIbu">NIK Ibu</label>
+                  <input
+                    type="text"
+                    id="nikIbu"
+                    name="nikIbu"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikSaksi1">NIK Saksi 1</label>
+                  <input
+                    type="text"
+                    id="nikSaksi1"
+                    name="nikSaksi1"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikSaksi2">NIK Saksi 2</label>
+                  <input
+                    type="text"
+                    id="nikSaksi2"
+                    name="nikSaksi2"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="suratKeteranganLahir">Surat Keterangan Lahir</label>
+                  <input
+                    type="file"
+                    id="suratKeteranganLahir"
+                    name="suratKeteranganLahir"
+                    className="form-input"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="add-button"
                   disabled={isLoading}
-                  required
-                  min="1"
-                />
-              </div>
+                >
+                  {isLoading ? 'Mengajukan...' : 'Ajukan Permohonan'}
+                </button>
+              </>
             )}
 
-            <div className="form-group">
-              <label htmlFor="cidIPFS">CID Dokumen IPFS:</label>
-              <input
-                type="text"
-                id="cidIPFS"
-                value={cidIPFS}
-                onChange={(e) => setCidIPFS(e.target.value)}
-                placeholder="Qm..."
-                className="form-input"
-                disabled={isLoading}
-                required
-              />
-            </div>
+            {jenisPermohonan === '1' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="nikAlmarhum">NIK Almarhum/Almarhumah</label>
+                  <input
+                    type="text"
+                    id="nikAlmarhum"
+                    name="nikAlmarhum"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikPelapor">NIK Pelapor</label>
+                  <input
+                    type="text"
+                    id="nikPelapor"
+                    name="nikPelapor"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikSaksi1">NIK Saksi 1</label>
+                  <input
+                    type="text"
+                    id="nikSaksi1"
+                    name="nikSaksi1"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikSaksi2">NIK Saksi 2</label>
+                  <input
+                    type="text"
+                    id="nikSaksi2"
+                    name="nikSaksi2"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="hubunganPelapor">Hubungan Pelapor</label>
+                  <input
+                    type="text"
+                    id="hubunganPelapor"
+                    name="hubunganPelapor"
+                    className="form-input"
+                    placeholder="Contoh: Anak, Suami, Istri, dll"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="tempatKematian">Tempat Kematian</label>
+                  <input
+                    type="text"
+                    id="tempatKematian"
+                    name="tempatKematian"
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="tanggalKematian">Tanggal Kematian</label>
+                  <input
+                    type="date"
+                    id="tanggalKematian"
+                    name="tanggalKematian"
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="penyebabKematian">Penyebab Kematian</label>
+                  <textarea
+                    id="penyebabKematian"
+                    name="penyebabKematian"
+                    className="form-input"
+                    rows="3"
+                    placeholder="Jelaskan penyebab kematian"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="suratKeteranganKematian">Surat Keterangan Kematian</label>
+                  <input
+                    type="file"
+                    id="suratKeteranganKematian"
+                    name="suratKeteranganKematian"
+                    className="form-input"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="add-button"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Mengajukan...' : 'Ajukan Permohonan'}
+                </button>
+              </>
+            )}
 
-            <button 
-              type="submit" 
-              className="add-button"
-              disabled={isLoading || !jenisPermohonan || !idKalurahanAsal || !cidIPFS}
-            >
-              {isLoading ? 'Mengajukan...' : 'Ajukan Permohonan'}
-            </button>
+            {jenisPermohonan === '2' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="nikPria">NIK Calon Pengantin Pria</label>
+                  <input
+                    type="text"
+                    id="nikPria"
+                    name="nikPria"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikWanita">NIK Calon Pengantin Wanita</label>
+                  <input
+                    type="text"
+                    id="nikWanita"
+                    name="nikWanita"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikSaksi1">NIK Saksi 1</label>
+                  <input
+                    type="text"
+                    id="nikSaksi1"
+                    name="nikSaksi1"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikSaksi2">NIK Saksi 2</label>
+                  <input
+                    type="text"
+                    id="nikSaksi2"
+                    name="nikSaksi2"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="tempatPernikahan">Tempat Pernikahan</label>
+                  <input
+                    type="text"
+                    id="tempatPernikahan"
+                    name="tempatPernikahan"
+                    className="form-input"
+                    placeholder="Contoh: Masjid, Kantor Catatan Sipil, dll"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="tanggalPernikahan">Tanggal Pernikahan</label>
+                  <input
+                    type="date"
+                    id="tanggalPernikahan"
+                    name="tanggalPernikahan"
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="suratKeteranganPernikahan">Surat Keterangan Pernikahan</label>
+                  <input
+                    type="file"
+                    id="suratKeteranganPernikahan"
+                    name="suratKeteranganPernikahan"
+                    className="form-input"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="fotoPria">Pas Foto Calon Pengantin Pria</label>
+                  <input
+                    type="file"
+                    id="fotoPria"
+                    name="fotoPria"
+                    className="form-input"
+                    accept=".jpg,.jpeg,.png"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="fotoWanita">Pas Foto Calon Pengantin Wanita</label>
+                  <input
+                    type="file"
+                    id="fotoWanita"
+                    name="fotoWanita"
+                    className="form-input"
+                    accept=".jpg,.jpeg,.png"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="add-button"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Mengajukan...' : 'Ajukan Permohonan'}
+                </button>
+              </>
+            )}
+
+            {jenisPermohonan === '3' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="nikSuami">NIK Suami</label>
+                  <input
+                    type="text"
+                    id="nikSuami"
+                    name="nikSuami"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nikIstri">NIK Istri</label>
+                  <input
+                    type="text"
+                    id="nikIstri"
+                    name="nikIstri"
+                    className="form-input"
+                    maxLength={16}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="suratPutusanPengadilan">Surat Putusan Pengadilan</label>
+                  <input
+                    type="file"
+                    id="suratPutusanPengadilan"
+                    name="suratPutusanPengadilan"
+                    className="form-input"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="add-button"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Mengajukan...' : 'Ajukan Permohonan'}
+                </button>
+              </>
+            )}
+
+            {jenisPermohonan === '4' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="alamat">Alamat Tujuan</label>
+                  <input
+                    type="text"
+                    id="alamat"
+                    name="alamat"
+                    className="form-input"
+                    placeholder="Masukkan alamat tujuan"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="kalurahan">Kalurahan Tujuan</label>
+                  <select
+                    id="kalurahan"
+                    name="kalurahan"
+                    className="form-input"
+                    required
+                  >
+                    <option value="">Pilih Kalurahan</option>
+                    <option value="Ambarketawang">Ambarketawang</option>
+                    <option value="Balecatur">Balecatur</option>
+                    <option value="Banyuraden">Banyuraden</option>
+                    <option value="Nogotirto">Nogotirto</option>
+                    <option value="Trihanggo">Trihanggo</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="kecamatan">Kecamatan Tujuan</label>
+                  <select
+                    id="kecamatan"
+                    name="kecamatan"
+                    className="form-input"
+                    disabled
+                  >
+                    <option value="Gamping">Gamping</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="kabupaten">Kabupaten Tujuan</label>
+                  <select
+                    id="kabupaten"
+                    name="kabupaten"
+                    className="form-input"
+                    disabled
+                  >
+                    <option value="Sleman">Sleman</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="provinsi">Provinsi Tujuan</label>
+                  <select
+                    id="provinsi"
+                    name="provinsi"
+                    className="form-input"
+                    disabled
+                  >
+                    <option value="Daerah Istimewa Yogyakarta">Daerah Istimewa Yogyakarta</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="alasanPindah">Alasan Pindah</label>
+                  <select
+                    id="alasanPindah"
+                    name="alasanPindah"
+                    className="form-input"
+                    onChange={(e) => setAlasanPindah(e.target.value)}
+                    required
+                  >
+                    <option value="">Pilih Alasan Pindah</option>
+                    <option value="Pekerjaan">Pekerjaan</option>
+                    <option value="Pendidikan">Pendidikan</option>
+                    <option value="Ekonomi">Ekonomi</option>
+                    <option value="Lingkungan">Lingkungan</option>
+                    <option value="Kesehatan">Kesehatan</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
+                </div>
+                {alasanPindah === 'Lainnya' && (
+                  <div className="form-group">
+                    <label htmlFor="alasanPindahLainnya">Alasan Pindah (Lainnya)</label>
+                    <input
+                      type="text"
+                      id="alasanPindahLainnya"
+                      name="alasanPindahLainnya"
+                      className="form-input"
+                      placeholder="Jelaskan alasan pindah"
+                      required
+                    />
+                  </div>
+                )}
+                <div className="form-group">
+                  <label>Anggota Keluarga yang Ikut Pindah</label>
+                  <div style={{overflowX: 'auto'}}>
+                    <table className="anggota-table">
+                      <thead>
+                        <tr>
+                          <th>
+                            <input
+                              type="checkbox"
+                              id="pindahSemua"
+                              checked={pindahSemua}
+                              onChange={e => {
+                                setPindahSemua(e.target.checked);
+                                if (e.target.checked) {
+                                  setAnggotaPindah(anggotaArr.map(a => a.nik));
+                                } else {
+                                  setAnggotaPindah([]);
+                                }
+                              }}
+                            />
+                          </th>
+                          <th><b>Nama</b></th>
+                          <th><b>Hubungan</b></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {anggotaArr.map((a, idx) => (
+                          <tr key={a.nik || idx}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={pindahSemua || anggotaPindah.includes(a.nik)}
+                                disabled={pindahSemua}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    setAnggotaPindah(prev => [...prev, a.nik]);
+                                  } else {
+                                    setAnggotaPindah(prev => prev.filter(nik => nik !== a.nik));
+                                  }
+                                }}
+                              />
+                            </td>
+                            <td>{a.nama}</td>
+                            <td>{a.statusHubunganKeluarga}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="add-button"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Mengajukan...' : 'Ajukan Permohonan'}
+                </button>
+              </>
+            )}
           </form>
         </div>
       </div>
