@@ -279,6 +279,42 @@ export class ContractService {
         }
     }
 
+    async submitPermohonanPindah(
+        cidIPFS,
+        idKalurahanAsal,
+        idKalurahanTujuan,
+        jenisPindah,
+        anggotaPindah,
+        nikKepalaKeluargaBaru,
+        nikKepalaKeluargaTujuan,
+        alamatBaru
+    ) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.submitPermohonanPindah(
+                cidIPFS,
+                idKalurahanAsal,
+                idKalurahanTujuan,
+                jenisPindah,
+                anggotaPindah,
+                nikKepalaKeluargaBaru,
+                nikKepalaKeluargaTujuan,
+                alamatBaru
+            );
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to submit permohonan pindah:', error);
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
+        }
+    }
+
     async getDaftarPermohonan(walletAddress) {
         if (!this.contract) {
             throw new Error('Contract not initialized');

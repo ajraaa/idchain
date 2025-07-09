@@ -33,6 +33,10 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const [alasanPindah, setAlasanPindah] = useState('');
   const [pindahSemua, setPindahSemua] = useState(false);
   const [anggotaPindah, setAnggotaPindah] = useState([]);
+  const [jenisPindah, setJenisPindah] = useState('');
+  const [nikKepalaKeluargaBaru, setNikKepalaKeluargaBaru] = useState('');
+  const [nikKepalaKeluargaTujuan, setNikKepalaKeluargaTujuan] = useState('');
+  const [alamatBaru, setAlamatBaru] = useState('');
 
   // Load citizen data on component mount
   useEffect(() => {
@@ -102,40 +106,103 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   const handleSubmitPermohonan = async (e) => {
     e.preventDefault();
-    if (!jenisPermohonan || !idKalurahanAsal || !cidIPFS) {
-      onError('Semua field wajib diisi');
+    if (!jenisPermohonan) {
+      onError('Jenis permohonan wajib diisi');
       return;
     }
 
+    // Alur permohonan pindah
+    if (jenisPermohonan === '4') {
+      if (!jenisPindah) {
+        onError('Jenis pindah wajib dipilih');
+        return;
+      }
+      // Validasi field sesuai alur
+      if (jenisPindah === '0') { // Seluruh keluarga
+        if (!alamatBaru) {
+          onError('Alamat baru wajib diisi');
+          return;
+        }
+      } else if (jenisPindah === '1') { // Mandiri
+        if (anggotaPindah.length === 0) {
+          onError('Pilih minimal satu anggota yang pindah');
+          return;
+        }
+        if (!nikKepalaKeluargaBaru) {
+          onError('Pilih kepala keluarga baru');
+          return;
+        }
+        if (!alamatBaru) {
+          onError('Alamat baru wajib diisi');
+          return;
+        }
+      } else if (jenisPindah === '2') { // Gabung KK
+        if (anggotaPindah.length === 0) {
+          onError('Pilih minimal satu anggota yang pindah');
+          return;
+        }
+        if (!nikKepalaKeluargaTujuan) {
+          onError('NIK kepala keluarga tujuan wajib diisi');
+          return;
+        }
+      }
+      setIsLoading(true);
+      try {
+        // idKalurahanAsal dan idKalurahanTujuan bisa diambil dari data user/KK, untuk demo pakai 1 dan 2
+        const idKalurahanAsal = 1;
+        const idKalurahanTujuan = 2;
+        // Dummy CID IPFS
+        const cidIPFS = 'dummy-cid';
+        const result = await contractService.submitPermohonanPindah(
+          cidIPFS,
+          idKalurahanAsal,
+          idKalurahanTujuan,
+          parseInt(jenisPindah),
+          anggotaPindah,
+          jenisPindah === '1' ? nikKepalaKeluargaBaru : '',
+          jenisPindah === '2' ? nikKepalaKeluargaTujuan : '',
+          jenisPindah === '0' || jenisPindah === '1' ? alamatBaru : ''
+        );
+        onSuccess(`Permohonan pindah berhasil diajukan! Transaction: ${result.transactionHash}`);
+        // Reset form
+        setJenisPermohonan('');
+        setJenisPindah('');
+        setAnggotaPindah([]);
+        setPindahSemua(false);
+        setNikKepalaKeluargaBaru('');
+        setNikKepalaKeluargaTujuan('');
+        setAlamatBaru('');
+        // Reload data
+        loadDaftarPermohonan();
+      } catch (error) {
+        const errorMessage = handleContractError(error);
+        onError(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Permohonan non-pindah (default lama)
+    if (!idKalurahanAsal || !cidIPFS) {
+      onError('Semua field wajib diisi');
+      return;
+    }
     setIsLoading(true);
     try {
-      console.log('📝 [CitizenDashboard] Submitting permohonan:', {
-        jenis: jenisPermohonan,
-        idKalurahanAsal,
-        idKalurahanTujuan,
-        cidIPFS
-      });
-      
       const result = await contractService.submitPermohonan(
         parseInt(jenisPermohonan),
         cidIPFS,
         parseInt(idKalurahanAsal),
         jenisPermohonan === '4' ? parseInt(idKalurahanTujuan) : 0
       );
-      
-      console.log('✅ [CitizenDashboard] Permohonan submitted successfully:', result);
       onSuccess(`Permohonan berhasil diajukan! Transaction: ${result.transactionHash}`);
-      
-      // Reset form
       setJenisPermohonan('');
       setIdKalurahanAsal('');
       setIdKalurahanTujuan('');
       setCidIPFS('');
-      
-      // Reload data
       loadDaftarPermohonan();
     } catch (error) {
-      console.error('❌ [CitizenDashboard] Failed to submit permohonan:', error);
       const errorMessage = handleContractError(error);
       onError(errorMessage);
     } finally {
@@ -182,6 +249,15 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       '4': 'Pindah'
     };
     return jenisMap[jenis] || jenis;
+  };
+
+  // Tambahkan helper untuk label jenis pindah
+  const getJenisPindahLabel = (jenisPindah) => {
+    if (jenisPindah === undefined || jenisPindah === null) return '';
+    if (jenisPindah === 0 || jenisPindah === '0') return 'Pindah Seluruh Keluarga';
+    if (jenisPindah === 1 || jenisPindah === '1') return 'Pindah Mandiri';
+    if (jenisPindah === 2 || jenisPindah === '2') return 'Pindah Gabung KK';
+    return '';
   };
 
   const [parentNames, setParentNames] = useState({ ayah: '-', ibu: '-' });
@@ -682,146 +758,175 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
             {jenisPermohonan === '4' && (
               <>
                 <div className="form-group">
-                  <label htmlFor="alamat">Alamat Tujuan</label>
-                  <input
-                    type="text"
-                    id="alamat"
-                    name="alamat"
-                    className="form-input"
-                    placeholder="Masukkan alamat tujuan"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="kalurahan">Kalurahan Tujuan</label>
+                  <label htmlFor="jenisPindah">Jenis Pindah</label>
                   <select
-                    id="kalurahan"
-                    name="kalurahan"
+                    id="jenisPindah"
+                    value={jenisPindah}
+                    onChange={e => {
+                      setJenisPindah(e.target.value);
+                      setAnggotaPindah([]);
+                      setPindahSemua(false);
+                      setNikKepalaKeluargaBaru('');
+                      setNikKepalaKeluargaTujuan('');
+                      setAlamatBaru('');
+                    }}
                     className="form-input"
                     required
                   >
-                    <option value="">Pilih Kalurahan</option>
-                    <option value="Ambarketawang">Ambarketawang</option>
-                    <option value="Balecatur">Balecatur</option>
-                    <option value="Banyuraden">Banyuraden</option>
-                    <option value="Nogotirto">Nogotirto</option>
-                    <option value="Trihanggo">Trihanggo</option>
+                    <option value="">Pilih Jenis Pindah</option>
+                    <option value="0">Pindah Seluruh Keluarga</option>
+                    <option value="1">Pindah Mandiri (Buat KK Baru)</option>
+                    <option value="2">Pindah Gabung KK</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="kecamatan">Kecamatan Tujuan</label>
-                  <select
-                    id="kecamatan"
-                    name="kecamatan"
-                    className="form-input"
-                    disabled
-                  >
-                    <option value="Gamping">Gamping</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="kabupaten">Kabupaten Tujuan</label>
-                  <select
-                    id="kabupaten"
-                    name="kabupaten"
-                    className="form-input"
-                    disabled
-                  >
-                    <option value="Sleman">Sleman</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="provinsi">Provinsi Tujuan</label>
-                  <select
-                    id="provinsi"
-                    name="provinsi"
-                    className="form-input"
-                    disabled
-                  >
-                    <option value="Daerah Istimewa Yogyakarta">Daerah Istimewa Yogyakarta</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="alasanPindah">Alasan Pindah</label>
-                  <select
-                    id="alasanPindah"
-                    name="alasanPindah"
-                    className="form-input"
-                    onChange={(e) => setAlasanPindah(e.target.value)}
-                    required
-                  >
-                    <option value="">Pilih Alasan Pindah</option>
-                    <option value="Pekerjaan">Pekerjaan</option>
-                    <option value="Pendidikan">Pendidikan</option>
-                    <option value="Ekonomi">Ekonomi</option>
-                    <option value="Lingkungan">Lingkungan</option>
-                    <option value="Kesehatan">Kesehatan</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
-                </div>
-                {alasanPindah === 'Lainnya' && (
-                  <div className="form-group">
-                    <label htmlFor="alasanPindahLainnya">Alasan Pindah (Lainnya)</label>
-                    <input
-                      type="text"
-                      id="alasanPindahLainnya"
-                      name="alasanPindahLainnya"
-                      className="form-input"
-                      placeholder="Jelaskan alasan pindah"
-                      required
-                    />
-                  </div>
-                )}
-                <div className="form-group">
-                  <label>Anggota Keluarga yang Ikut Pindah</label>
-                  <div style={{overflowX: 'auto'}}>
-                    <table className="anggota-table">
-                      <thead>
-                        <tr>
-                          <th>
-                            <input
-                              type="checkbox"
-                              id="pindahSemua"
-                              checked={pindahSemua}
-                              onChange={e => {
-                                setPindahSemua(e.target.checked);
-                                if (e.target.checked) {
-                                  setAnggotaPindah(anggotaArr.map(a => a.nik));
-                                } else {
-                                  setAnggotaPindah([]);
-                                }
-                              }}
-                            />
-                          </th>
-                          <th><b>Nama</b></th>
-                          <th><b>Hubungan</b></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {anggotaArr.map((a, idx) => (
-                          <tr key={a.nik || idx}>
-                            <td>
-                              <input
-                                type="checkbox"
-                                checked={pindahSemua || anggotaPindah.includes(a.nik)}
-                                disabled={pindahSemua}
-                                onChange={e => {
-                                  if (e.target.checked) {
-                                    setAnggotaPindah(prev => [...prev, a.nik]);
-                                  } else {
-                                    setAnggotaPindah(prev => prev.filter(nik => nik !== a.nik));
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td>{a.nama}</td>
-                            <td>{a.statusHubunganKeluarga}</td>
-                          </tr>
+
+                {/* Alur A: Seluruh keluarga */}
+                {jenisPindah === '0' && (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="alamatBaru">Alamat Baru</label>
+                      <input
+                        type="text"
+                        id="alamatBaru"
+                        value={alamatBaru}
+                        onChange={e => setAlamatBaru(e.target.value)}
+                        className="form-input"
+                        placeholder="Masukkan alamat baru"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Anggota Keluarga yang Ikut Pindah</label>
+                      <div className="info-text">Seluruh anggota keluarga akan ikut pindah.</div>
+                      <ul>
+                        {anggotaArr.map(a => (
+                          <li key={a.nik}>{a.nama} ({a.nik})</li>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                      </ul>
+                    </div>
+                  </>
+                )}
+
+                {/* Alur B: Mandiri */}
+                {jenisPindah === '1' && (
+                  <>
+                    <div className="form-group">
+                      <label>Anggota Keluarga yang Ikut Pindah</label>
+                      <div style={{overflowX: 'auto'}}>
+                        <table className="anggota-table">
+                          <thead>
+                            <tr>
+                              <th></th>
+                              <th>Nama</th>
+                              <th>Hubungan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {anggotaArr.map((a, idx) => (
+                              <tr key={a.nik || idx}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={anggotaPindah.includes(a.nik)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        setAnggotaPindah(prev => [...prev, a.nik]);
+                                      } else {
+                                        setAnggotaPindah(prev => prev.filter(nik => nik !== a.nik));
+                                      }
+                                    }}
+                                  />
+                                </td>
+                                <td>{a.nama}</td>
+                                <td>{a.statusHubunganKeluarga}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="nikKepalaKeluargaBaru">Pilih Kepala Keluarga Baru</label>
+                      <select
+                        id="nikKepalaKeluargaBaru"
+                        value={nikKepalaKeluargaBaru}
+                        onChange={e => setNikKepalaKeluargaBaru(e.target.value)}
+                        className="form-input"
+                        required
+                      >
+                        <option value="">Pilih Kepala Keluarga Baru</option>
+                        {anggotaArr.filter(a => anggotaPindah.includes(a.nik)).map(a => (
+                          <option key={a.nik} value={a.nik}>{a.nama} ({a.nik})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="alamatBaru">Alamat Baru</label>
+                      <input
+                        type="text"
+                        id="alamatBaru"
+                        value={alamatBaru}
+                        onChange={e => setAlamatBaru(e.target.value)}
+                        className="form-input"
+                        placeholder="Masukkan alamat baru"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Alur C: Gabung KK */}
+                {jenisPindah === '2' && (
+                  <>
+                    <div className="form-group">
+                      <label>Anggota Keluarga yang Ikut Pindah</label>
+                      <div style={{overflowX: 'auto'}}>
+                        <table className="anggota-table">
+                          <thead>
+                            <tr>
+                              <th></th>
+                              <th>Nama</th>
+                              <th>Hubungan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {anggotaArr.map((a, idx) => (
+                              <tr key={a.nik || idx}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={anggotaPindah.includes(a.nik)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        setAnggotaPindah(prev => [...prev, a.nik]);
+                                      } else {
+                                        setAnggotaPindah(prev => prev.filter(nik => nik !== a.nik));
+                                      }
+                                    }}
+                                  />
+                                </td>
+                                <td>{a.nama}</td>
+                                <td>{a.statusHubunganKeluarga}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="nikKepalaKeluargaTujuan">NIK Kepala Keluarga Tujuan</label>
+                      <input
+                        type="text"
+                        id="nikKepalaKeluargaTujuan"
+                        value={nikKepalaKeluargaTujuan}
+                        onChange={e => setNikKepalaKeluargaTujuan(e.target.value)}
+                        className="form-input"
+                        placeholder="Masukkan NIK kepala keluarga tujuan"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
                 <button
                   type="submit"
                   className="add-button"
@@ -862,6 +967,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   <th>ID</th>
                   <th>Jenis Permohonan</th>
                   <th>Status</th>
+                  <th>Jenis Pindah</th>
                   <th>Waktu Pengajuan</th>
                   <th>Aksi</th>
                 </tr>
@@ -875,6 +981,11 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <span className={`status-badge status-${permohonan.status.toLowerCase().replace(/\s+/g, '-')}`}>
                         {permohonan.status}
                       </span>
+                    </td>
+                    <td>
+                      {permohonan.jenis === '4' && permohonan.dataPindah
+                        ? getJenisPindahLabel(permohonan.dataPindah.jenisPindah)
+                        : '-'}
                     </td>
                     <td>{formatDate(permohonan.waktuPengajuan)}</td>
                     <td>
@@ -961,6 +1072,53 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     }
   };
 
+  const [permohonanGabungKK, setPermohonanGabungKK] = useState([]);
+  const [showKonfirmasiModal, setShowKonfirmasiModal] = useState(false);
+  const [permohonanUntukKonfirmasi, setPermohonanUntukKonfirmasi] = useState(null);
+
+  // Cek permohonan gabung KK yang menunggu konfirmasi jika user adalah kepala keluarga
+  useEffect(() => {
+    async function cekGabungKK() {
+      if (!contractService || !citizenData?.nik) return;
+      try {
+        const ids = await contractService.contract.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
+        const list = [];
+        for (let id of ids) {
+          const detail = await contractService.getPermohonanDetail(Number(id));
+          list.push(detail);
+        }
+        setPermohonanGabungKK(list);
+      } catch (e) {
+        setPermohonanGabungKK([]);
+      }
+    }
+    cekGabungKK();
+  }, [contractService, citizenData?.nik]);
+
+  // Handler aksi konfirmasi
+  const handleKonfirmasiGabungKK = async (id, isSetuju) => {
+    setIsLoading(true);
+    try {
+      await contractService.contract.konfirmasiPindahGabungKK(id, isSetuju);
+      onSuccess(isSetuju ? 'Permohonan gabung KK disetujui.' : 'Permohonan gabung KK ditolak.');
+      setShowKonfirmasiModal(false);
+      setPermohonanUntukKonfirmasi(null);
+      // Refresh daftar
+      const ids = await contractService.contract.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
+      const list = [];
+      for (let id of ids) {
+        const detail = await contractService.getPermohonanDetail(Number(id));
+        list.push(detail);
+      }
+      setPermohonanGabungKK(list);
+      loadDaftarPermohonan();
+    } catch (e) {
+      onError('Gagal konfirmasi gabung KK');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="dukcapil-app-root">
       <div className="dukcapil-app-body">
@@ -1016,10 +1174,56 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   <span className="info-value">ID {selectedPermohonan.idKalurahanAsal}</span>
                 </div>
                 {selectedPermohonan.jenis === '4' && (
-                  <div className="info-row">
-                    <span className="info-label">Kalurahan Tujuan:</span>
-                    <span className="info-value">ID {selectedPermohonan.idKalurahanTujuan}</span>
-                  </div>
+                  <>
+                    <div className="info-row">
+                      <span className="info-label">Kalurahan Tujuan:</span>
+                      <span className="info-value">ID {selectedPermohonan.idKalurahanTujuan}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Jenis Pindah:</span>
+                      <span className="info-value">{getJenisPindahLabel(selectedPermohonan.dataPindah?.jenisPindah)}</span>
+                    </div>
+                    {selectedPermohonan.dataPindah?.nikAnggotaPindah && (
+                      <div className="info-row">
+                        <span className="info-label">Anggota yang Pindah:</span>
+                        <span className="info-value">
+                          <ul style={{margin: 0, paddingLeft: 18}}>
+                            {selectedPermohonan.dataPindah.nikAnggotaPindah.map((nik, idx) => (
+                              <li key={nik || idx}>{nik}</li>
+                            ))}
+                          </ul>
+                        </span>
+                      </div>
+                    )}
+                    {selectedPermohonan.dataPindah?.nikKepalaKeluargaBaru && (
+                      <div className="info-row">
+                        <span className="info-label">Kepala Keluarga Baru:</span>
+                        <span className="info-value">{selectedPermohonan.dataPindah.nikKepalaKeluargaBaru}</span>
+                      </div>
+                    )}
+                    {selectedPermohonan.dataPindah?.nikKepalaKeluargaTujuan && (
+                      <div className="info-row">
+                        <span className="info-label">Kepala Keluarga Tujuan:</span>
+                        <span className="info-value">{selectedPermohonan.dataPindah.nikKepalaKeluargaTujuan}</span>
+                      </div>
+                    )}
+                    {selectedPermohonan.dataPindah?.alamatBaru && (
+                      <div className="info-row">
+                        <span className="info-label">Alamat Baru:</span>
+                        <span className="info-value">{selectedPermohonan.dataPindah.alamatBaru}</span>
+                      </div>
+                    )}
+                    {selectedPermohonan.dataPindah?.jenisPindah === 2 && (
+                      <div className="info-row">
+                        <span className="info-label">Status Konfirmasi KK Tujuan:</span>
+                        <span className="info-value">
+                          {selectedPermohonan.status === 'Menunggu Konfirmasi KK Tujuan' && 'Menunggu Konfirmasi'}
+                          {selectedPermohonan.status === 'Dikonfirmasi KK Tujuan' && 'Disetujui'}
+                          {selectedPermohonan.status === 'Ditolak KK Tujuan' && 'Ditolak'}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="info-row">
                   <span className="info-label">Status:</span>
@@ -1035,6 +1239,26 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     <span className="info-value">{selectedPermohonan.alasanPenolakan}</span>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal konfirmasi gabung KK */}
+      {showKonfirmasiModal && permohonanUntukKonfirmasi && (
+        <div className="modal-overlay" onClick={() => setShowKonfirmasiModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Konfirmasi Permohonan Gabung KK #{permohonanUntukKonfirmasi.id}</h3>
+              <button className="modal-close" onClick={() => setShowKonfirmasiModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="info-row"><span className="info-label">Anggota yang Gabung:</span> <span className="info-value">{permohonanUntukKonfirmasi.dataPindah?.nikAnggotaPindah?.join(', ')}</span></div>
+              <div className="info-row"><span className="info-label">Pemohon:</span> <span className="info-value">{permohonanUntukKonfirmasi.pemohon}</span></div>
+              <div style={{marginTop: 18, display: 'flex', gap: 12}}>
+                <button className="add-button" disabled={isLoading} onClick={() => handleKonfirmasiGabungKK(permohonanUntukKonfirmasi.id, true)}>Setujui</button>
+                <button className="remove-button" disabled={isLoading} onClick={() => handleKonfirmasiGabungKK(permohonanUntukKonfirmasi.id, false)}>Tolak</button>
               </div>
             </div>
           </div>
