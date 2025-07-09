@@ -24,6 +24,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     using PermohonanUtils for uint256[];
     using PencatatanViewUtils for PencatatanTypes.Status;
     using PencatatanViewUtils for PencatatanTypes.JenisPermohonan;
+    using PencatatanViewUtils for PencatatanTypes.JenisPindah;
 
     uint256 public jumlahPermohonan;
     mapping(uint256 => PencatatanTypes.Permohonan) permohonans;
@@ -84,6 +85,19 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         uint256 idBaru = jumlahPermohonan++;
 
+        // Buat DataPindah kosong untuk permohonan non-pindah
+        PencatatanTypes.DataPindah memory dataPindahKosong = PencatatanTypes
+            .DataPindah({
+                jenisPindah: PencatatanTypes.JenisPindah.PindahSeluruhKeluarga,
+                nikAnggotaPindah: new string[](0),
+                nikKepalaKeluargaBaru: "",
+                nikKepalaKeluargaTujuan: "",
+                alamatBaru: "",
+                konfirmasiKKTujuan: false,
+                konfirmatorKKTujuan: address(0),
+                waktuKonfirmasiKKTujuan: 0
+            });
+
         permohonans[idBaru] = PencatatanTypes.Permohonan({
             id: idBaru,
             waktuPengajuan: block.timestamp,
@@ -101,7 +115,8 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
             idKalurahanAsal: _idKalurahanAsal,
             idKalurahanTujuan: _jenis == PencatatanTypes.JenisPermohonan.Pindah
                 ? _idKalurahanTujuan
-                : 0
+                : 0,
+            dataPindah: dataPindahKosong
         });
 
         daftarPermohonanPemohon[msg.sender].push(idBaru);
@@ -384,5 +399,177 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         PencatatanTypes.Status _status
     ) external view onlyDukcapil returns (uint256[] memory) {
         return daftarPermohonanPerStatus[_status];
+    }
+
+    // ===== FUNGSI BARU UNTUK FITUR PINDAH ENHANCED =====
+
+    // Mapping untuk tracking permohonan per kepala keluarga
+    mapping(string => uint256[]) public permohonanMenungguKonfirmasiKK;
+
+    // Submit permohonan pindah dengan data lengkap
+    function submitPermohonanPindah(
+        string calldata _cidIPFS,
+        uint8 _idKalurahanAsal,
+        uint8 _idKalurahanTujuan,
+        PencatatanTypes.JenisPindah _jenisPindah,
+        string[] calldata _nikAnggotaPindah,
+        string calldata _nikKepalaKeluargaBaru,
+        string calldata _nikKepalaKeluargaTujuan,
+        string calldata _alamatBaru
+    ) external onlyWargaTerdaftar {
+        require(bytes(_cidIPFS).length > 0, CidKosong());
+        require(
+            addressKalurahanById[_idKalurahanAsal] != address(0),
+            IdKalurahanTujuanTidakDikenal()
+        );
+        require(_idKalurahanTujuan != 0, TujuanTidakValid());
+        require(
+            addressKalurahanById[_idKalurahanTujuan] != address(0),
+            IdKalurahanTujuanTidakDikenal()
+        );
+
+        uint256 idBaru = jumlahPermohonan++;
+
+        // Buat struct DataPindah
+        PencatatanTypes.DataPindah memory dataPindah = PencatatanTypes
+            .DataPindah({
+                jenisPindah: _jenisPindah,
+                nikAnggotaPindah: _nikAnggotaPindah,
+                nikKepalaKeluargaBaru: _nikKepalaKeluargaBaru,
+                nikKepalaKeluargaTujuan: _nikKepalaKeluargaTujuan,
+                alamatBaru: _alamatBaru,
+                konfirmasiKKTujuan: false,
+                konfirmatorKKTujuan: address(0),
+                waktuKonfirmasiKKTujuan: 0
+            });
+
+        permohonans[idBaru] = PencatatanTypes.Permohonan({
+            id: idBaru,
+            waktuPengajuan: block.timestamp,
+            waktuVerifikasiKalurahan: 0,
+            waktuVerifikasiKalurahanTujuan: 0,
+            waktuVerifikasiDukcapil: 0,
+            pemohon: msg.sender,
+            verifikatorKalurahan: address(0),
+            verifikatorKalurahanTujuan: address(0),
+            verifikatorDukcapil: address(0),
+            cidIPFS: _cidIPFS,
+            alasanPenolakan: "",
+            jenis: PencatatanTypes.JenisPermohonan.Pindah,
+            status: _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
+                ? PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
+                : PencatatanTypes.Status.Diajukan,
+            idKalurahanAsal: _idKalurahanAsal,
+            idKalurahanTujuan: _idKalurahanTujuan,
+            dataPindah: dataPindah
+        });
+
+        daftarPermohonanPemohon[msg.sender].push(idBaru);
+        daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
+        daftarPermohonanKalurahanTujuan[_idKalurahanTujuan].push(idBaru);
+
+        // Tambahkan ke mapping status yang sesuai
+        if (_jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK) {
+            daftarPermohonanPerStatus[
+                PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
+            ].push(idBaru);
+            // Tambahkan ke mapping menunggu konfirmasi KK
+            permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaTujuan].push(
+                idBaru
+            );
+        } else {
+            daftarPermohonanPerStatus[PencatatanTypes.Status.Diajukan].push(
+                idBaru
+            );
+        }
+
+        emit PermohonanPindahDiajukan(
+            idBaru,
+            msg.sender,
+            _jenisPindah,
+            _cidIPFS,
+            block.timestamp
+        );
+    }
+
+    // Konfirmasi kepala keluarga tujuan untuk pindah gabung KK
+    function konfirmasiPindahGabungKK(
+        uint256 _id,
+        bool _disetujui
+    ) external onlyWargaTerdaftar {
+        PencatatanTypes.Permohonan storage p = permohonans[_id];
+
+        require(
+            p.jenis == PencatatanTypes.JenisPermohonan.Pindah,
+            BukanPermohonanPindah()
+        );
+        require(
+            p.dataPindah.jenisPindah ==
+                PencatatanTypes.JenisPindah.PindahGabungKK,
+            "Bukan permohonan pindah gabung KK"
+        );
+        require(
+            p.status == PencatatanTypes.Status.MenungguKonfirmasiKKTujuan,
+            "Status tidak valid untuk konfirmasi"
+        );
+
+        // Validasi bahwa msg.sender adalah kepala keluarga tujuan
+        string memory nikPemohon = nikByWallet[msg.sender];
+        require(
+            keccak256(bytes(nikPemohon)) ==
+                keccak256(bytes(p.dataPindah.nikKepalaKeluargaTujuan)),
+            "Hanya kepala keluarga tujuan yang dapat mengkonfirmasi"
+        );
+
+        _hapusByStatus(_id, PencatatanTypes.Status.MenungguKonfirmasiKKTujuan);
+
+        if (_disetujui) {
+            p.status = PencatatanTypes.Status.DikonfirmasiKKTujuan;
+            daftarPermohonanPerStatus[
+                PencatatanTypes.Status.DikonfirmasiKKTujuan
+            ].push(_id);
+        } else {
+            p.status = PencatatanTypes.Status.DitolakKKTujuan;
+            p.alasanPenolakan = "Ditolak oleh kepala keluarga tujuan";
+            daftarPermohonanPerStatus[PencatatanTypes.Status.DitolakKKTujuan]
+                .push(_id);
+        }
+
+        p.dataPindah.konfirmasiKKTujuan = _disetujui;
+        p.dataPindah.konfirmatorKKTujuan = msg.sender;
+        p.dataPindah.waktuKonfirmasiKKTujuan = block.timestamp;
+
+        emit KonfirmasiKKTujuan(
+            _id,
+            p.dataPindah.nikKepalaKeluargaTujuan,
+            _disetujui,
+            block.timestamp
+        );
+    }
+
+    // Get permohonan yang menunggu konfirmasi KK
+    function getPermohonanMenungguKonfirmasiKK(
+        string calldata _nikKepalaKeluarga
+    ) external view returns (uint256[] memory) {
+        return permohonanMenungguKonfirmasiKK[_nikKepalaKeluarga];
+    }
+
+    // Get data pindah dari permohonan
+    function getDataPindah(
+        uint256 _id
+    ) external view returns (PencatatanTypes.DataPindah memory) {
+        return permohonans[_id].dataPindah;
+    }
+
+    // Check apakah ada permohonan menunggu konfirmasi
+    function adaPermohonanMenungguKonfirmasi(
+        string calldata _nikKepalaKeluarga
+    ) external view returns (bool) {
+        return permohonanMenungguKonfirmasiKK[_nikKepalaKeluarga].length > 0;
+    }
+
+    // Get jenis pindah sebagai string
+    function getJenisPindah(uint256 _id) external view returns (string memory) {
+        return permohonans[_id].dataPindah.jenisPindah.jenisPindahToString();
     }
 }

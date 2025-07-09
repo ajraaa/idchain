@@ -26,6 +26,12 @@ library PencatatanViewUtils {
             return "Ditolak Kalurahan Tujuan";
         if (s == PencatatanTypes.Status.DibatalkanPemohon)
             return "Dibatalkan oleh Pemohon";
+        if (s == PencatatanTypes.Status.MenungguKonfirmasiKKTujuan)
+            return "Menunggu Konfirmasi KK Tujuan";
+        if (s == PencatatanTypes.Status.DikonfirmasiKKTujuan)
+            return "Dikonfirmasi KK Tujuan";
+        if (s == PencatatanTypes.Status.DitolakKKTujuan)
+            return "Ditolak KK Tujuan";
         return "Status Tidak Dikenal";
     }
 
@@ -38,5 +44,17 @@ library PencatatanViewUtils {
         if (j == PencatatanTypes.JenisPermohonan.Cerai) return "Cerai";
         if (j == PencatatanTypes.JenisPermohonan.Pindah) return "Pindah";
         return "Jenis Tidak Dikenal";
+    }
+
+    function jenisPindahToString(
+        PencatatanTypes.JenisPindah j
+    ) internal pure returns (string memory) {
+        if (j == PencatatanTypes.JenisPindah.PindahSeluruhKeluarga)
+            return "Pindah Seluruh Keluarga";
+        if (j == PencatatanTypes.JenisPindah.PindahMandiri)
+            return "Pindah Mandiri";
+        if (j == PencatatanTypes.JenisPindah.PindahGabungKK)
+            return "Pindah Gabung KK";
+        return "Jenis Pindah Tidak Dikenal";
     }
 }

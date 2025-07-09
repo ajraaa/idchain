@@ -10,6 +10,12 @@ abstract contract PencatatanTypes {
         Pindah
     }
 
+    enum JenisPindah {
+        PindahSeluruhKeluarga, // Alur A: Pindah satu keluarga
+        PindahMandiri, // Alur B: Pindah mandiri/membuat KK baru
+        PindahGabungKK // Alur C: Pindah gabung KK
+    }
+
     enum Status {
         Diajukan,
         DisetujuiKalurahan,
@@ -20,7 +26,21 @@ abstract contract PencatatanTypes {
         DitolakKalurahanAsal,
         DisetujuiKalurahanTujuan,
         DitolakKalurahanTujuan,
-        DibatalkanPemohon
+        DibatalkanPemohon,
+        MenungguKonfirmasiKKTujuan, // Untuk alur C
+        DikonfirmasiKKTujuan, // Untuk alur C
+        DitolakKKTujuan // Untuk alur C
+    }
+
+    struct DataPindah {
+        JenisPindah jenisPindah;
+        string[] nikAnggotaPindah;
+        string nikKepalaKeluargaBaru; // Untuk alur B
+        string nikKepalaKeluargaTujuan; // Untuk alur C
+        string alamatBaru;
+        bool konfirmasiKKTujuan; // Untuk alur C
+        address konfirmatorKKTujuan;
+        uint256 waktuKonfirmasiKKTujuan;
     }
 
     struct Permohonan {
@@ -39,12 +59,21 @@ abstract contract PencatatanTypes {
         Status status;
         uint8 idKalurahanAsal;
         uint8 idKalurahanTujuan;
+        DataPindah dataPindah; // Hanya terisi jika jenis == Pindah
     }
 
     event PermohonanDiajukan(
         uint256 indexed id,
         address indexed pemohon,
         JenisPermohonan jenis,
+        string cidIPFS,
+        uint256 waktu
+    );
+
+    event PermohonanPindahDiajukan(
+        uint256 indexed id,
+        address indexed pemohon,
+        JenisPindah jenisPindah,
         string cidIPFS,
         uint256 waktu
     );
@@ -71,9 +100,23 @@ abstract contract PencatatanTypes {
         uint256 waktu
     );
 
+    event KonfirmasiKKTujuan(
+        uint256 indexed idPermohonan,
+        string indexed nikKepalaKeluargaTujuan,
+        bool disetujui,
+        uint256 waktu
+    );
+
     event DokumenResmiDiunggah(
         uint256 indexed idPermohonan,
         string cidDokumen,
+        uint256 waktu
+    );
+
+    event ProsesKKSelesai(
+        uint256 indexed idPermohonan,
+        JenisPindah jenisPindah,
+        string[] nikTerlibat,
         uint256 waktu
     );
 }
