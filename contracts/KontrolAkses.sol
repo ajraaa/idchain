@@ -23,6 +23,7 @@ contract KontrolAkses {
     // ====== CID Mapping Kalurahan di IPFS ======
     string public kalurahanMappingCID;
     event KalurahanMappingCIDUpdated(string newCID);
+    event KalurahanRemoved(uint8 indexed id, address indexed akun, string nama);
 
     event WargaTerdaftar(address indexed wallet, string nik); // Event warga terdaftar
 
@@ -71,6 +72,7 @@ contract KontrolAkses {
             delete addressKalurahanById[id];
             delete idKalurahanByAddress[_akun];
         }
+        emit KalurahanRemoved(id, _akun, ""); // Nama bisa diisi dari off-chain mapping
     }
 
     function registerWarga(string memory _nik) external {
