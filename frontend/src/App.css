@@ -41,7 +41,7 @@ html, body {
 .app-header h1 {
   font-size: 1.7rem;
   font-weight: 800;
-  margin: 0 0 0.3rem 0;
+  margin: 0;
   color: #232323;
   text-align: center;
 }
@@ -157,7 +157,6 @@ html, body {
   align-items: center;
   gap: 0.7rem;
   justify-content: center;
-  margin-top: 0.5rem;
 }
 
 .wallet-address {
@@ -682,6 +681,10 @@ html, body {
   min-width: 260px;
 }
 
+.dukcapil-header-main {
+  margin-bottom: 1.2rem;
+}
+
 .dukcapil-title {
   display: flex;
   align-items: center;
@@ -1065,7 +1068,6 @@ input[type="date"]::-webkit-outer-spin-button {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
 }
 .wallet-info {
   background: #f3f4f6;
@@ -1839,7 +1841,7 @@ select.form-input {
   cursor: pointer;
 }
 
-/* Header tweaks */
+/* Header tweaks - lebih ramping */
 .app-header {
   position: fixed;
   top: 0;
@@ -1848,38 +1850,64 @@ select.form-input {
   z-index: 100;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
+  padding: 0; /* Hapus padding besar */
 }
 .header-content {
-  min-height: 48px;
-  padding: 0 1.2rem;
+  min-height: 40px; /* Lebih kecil dari sebelumnya */
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+.header-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+.header-subtitle {
+  font-size: 0.95rem;
+  margin-top: 0; /* hilangkan jarak atas */
 }
 
-/* Margin for dashboard root to avoid header overlap */
+/* Sidebar sticky di kiri, menempel header dan bawah */
+.dukcapil-sidebar.custom-sidebar {
+  position: fixed;
+  top: 56px; /* pastikan tetap tepat di bawah header */
+  left: 0;
+  bottom: 0;
+  width: 220px;
+  min-width: 180px;
+  max-width: 240px;
+  height: calc(100vh - 40px);
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  padding: 1.2rem 0.7rem 1.2rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+  z-index: 99;
+}
+
+/* Main area geser ke kanan sidebar dan turun dari header */
 .dukcapil-app-root {
-  margin-top: 56px;
+  margin-top: 0;
+  padding-top: 56px; /* header 40px + margin header-content 0.4rem x2 ≈ 16px */
+  margin-left: 220px;
   display: flex;
   flex-direction: row;
-  min-height: 80vh;
-  width: 100%;
+  min-height: calc(100vh - 40px);
+  width: calc(100vw - 220px);
 }
 .dukcapil-app-body {
   display: flex;
   flex-direction: row;
   flex: 1 1 0%;
   width: 100%;
-  min-height: 80vh;
-}
-.dukcapil-sidebar.custom-sidebar {
-  width: 240px;
-  min-height: 80vh;
-  position: static;
-  background: #fff;
-  border-right: 1px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-  padding: 2rem 1rem 1rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+  min-height: calc(100vh - 40px);
 }
 .dukcapil-main-area {
   flex: 1 1 0%;
@@ -1888,12 +1916,71 @@ select.form-input {
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
-  padding: 0;
+  padding: 1rem;
+  padding-top: 1rem;
+  background-color: white;
+  margin-top: 1rem;
+  border-radius: 12px;
+  height: 100%;
 }
+.dukcapil-main-card {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dukcapil-header-main {
+  text-align: left;
+  margin-bottom: 1.2rem;
+}
+
+@media (max-width: 900px) {
+  .dukcapil-sidebar.custom-sidebar {
+    top: 56px;
+    width: 60vw;
+    min-width: 120px;
+    max-width: 220px;
+    height: calc(100vh - 56px);
+    padding: 0.7rem 0.3rem;
+  }
+  .dukcapil-app-root {
+    padding-top: 56px;
+    margin-left: 60vw;
+    width: 40vw;
+  }
+}
+@media (max-width: 600px) {
+  .dukcapil-sidebar.custom-sidebar {
+    width: 100vw;
+    min-width: 0;
+    max-width: 100vw;
+    left: 0;
+    top: 56px;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: none;
+    flex-direction: row;
+    gap: 1rem;
+    padding: 0.5rem 0.2rem;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  .dukcapil-app-root {
+    padding-top: 56px;
+    margin-left: 0;
+    width: 100vw;
+  }
+}
+
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1.1rem; /* jarak antar button menu */
+  margin-top: 1.2rem; /* jarak dari header ke button pertama */
 }
 .sidebar-menu-item {
   width: 100%;
@@ -1901,11 +1988,14 @@ select.form-input {
   border-radius: 8px;
   font-size: 1.05rem;
   padding: 0.8rem 1.2rem;
-  background: #f3f4f6;
-  color: #232323;
+  background: #232323;
+  color: #fff;
   border: none;
   cursor: pointer;
   transition: background 0.18s, color 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
 }
 .sidebar-menu-item.active {
   background: #232323;
@@ -1915,54 +2005,9 @@ select.form-input {
   background: #e5e7eb;
   color: #232323;
 }
-/* Tab button di main content, bukan sidebar */
-.dukcapil-tabs {
-  display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  align-items: flex-end;
-  margin-bottom: 1.2rem;
-}
-.tab-button {
+.sidebar-icon {
+  margin-right: 0.7rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background: none;
-  color: #6b7280;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: all 0.2s ease;
-  border-radius: 8px 8px 0 0;
-}
-.tab-button.active, .tab-button:focus {
-  color: #fff;
-  background: #232323;
-  border-bottom: 3px solid #232323;
-}
-.tab-button:hover:not(.active) {
-  color: #232323;
-  background: #e5e7eb;
-}
-@media (max-width: 900px) {
-  .dukcapil-app-root, .dukcapil-app-body {
-    flex-direction: column;
-  }
-  .dukcapil-sidebar.custom-sidebar {
-    width: 100%;
-    min-height: unset;
-    border-right: none;
-    border-bottom: 1px solid #e5e7eb;
-    box-shadow: none;
-    padding: 1rem 0.5rem;
-    flex-direction: row;
-    gap: 1rem;
-  }
-  .dukcapil-main-area {
-    margin-left: 0;
-    padding: 0;
-  }
+  font-size: 1.15em;
 }

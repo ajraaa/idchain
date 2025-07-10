@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
+import { FaInbox, FaExchangeAlt, FaHistory, FaHome } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import KalurahanAppHeader from './KalurahanAppHeader';
 
 const sidebarMenus = [
-  { key: 'masuk', label: 'Permohonan Masuk' },
-  { key: 'pindah', label: 'Permohonan Pindah Masuk' },
-  { key: 'riwayat', label: 'Riwayat Permohonan' },
-  { key: 'profile', label: 'Profile Kalurahan' },
+  { key: 'masuk', label: 'Permohonan Masuk', icon: <FaInbox /> },
+  { key: 'pindah', label: 'Permohonan Pindah Masuk', icon: <FaExchangeAlt /> },
+  { key: 'riwayat', label: 'Riwayat Permohonan', icon: <FaHistory /> },
+  { key: 'profile', label: 'Profile Kalurahan', icon: <FaHome /> },
 ];
 
 const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, isLoading }) => {
@@ -19,6 +20,36 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
   const [riwayatPermohonan, setRiwayatPermohonan] = useState([]);
   const [kalurahanMapping, setKalurahanMapping] = useState([]);
   const [profile, setProfile] = useState({ id: '', nama: '', address: '' });
+
+  // Judul dan subjudul dinamis
+  const getHeaderTitle = () => {
+    switch (activeTab) {
+      case 'masuk':
+        return 'Permohonan Masuk';
+      case 'pindah':
+        return 'Permohonan Pindah Masuk';
+      case 'riwayat':
+        return 'Riwayat Permohonan';
+      case 'profile':
+        return 'Profile Kalurahan';
+      default:
+        return 'Dashboard Kalurahan';
+    }
+  };
+  const getHeaderSubtitle = () => {
+    switch (activeTab) {
+      case 'masuk':
+        return 'Kelola permohonan masuk yang membutuhkan verifikasi.';
+      case 'pindah':
+        return 'Kelola permohonan pindah masuk ke kalurahan Anda.';
+      case 'riwayat':
+        return 'Riwayat semua permohonan yang pernah diproses.';
+      case 'profile':
+        return 'Lihat dan kelola profil kalurahan Anda.';
+      default:
+        return 'Kelola permohonan dan data kalurahan Anda';
+    }
+  };
 
   // Fetch mapping kalurahan dari IPFS
   useEffect(() => {
@@ -120,7 +151,6 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
   // Renderers
   const renderPermohonanMasuk = () => (
     <div className="management-card">
-      <h3>Permohonan Masuk (Butuh Verifikasi)</h3>
       {permohonanMasuk.length === 0 ? <div>Tidak ada permohonan masuk.</div> : (
         <table className="data-table">
           <thead>
@@ -146,7 +176,6 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
 
   const renderPermohonanPindah = () => (
     <div className="management-card">
-      <h3>Permohonan Pindah Masuk</h3>
       {permohonanPindah.length === 0 ? <div>Tidak ada permohonan pindah masuk.</div> : (
         <table className="data-table">
           <thead>
@@ -172,7 +201,6 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
 
   const renderRiwayat = () => (
     <div className="management-card">
-      <h3>Riwayat Permohonan</h3>
       {riwayatPermohonan.length === 0 ? <div>Tidak ada riwayat permohonan.</div> : (
         <table className="data-table">
           <thead>
@@ -197,7 +225,6 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
 
   const renderProfile = () => (
     <div className="management-card">
-      <h3>Profile Kalurahan</h3>
       <div><b>ID:</b> {profile.id}</div>
       <div><b>Nama:</b> {profile.nama}</div>
       <div><b>Wallet:</b> {profile.address}</div>
@@ -217,7 +244,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
         />
       </div>
       {/* Root layout di bawah header */}
-      <div className="dukcapil-app-root" style={{ marginTop: 80 }}>
+      <div className="dukcapil-app-root">
         <div className="dukcapil-app-body">
           <Sidebar
             menus={sidebarMenus}
@@ -227,8 +254,8 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
           <main className="dukcapil-main-area">
             <div className="dukcapil-main-card">
               <div className="dukcapil-header-main">
-                <h2 className="dukcapil-title-main">Dashboard Kalurahan</h2>
-                <p className="dukcapil-subtitle-main">Kelola permohonan dan data kalurahan Anda</p>
+                <h2 className="dukcapil-title-main">{getHeaderTitle()}</h2>
+                <p className="dukcapil-subtitle-main">{getHeaderSubtitle()}</p>
               </div>
               <div className="tab-content">
                 {activeTab === 'masuk' && renderPermohonanMasuk()}

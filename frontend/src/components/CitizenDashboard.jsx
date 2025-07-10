@@ -1205,7 +1205,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       return (
         <div className="daftar-section">
           <div className="management-card">
-            <h3>Daftar Permohonan</h3>
             <div className="empty-state">
               <p>Anda belum mengajukan permohonan apapun.</p>
             </div>
@@ -1217,7 +1216,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     return (
       <div className="daftar-section">
         <div className="management-card">
-          <h3>Daftar Permohonan</h3>
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -1269,7 +1267,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       return (
         <div className="dokumen-section">
           <div className="management-card">
-            <h3>Dokumen Resmi</h3>
             <div className="empty-state">
               <p>Anda belum memiliki dokumen resmi apapun.</p>
             </div>
@@ -1281,7 +1278,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     return (
       <div className="dokumen-section">
         <div className="management-card">
-          <h3>Dokumen Resmi</h3>
           <div className="table-container">
             <table className="data-table">
               <thead>

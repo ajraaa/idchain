@@ -232,8 +232,10 @@ function App() {
       {/* Hanya render header utama jika BUKAN Dukcapil, Kalurahan, atau Warga */}
       {(!isDukcapil && !isKalurahan && !nikTeregistrasi) ? (
         <header className="app-header">
-          <h1>IDChain - Sistem Identitas Digital</h1>
-          <p>Sistem pencatatan sipil terdesentralisasi berbasis blockchain</p>
+          <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <h1>IDChain - Sistem Identitas Digital</h1>
+            <p>Sistem pencatatan sipil terdesentralisasi berbasis blockchain</p>
+          </div>
         </header>
       ) : appHeader}
 

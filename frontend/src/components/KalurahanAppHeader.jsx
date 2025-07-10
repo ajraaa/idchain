@@ -23,7 +23,9 @@ const KalurahanAppHeader = ({ walletAddress, kalurahanName, kalurahanId, onDisco
             onClick={onDisconnect}
             disabled={isLoading}
             title="Putuskan Wallet"
+            style={{ fontSize: '0.95rem', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
+            <FaPowerOff style={{ fontSize: '1.1em' }} />
             <span>Putuskan</span>
           </button>
         </div>
