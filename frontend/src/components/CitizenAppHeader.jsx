@@ -7,24 +7,23 @@ const CitizenAppHeader = ({ walletAddress, citizenName, onDisconnect, isLoading 
   };
 
   return (
-    <header className="citizen-app-header">
-      <div className="citizen-header-content">
-        <div className="citizen-header-left">
-          <h1 className="citizen-app-title">IDChain</h1>
-          <span className="citizen-app-subtitle">{citizenName || 'Loading...'}</span>
+    <header className="app-header">
+      <div className="header-content">
+        <div className="header-left">
+          <h1 className="header-title">IDChain</h1>
+          <span className="header-subtitle">{citizenName || 'Loading...'}</span>
         </div>
-        <div className="citizen-header-right">
-          <div className="citizen-wallet-info">
-            <span className="citizen-wallet-label">Wallet:</span>
-            <span className="citizen-wallet-address">{formatAddress(walletAddress)}</span>
+        <div className="header-right">
+          <div className="wallet-info">
+            <span className="wallet-label">Wallet:</span>
+            <span className="wallet-address">{formatAddress(walletAddress)}</span>
           </div>
           <button 
-            className="citizen-disconnect-button" 
+            className="disconnect-button" 
             onClick={onDisconnect}
             disabled={isLoading}
             title="Putuskan Wallet"
           >
-            <FaPowerOff />
             <span>Putuskan</span>
           </button>
         </div>

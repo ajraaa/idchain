@@ -6,6 +6,7 @@ import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import { fetchFromIPFS, loadNIKMapping } from '../utils/ipfs.js';
 import { decryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
+import { ethers } from 'ethers';
 
 const sidebarMenus = [
   { key: 'profile', label: 'Profile', icon: <FaUser /> },
@@ -168,9 +169,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       }
       setIsLoading(true);
       try {
-        // idKalurahanAsal dan idKalurahanTujuan bisa diambil dari data user/KK, untuk demo pakai 1 dan 2
-        const idKalurahanAsal = 1;
-        const idKalurahanTujuan = 2;
+        // Ambil id kalurahan dari mapping berdasarkan nama
+        const idKalurahanAsal = getIdKalurahanByNama(citizenData?.kkData?.alamatLengkap?.kelurahan || '');
+        const idKalurahanTujuan = getIdKalurahanByNama(kalurahanBaru);
+        if (!idKalurahanAsal || !idKalurahanTujuan) {
+          onError('ID Kalurahan asal/tujuan tidak ditemukan.');
+          setIsLoading(false);
+          return;
+        }
         // Dummy CID IPFS
         const cidIPFS = 'dummy-cid';
         
@@ -212,6 +218,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     }
 
     // Permohonan non-pindah (default lama)
+    // Ambil id kalurahan asal dari mapping
+    const idKalurahanAsal = getIdKalurahanByNama(citizenData?.kkData?.alamatLengkap?.kelurahan || '');
     if (!idKalurahanAsal || !cidIPFS) {
       onError('Semua field wajib diisi');
       return;
@@ -221,8 +229,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       const result = await contractService.submitPermohonan(
         parseInt(jenisPermohonan),
         cidIPFS,
-        parseInt(idKalurahanAsal),
-        jenisPermohonan === '4' ? parseInt(idKalurahanTujuan) : 0
+        idKalurahanAsal,
+        jenisPermohonan === '4' ? getIdKalurahanByNama(kalurahanBaru) : 0
       );
       onSuccess(`Permohonan berhasil diajukan! Transaction: ${result.transactionHash}`);
       setJenisPermohonan('');
@@ -330,6 +338,39 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     fetchParents();
     return () => { cancelled = true; };
   }, [anggota?.nikAyah, anggota?.nikIbu, kkData]);
+
+  // Tambahkan state untuk mapping kalurahan
+  const [kalurahanMapping, setKalurahanMapping] = useState([]);
+  const [isLoadingKalurahan, setIsLoadingKalurahan] = useState(false);
+
+  // Fetch mapping kalurahan dari IPFS via CID di smart contract
+  useEffect(() => {
+    async function fetchKalurahanMapping() {
+      if (!contractService || !contractService.contract) return;
+      setIsLoadingKalurahan(true);
+      try {
+        // Ambil CID dari smart contract
+        const cid = await contractService.contract.getKalurahanMappingCID();
+        if (!cid) return;
+        // Fetch file dari IPFS
+        const url = `https://ipfs.io/ipfs/${cid}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        setKalurahanMapping(data);
+      } catch (e) {
+        setKalurahanMapping([]);
+      } finally {
+        setIsLoadingKalurahan(false);
+      }
+    }
+    fetchKalurahanMapping();
+  }, [contractService]);
+
+  // Helper: dapatkan id dari nama kalurahan
+  const getIdKalurahanByNama = (nama) => {
+    const found = kalurahanMapping.find(k => k.nama === nama);
+    return found ? found.id : '';
+  };
 
   const renderProfile = () => {
     if (!citizenData) {
@@ -836,11 +877,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         required
                       >
                         <option value="">Pilih Kalurahan</option>
-                        <option value="Ambarketawang">Ambarketawang</option>
-                        <option value="Balecatur">Balecatur</option>
-                        <option value="Banyuraden">Banyuraden</option>
-                        <option value="Nogotirto">Nogotirto</option>
-                        <option value="Trihanggo">Trihanggo</option>
+                        {kalurahanMapping.map(k => (
+                          <option key={k.id} value={k.nama}>{k.nama}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-group">
@@ -992,11 +1031,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         required
                       >
                         <option value="">Pilih Kalurahan</option>
-                        <option value="Ambarketawang">Ambarketawang</option>
-                        <option value="Balecatur">Balecatur</option>
-                        <option value="Banyuraden">Banyuraden</option>
-                        <option value="Nogotirto">Nogotirto</option>
-                        <option value="Trihanggo">Trihanggo</option>
+                        {kalurahanMapping.map(k => (
+                          <option key={k.id} value={k.nama}>{k.nama}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-group">
@@ -1347,7 +1384,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           menus={sidebarMenus}
           activeMenu={activeTab}
           onMenuClick={setActiveTab}
-          walletAddress={walletAddress}
         />
         <main className="dukcapil-main-area">
           <div className="dukcapil-main-card">

@@ -9,7 +9,7 @@ import Notification from './components/Notification'
 import './App.css'
 import { FaWallet, FaIdCard } from 'react-icons/fa';
 import { enhanceNotificationMessage } from './utils/notificationHelper.js';
-
+import KalurahanDashboard from './components/KalurahanDashboard';
 
 
 function Gateway({ onWalletConnected }) {
@@ -31,6 +31,7 @@ function App() {
   const [isCheckingNIK, setIsCheckingNIK] = useState(false)
   const [isDukcapil, setIsDukcapil] = useState(false)
   const [isCheckingDukcapil, setIsCheckingDukcapil] = useState(false)
+  const [isKalurahan, setIsKalurahan] = useState(false);
   const [citizenName, setCitizenName] = useState('')
 
   // Pindahkan checkWalletStatus ke luar useEffect agar bisa dipanggil manual
@@ -50,6 +51,10 @@ function App() {
         setIsDukcapil(dukcapilStatus)
         // If not dukcapil, check NIK registration
         if (!dukcapilStatus) {
+          // Cek status kalurahan
+          const idKal = await contractService.contract.idKalurahanByAddress(walletAddress);
+          setIsKalurahan(idKal > 0);
+          // Cek NIK
           const nik = await contractService.contract.nikByWallet(walletAddress)
           console.log('🆔 [App] NIK found:', nik);
           if (nik && nik !== '') {
@@ -58,12 +63,14 @@ function App() {
             setNikTeregistrasi(false)
           }
         } else {
+          setIsKalurahan(false);
           setNikTeregistrasi(null)
         }
       } catch (err) {
         console.log('⚠️ [App] Error checking wallet status:', err);
         setNikTeregistrasi(false)
         setIsDukcapil(false)
+        setIsKalurahan(false)
       } finally {
         setIsCheckingNIK(false)
         setIsCheckingDukcapil(false)
@@ -71,6 +78,7 @@ function App() {
     } else {
       setNikTeregistrasi(null)
       setIsDukcapil(false)
+      setIsKalurahan(false)
       setIsCheckingNIK(false)
       setIsCheckingDukcapil(false)
     }
@@ -95,6 +103,7 @@ function App() {
     setIsWalletConnected(false)
     setNikTeregistrasi(null)
     setIsDukcapil(false)
+    setIsKalurahan(false)
     setIsCheckingNIK(false)
     setIsCheckingDukcapil(false)
     showNotification('Wallet terputus', 'info', true, 'wallet')
@@ -158,6 +167,17 @@ function App() {
         isLoading={isCheckingDukcapil || isCheckingNIK}
       />
     )
+  } else if (isKalurahan) {
+    mainContent = (
+      <KalurahanDashboard
+        walletAddress={walletAddress}
+        contractService={contractService}
+        onDisconnect={handleWalletDisconnected}
+        onSuccess={handleDukcapilSuccess}
+        onError={handleDukcapilError}
+        isLoading={isCheckingDukcapil || isCheckingNIK}
+      />
+    )
   } else if (!isWalletConnected) {
     mainContent = <Gateway onWalletConnected={handleWalletConnected} />
   } else if (isCheckingDukcapil || nikTeregistrasi === null) {
@@ -209,12 +229,13 @@ function App() {
 
   return (
     <div className="app">
-      {appHeader ? appHeader : (
+      {/* Hanya render header utama jika BUKAN Dukcapil, Kalurahan, atau Warga */}
+      {(!isDukcapil && !isKalurahan && !nikTeregistrasi) ? (
         <header className="app-header">
           <h1>IDChain - Sistem Identitas Digital</h1>
           <p>Sistem pencatatan sipil terdesentralisasi berbasis blockchain</p>
         </header>
-      )}
+      ) : appHeader}
 
       <main className="app-main">
           {mainContent}

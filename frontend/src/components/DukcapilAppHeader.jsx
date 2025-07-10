@@ -7,21 +7,26 @@ const DukcapilAppHeader = ({ walletAddress, onDisconnect, isLoading }) => {
   };
 
   return (
-    <header className="dukcapil-app-header">
-      <div className="header-left">
-        <FaCrown className="header-crown" />
-        <span className="header-title">Dashboard Dukcapil</span>
-      </div>
-      <div className="header-right">
-        <span className="dukcapil-role"><FaUserCircle className="owner-profile-icon" /> Dukcapil</span>
-        <button 
-          className="disconnect-button dukcapil-disconnect-btn" 
-          onClick={onDisconnect}
-          disabled={isLoading}
-          title="Putuskan Wallet"
-        >
-          <FaPowerOff style={{marginRight: 6}} /> Disconnect
-        </button>
+    <header className="app-header">
+      <div className="header-content">
+        <div className="header-left">
+          <h1 className="header-title">IDChain</h1>
+          <span className="header-subtitle">Dukcapil</span>
+        </div>
+        <div className="header-right">
+          <div className="wallet-info">
+            <span className="wallet-label">Wallet:</span>
+            <span className="wallet-address">{formatAddress(walletAddress)}</span>
+          </div>
+          <button 
+            className="disconnect-button" 
+            onClick={onDisconnect}
+            disabled={isLoading}
+            title="Putuskan Wallet"
+          >
+            <span>Putuskan</span>
+          </button>
+        </div>
       </div>
     </header>
   );

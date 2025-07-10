@@ -1,9 +1,4 @@
-const Sidebar = ({ menus, activeMenu, onMenuClick, walletAddress }) => {
-  const formatAddress = (address) => {
-    if (!address) return '';
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
+const Sidebar = ({ menus, activeMenu, onMenuClick }) => {
   return (
     <aside className="dukcapil-sidebar custom-sidebar">
       <nav className="sidebar-menu">
@@ -18,10 +13,6 @@ const Sidebar = ({ menus, activeMenu, onMenuClick, walletAddress }) => {
           </button>
         ))}
       </nav>
-      <div className="sidebar-wallet-info sidebar-wallet-card">
-        <span className="sidebar-wallet-label">Wallet:</span>
-        <span className="sidebar-wallet-address">{formatAddress(walletAddress)}</span>
-      </div>
     </aside>
   );
 };
