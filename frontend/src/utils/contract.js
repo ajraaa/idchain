@@ -422,7 +422,8 @@ export class ContractService {
                         idKalurahanTujuan: idKalurahanTujuan,
                         cidIPFS: permohonan.cidIPFS,
                         alasanPenolakan: permohonan.alasanPenolakan,
-                        jenisPindah: jenisPindah
+                        jenisPindah: jenisPindah,
+                        pemohon: permohonan.pemohon
                     });
                 } catch (error) {
                     console.log(`⚠️ [ContractService] Error getting permohonan ${id}:`, error);
@@ -509,7 +510,8 @@ export class ContractService {
                 idKalurahanTujuan: idKalurahanTujuan,
                 cidIPFS: permohonan.cidIPFS,
                 alasanPenolakan: permohonan.alasanPenolakan,
-                jenisPindah: jenisPindah
+                jenisPindah: jenisPindah,
+                pemohon: permohonan.pemohon
             };
         } catch (error) {
             console.error('Failed to get permohonan detail:', error);

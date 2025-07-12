@@ -197,22 +197,24 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     if (!selectedPermohonan) return;
     
     setIsVerifying(true);
+    const startTime = Date.now();
+    
     try {
       console.log(`🔄 [Kalurahan-Verifikasi] Memulai verifikasi permohonan ${selectedPermohonan.id}...`);
       console.log(`📋 [Kalurahan-Verifikasi] Status: ${isSetuju ? 'Setuju' : 'Tolak'}`);
       console.log(`📋 [Kalurahan-Verifikasi] Alasan: ${alasanPenolakan}`);
-      
-      const startTime = Date.now();
+      console.log(`📋 [Kalurahan-Verifikasi] Active Tab: ${activeTab}`);
+      console.log(`📋 [Kalurahan-Verifikasi] Contract Service:`, contractService);
       
       if (isSetuju) {
         // Verifikasi setuju
-        const result = await contractService.contract.verifikasiPermohonan(selectedPermohonan.id, true, '');
+        const result = await contractService.contract.verifikasiKalurahan(selectedPermohonan.id, true, '');
         await result.wait();
         console.log(`✅ [Kalurahan-Verifikasi] Verifikasi setuju berhasil dalam ${Date.now() - startTime}ms`);
         onSuccess(`Permohonan ${selectedPermohonan.id} berhasil diverifikasi!`);
       } else {
         // Verifikasi tolak
-        const result = await contractService.contract.verifikasiPermohonan(selectedPermohonan.id, false, alasanPenolakan);
+        const result = await contractService.contract.verifikasiKalurahan(selectedPermohonan.id, false, alasanPenolakan);
         await result.wait();
         console.log(`✅ [Kalurahan-Verifikasi] Verifikasi tolak berhasil dalam ${Date.now() - startTime}ms`);
         onSuccess(`Permohonan ${selectedPermohonan.id} ditolak.`);
@@ -236,6 +238,17 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
         }
         setPermohonanPindah(list);
       }
+      
+      // Reload riwayat juga
+      const asalIds = await contractService.contract.getPermohonanByKalurahanAsal();
+      const tujuanIds = await contractService.contract.getPermohonanByKalurahanTujuan();
+      const allIds = Array.from(new Set([...asalIds, ...tujuanIds]));
+      const riwayatList = [];
+      for (let id of allIds) {
+        const detail = await contractService.getPermohonanDetail(Number(id));
+        riwayatList.push(detail);
+      }
+      setRiwayatPermohonan(riwayatList);
       
       closeDetailModal();
       
@@ -285,6 +298,12 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     return statusMap[status] || status;
   };
 
+  // Helper function untuk format address
+  const formatAddress = (address) => {
+    if (!address) return '-';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   // Renderers
   const renderPermohonanMasuk = () => (
     <div className="management-card">
@@ -301,7 +320,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                 <td>{p.id}</td>
                 <td>{getJenisPermohonanLabel(p.jenis)}</td>
                 <td>{getStatusLabel(p.status)}</td>
-                <td>{p.pemohon}</td>
+                <td>{formatAddress(p.pemohon)}</td>
                 <td><button className="detail-button" onClick={() => handlePermohonanClick(p)}>Detail</button></td>
               </tr>
             ))}
@@ -326,7 +345,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                 <td>{p.id}</td>
                 <td>{getJenisPermohonanLabel(p.jenis)}</td>
                 <td>{getStatusLabel(p.status)}</td>
-                <td>{p.pemohon}</td>
+                <td>{formatAddress(p.pemohon)}</td>
                 <td><button className="detail-button" onClick={() => handlePermohonanClick(p)}>Detail</button></td>
               </tr>
             ))}
@@ -351,7 +370,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                 <td>{p.id}</td>
                 <td>{p.jenis}</td>
                 <td>{p.status}</td>
-                <td>{p.pemohon}</td>
+                <td>{formatAddress(p.pemohon)}</td>
               </tr>
             ))}
           </tbody>
@@ -418,6 +437,10 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                 <div className="info-row">
                   <span className="info-label">Jenis Permohonan:</span>
                   <span className="info-value">{getJenisPermohonanLabel(selectedPermohonan.jenis)}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Pemohon:</span>
+                  <span className="info-value">{formatAddress(selectedPermohonan.pemohon)}</span>
                 </div>
                 <div className="info-row">
                   <span className="info-label">Tanggal Permohonan:</span>
