@@ -297,37 +297,6 @@
         {
           "indexed": true,
           "internalType": "uint256",
-          "name": "idPermohonan",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "enum PencatatanTypes.JenisPindah",
-          "name": "jenisPindah",
-          "type": "uint8"
-        },
-        {
-          "indexed": false,
-          "internalType": "string[]",
-          "name": "nikTerlibat",
-          "type": "string[]"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "waktu",
-          "type": "uint256"
-        }
-      ],
-      "name": "ProsesKKSelesai",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
           "name": "id",
           "type": "uint256"
         },
@@ -559,67 +528,6 @@
           "type": "uint256"
         }
       ],
-      "name": "getDataPindah",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "enum PencatatanTypes.JenisPindah",
-              "name": "jenisPindah",
-              "type": "uint8"
-            },
-            {
-              "internalType": "string[]",
-              "name": "nikAnggotaPindah",
-              "type": "string[]"
-            },
-            {
-              "internalType": "string",
-              "name": "nikKepalaKeluargaBaru",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "nikKepalaKeluargaTujuan",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "alamatBaru",
-              "type": "string"
-            },
-            {
-              "internalType": "bool",
-              "name": "konfirmasiKKTujuan",
-              "type": "bool"
-            },
-            {
-              "internalType": "address",
-              "name": "konfirmatorKKTujuan",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "waktuKonfirmasiKKTujuan",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct PencatatanTypes.DataPindah",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_id",
-          "type": "uint256"
-        }
-      ],
       "name": "getJenisPermohonan",
       "outputs": [
         {
@@ -686,49 +594,9 @@
               "type": "uint256"
             },
             {
-              "internalType": "uint256",
-              "name": "waktuVerifikasiKalurahan",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "waktuVerifikasiKalurahanTujuan",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "waktuVerifikasiDukcapil",
-              "type": "uint256"
-            },
-            {
               "internalType": "address",
               "name": "pemohon",
               "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "verifikatorKalurahan",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "verifikatorKalurahanTujuan",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "verifikatorDukcapil",
-              "type": "address"
-            },
-            {
-              "internalType": "string",
-              "name": "cidIPFS",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "alasanPenolakan",
-              "type": "string"
             },
             {
               "internalType": "enum PencatatanTypes.JenisPermohonan",
@@ -751,51 +619,64 @@
               "type": "uint8"
             },
             {
-              "components": [
-                {
-                  "internalType": "enum PencatatanTypes.JenisPindah",
-                  "name": "jenisPindah",
-                  "type": "uint8"
-                },
-                {
-                  "internalType": "string[]",
-                  "name": "nikAnggotaPindah",
-                  "type": "string[]"
-                },
-                {
-                  "internalType": "string",
-                  "name": "nikKepalaKeluargaBaru",
-                  "type": "string"
-                },
-                {
-                  "internalType": "string",
-                  "name": "nikKepalaKeluargaTujuan",
-                  "type": "string"
-                },
-                {
-                  "internalType": "string",
-                  "name": "alamatBaru",
-                  "type": "string"
-                },
-                {
-                  "internalType": "bool",
-                  "name": "konfirmasiKKTujuan",
-                  "type": "bool"
-                },
-                {
-                  "internalType": "address",
-                  "name": "konfirmatorKKTujuan",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "waktuKonfirmasiKKTujuan",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct PencatatanTypes.DataPindah",
-              "name": "dataPindah",
-              "type": "tuple"
+              "internalType": "string",
+              "name": "cidIPFS",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "alasanPenolakan",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "verifikatorKalurahan",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "verifikatorKalurahanTujuan",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "verifikatorDukcapil",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuVerifikasiKalurahan",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuVerifikasiKalurahanTujuan",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuVerifikasiDukcapil",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "konfirmatorKKTujuan",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "waktuKonfirmasiKKTujuan",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "konfirmasiKKTujuan",
+              "type": "bool"
+            },
+            {
+              "internalType": "enum PencatatanTypes.JenisPindah",
+              "name": "jenisPindah",
+              "type": "uint8"
             }
           ],
           "internalType": "struct PencatatanTypes.Permohonan",
@@ -1112,57 +993,14 @@
           "internalType": "uint8",
           "name": "_idKalurahanTujuan",
           "type": "uint8"
-        }
-      ],
-      "name": "submitPermohonan",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "string",
-          "name": "_cidIPFS",
-          "type": "string"
-        },
-        {
-          "internalType": "uint8",
-          "name": "_idKalurahanAsal",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "_idKalurahanTujuan",
-          "type": "uint8"
         },
         {
           "internalType": "enum PencatatanTypes.JenisPindah",
           "name": "_jenisPindah",
           "type": "uint8"
-        },
-        {
-          "internalType": "string[]",
-          "name": "_nikAnggotaPindah",
-          "type": "string[]"
-        },
-        {
-          "internalType": "string",
-          "name": "_nikKepalaKeluargaBaru",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "_nikKepalaKeluargaTujuan",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "_alamatBaru",
-          "type": "string"
         }
       ],
-      "name": "submitPermohonanPindah",
+      "name": "submitPermohonan",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

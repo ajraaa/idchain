@@ -1,7 +1,7 @@
 // Contract configuration
 export const CONTRACT_CONFIG = {
     // Replace with your actual deployed contract address
-    ADDRESS: "0x5FbDB2315678afecb367f032d93F642f64180aa3", // TODO: Add your deployed contract address here
+    ADDRESS: "0x5FbDB2315678afecb367f032d93F642f64180aa3", // Updated contract address
 
     // Network configuration
     NETWORKS: {
@@ -29,10 +29,10 @@ export const CONTRACT_CONFIG = {
     DEFAULT_NETWORK: "localhost"
 };
 
-// Import the full ABI from the JSON file
+// Import the full ABI from the frontend folder (updated version)
 import PermohonanManagerABI from '../abis/PermohonanManager.json';
 
-// Contract ABI - using the full ABI from the JSON file
+// Contract ABI - using the full ABI from the frontend folder
 export const CONTRACT_ABI = PermohonanManagerABI.abi;
 
 // IPFS configuration

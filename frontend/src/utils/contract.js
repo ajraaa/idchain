@@ -261,12 +261,20 @@ export class ContractService {
         }
     }
 
-    async submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan = 0) {
+    async submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan = 0, jenisPindah = 0) {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
         try {
-            const tx = await this.contract.submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan);
+            console.log('🔍 [ContractService] Submitting permohonan with params:', {
+                jenis,
+                cidIPFS,
+                idKalurahanAsal,
+                idKalurahanTujuan,
+                jenisPindah
+            });
+
+            const tx = await this.contract.submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan, jenisPindah);
             const receipt = await tx.wait();
             return {
                 success: true,
@@ -289,6 +297,61 @@ export class ContractService {
             throw new Error('Contract not initialized');
         }
         try {
+            // Check if wallet is registered
+            const walletAddress = await this.signer.getAddress();
+            console.log('🔍 [ContractService] Checking wallet registration for:', walletAddress);
+
+            const nik = await this.contract.nikByWallet(walletAddress);
+            console.log('🔍 [ContractService] NIK for wallet:', nik);
+
+            if (!nik || nik === '') {
+                throw new Error('Wallet belum terdaftar. Silakan register terlebih dahulu.');
+            }
+
+            // Check kalurahan mapping
+            console.log('🔍 [ContractService] Checking kalurahan mapping...');
+            const kalurahanAsalAddress = await this.contract.addressKalurahanById(idKalurahanAsal);
+            const kalurahanTujuanAddress = await this.contract.addressKalurahanById(idKalurahanTujuan);
+
+            console.log('🔍 [ContractService] Kalurahan mapping:', {
+                idKalurahanAsal,
+                kalurahanAsalAddress,
+                idKalurahanTujuan,
+                kalurahanTujuanAddress
+            });
+
+            if (kalurahanAsalAddress === '0x0000000000000000000000000000000000000000') {
+                throw new Error(`Kalurahan asal dengan ID ${idKalurahanAsal} tidak terdaftar`);
+            }
+
+            if (kalurahanTujuanAddress === '0x0000000000000000000000000000000000000000') {
+                throw new Error(`Kalurahan tujuan dengan ID ${idKalurahanTujuan} tidak terdaftar`);
+            }
+
+            console.log('🔍 [ContractService] Submitting pindah with params:', {
+                jenis: 4,
+                cidIPFS,
+                idKalurahanAsal,
+                idKalurahanTujuan,
+                jenisPindah
+            });
+
+            console.log('🔍 [ContractService] Parameter types:', {
+                jenis: typeof 4,
+                cidIPFS: typeof cidIPFS,
+                idKalurahanAsal: typeof idKalurahanAsal,
+                idKalurahanTujuan: typeof idKalurahanTujuan,
+                jenisPindah: typeof jenisPindah
+            });
+
+            console.log('🔍 [ContractService] Parameter values:', {
+                jenis: 4,
+                cidIPFS: cidIPFS,
+                idKalurahanAsal: idKalurahanAsal,
+                idKalurahanTujuan: idKalurahanTujuan,
+                jenisPindah: jenisPindah
+            });
+
             const tx = await this.contract.submitPermohonan(
                 4, // JenisPermohonan.Pindah
                 cidIPFS,
@@ -337,21 +400,29 @@ export class ContractService {
 
             for (const id of permohonanIds) {
                 try {
-                    console.log('🔍 [ContractService] Loading details for permohonan ID:', id.toString());
-                    const permohonan = await this.contract.getPermohonan(id);
-                    const status = await this.contract.getStatusPermohonan(id);
-                    const jenis = await this.contract.getJenisPermohonan(id);
+                    // Konversi id ke Number jika BigInt
+                    const idNum = typeof id === 'bigint' ? Number(id) : id;
+                    console.log('🔍 [ContractService] Loading details for permohonan ID:', idNum);
+                    const permohonan = await this.contract.getPermohonan(idNum);
+                    const status = await this.contract.getStatusPermohonan(idNum);
+                    const jenis = await this.contract.getJenisPermohonan(idNum);
+
+                    // Konversi semua BigInt ke Number sebelum operasi
+                    const waktuPengajuan = permohonan.waktuPengajuan ? Number(permohonan.waktuPengajuan) : 0;
+                    const idKalurahanAsal = permohonan.idKalurahanAsal ? Number(permohonan.idKalurahanAsal) : 0;
+                    const idKalurahanTujuan = permohonan.idKalurahanTujuan ? Number(permohonan.idKalurahanTujuan) : 0;
+                    const jenisPindah = permohonan.jenisPindah !== undefined ? Number(permohonan.jenisPindah) : undefined;
 
                     permohonans.push({
-                        id: id.toString(),
+                        id: idNum.toString(),
                         jenis: jenis,
                         status: status,
-                        waktuPengajuan: new Date(permohonan.waktuPengajuan * 1000),
-                        idKalurahanAsal: permohonan.idKalurahanAsal,
-                        idKalurahanTujuan: permohonan.idKalurahanTujuan,
+                        waktuPengajuan: new Date(waktuPengajuan * 1000),
+                        idKalurahanAsal: idKalurahanAsal,
+                        idKalurahanTujuan: idKalurahanTujuan,
                         cidIPFS: permohonan.cidIPFS,
                         alasanPenolakan: permohonan.alasanPenolakan,
-                        jenisPindah: permohonan.jenisPindah
+                        jenisPindah: jenisPindah
                     });
                 } catch (error) {
                     console.log(`⚠️ [ContractService] Error getting permohonan ${id}:`, error);
@@ -417,20 +488,28 @@ export class ContractService {
             throw new Error('Contract not initialized');
         }
         try {
-            const permohonan = await this.contract.getPermohonan(id);
-            const status = await this.contract.getStatusPermohonan(id);
-            const jenis = await this.contract.getJenisPermohonan(id);
+            // Konversi id ke Number jika BigInt
+            const idNum = typeof id === 'bigint' ? Number(id) : Number(id);
+            const permohonan = await this.contract.getPermohonan(idNum);
+            const status = await this.contract.getStatusPermohonan(idNum);
+            const jenis = await this.contract.getJenisPermohonan(idNum);
+
+            // Konversi semua BigInt ke Number sebelum operasi
+            const waktuPengajuan = permohonan.waktuPengajuan ? Number(permohonan.waktuPengajuan) : 0;
+            const idKalurahanAsal = permohonan.idKalurahanAsal ? Number(permohonan.idKalurahanAsal) : 0;
+            const idKalurahanTujuan = permohonan.idKalurahanTujuan ? Number(permohonan.idKalurahanTujuan) : 0;
+            const jenisPindah = permohonan.jenisPindah !== undefined ? Number(permohonan.jenisPindah) : undefined;
 
             return {
-                id: id.toString(),
+                id: idNum.toString(),
                 jenis: jenis,
                 status: status,
-                waktuPengajuan: new Date(permohonan.waktuPengajuan * 1000),
-                idKalurahanAsal: permohonan.idKalurahanAsal,
-                idKalurahanTujuan: permohonan.idKalurahanTujuan,
+                waktuPengajuan: new Date(waktuPengajuan * 1000),
+                idKalurahanAsal: idKalurahanAsal,
+                idKalurahanTujuan: idKalurahanTujuan,
                 cidIPFS: permohonan.cidIPFS,
                 alasanPenolakan: permohonan.alasanPenolakan,
-                jenisPindah: permohonan.jenisPindah
+                jenisPindah: jenisPindah
             };
         } catch (error) {
             console.error('Failed to get permohonan detail:', error);

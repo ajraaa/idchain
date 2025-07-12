@@ -124,6 +124,14 @@ function App() {
     showNotification(error, 'error', false, 'verification')
   }
 
+  const handlePermohonanSuccess = (message) => {
+    showNotification(message, 'success', true, 'permohonan')
+  }
+
+  const handlePermohonanError = (error) => {
+    showNotification(error, 'error', false, 'permohonan')
+  }
+
   const handleDukcapilSuccess = (message) => {
     showNotification(message, 'success', true, 'dukcapil')
   }
@@ -198,6 +206,8 @@ function App() {
         onDisconnect={handleWalletDisconnected}
         onSuccess={handleVerificationSuccess}
         onError={handleVerificationError}
+        onPermohonanSuccess={handlePermohonanSuccess}
+        onPermohonanError={handlePermohonanError}
         isLoading={isCheckingDukcapil || isCheckingNIK}
         onCitizenNameLoaded={setCitizenName}
       />

@@ -4,9 +4,16 @@ import Sidebar from './Sidebar';
 import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import { fetchFromIPFS, loadNIKMapping } from '../utils/ipfs.js';
+import { uploadToPinata } from '../utils/pinata.js';
 import { decryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 import { ethers } from 'ethers';
+import { 
+  processAndUploadPermohonanData, 
+  convertFileToBase64,
+  validatePermohonanData,
+  loadPermohonanDataForDisplay
+} from '../utils/permohonanDataUtils.js';
 
 const sidebarMenus = [
   { key: 'profile', label: 'Profile', icon: <FaUser /> },
@@ -15,7 +22,7 @@ const sidebarMenus = [
   { key: 'dokumen', label: 'Dokumen Resmi', icon: <FaDownload /> },
 ];
 
-const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, isLoading, onCitizenNameLoaded }) => {
+const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, onPermohonanSuccess, onPermohonanError, isLoading, onCitizenNameLoaded }) => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoadingLocal, setIsLoading] = useState(false);
   const [citizenData, setCitizenData] = useState(null);
@@ -23,6 +30,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const [dokumenResmi, setDokumenResmi] = useState([]);
   const [selectedPermohonan, setSelectedPermohonan] = useState(null);
   const [showPermohonanDetail, setShowPermohonanDetail] = useState(false);
+  const [permohonanDetailData, setPermohonanDetailData] = useState(null);
+  const [loadingDetailData, setLoadingDetailData] = useState(false);
   
   // Form states for Ajukan Permohonan
   const [jenisPermohonan, setJenisPermohonan] = useState('');
@@ -30,6 +39,49 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const [idKalurahanTujuan, setIdKalurahanTujuan] = useState('');
   const [cidIPFS, setCidIPFS] = useState('');
   
+  // Form data states for all permohonan types
+  const [formDataKelahiran, setFormDataKelahiran] = useState({
+    namaAnak: '',
+    tempatLahirAnak: '',
+    tanggalLahirAnak: '',
+    jamLahirAnak: '',
+    nikAyah: '',
+    nikIbu: '',
+    nikSaksi1: '',
+    nikSaksi2: '',
+    suratKeteranganLahir: null
+  });
+
+  const [formDataKematian, setFormDataKematian] = useState({
+    nikAlmarhum: '',
+    nikPelapor: '',
+    nikSaksi1: '',
+    nikSaksi2: '',
+    hubunganPelapor: '',
+    tempatKematian: '',
+    tanggalKematian: '',
+    penyebabKematian: '',
+    suratKeteranganKematian: null
+  });
+
+  const [formDataPerkawinan, setFormDataPerkawinan] = useState({
+    nikPria: '',
+    nikWanita: '',
+    nikSaksi1: '',
+    nikSaksi2: '',
+    tempatPernikahan: '',
+    tanggalPernikahan: '',
+    suratKeteranganPernikahan: null,
+    fotoPria: null,
+    fotoWanita: null
+  });
+
+  const [formDataPerceraian, setFormDataPerceraian] = useState({
+    nikSuami: '',
+    nikIstri: '',
+    suratPutusanPengadilan: null
+  });
+
   // Additional form states for Pindah
   const [alasanPindah, setAlasanPindah] = useState('');
   const [alasanPindahLainnya, setAlasanPindahLainnya] = useState('');
@@ -42,6 +94,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   // Tambahkan state untuk kalurahan
   const [kalurahanBaru, setKalurahanBaru] = useState('');
+
+  // Form validation errors
+  const [formErrors, setFormErrors] = useState({});
+  
+  // File upload states
+  const [uploadingFiles, setUploadingFiles] = useState({});
 
   // Load citizen data on component mount
   useEffect(() => {
@@ -81,7 +139,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       }
     } catch (error) {
       console.error('❌ [CitizenDashboard] Failed to load citizen data:', error);
-      onError('Gagal memuat data warga');
+      onPermohonanError('Gagal memuat data warga');
     }
   };
 
@@ -111,132 +169,185 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   const handleSubmitPermohonan = async (e) => {
     e.preventDefault();
+    const startTime = Date.now();
+    const jenisPermohonanLabels = {
+      '0': 'Kelahiran',
+      '1': 'Kematian', 
+      '2': 'Perkawinan',
+      '3': 'Perceraian',
+      '4': 'Pindah'
+    };
+    
+    console.log(`🚀 [Submit-Permohonan] Memulai submit permohonan...`);
+    console.log(`📋 [Submit-Permohonan] Jenis Permohonan: ${jenisPermohonanLabels[jenisPermohonan]} (${jenisPermohonan})`);
+    console.log(`📋 [Submit-Permohonan] Wallet Address: ${walletAddress}`);
+    
     if (!jenisPermohonan) {
-      onError('Jenis permohonan wajib diisi');
+      console.error(`❌ [Submit-Permohonan] Jenis permohonan tidak dipilih`);
+      onPermohonanError('Jenis permohonan wajib diisi');
       return;
     }
 
-    // Alur permohonan pindah
-    if (jenisPermohonan === '4') {
-      if (!jenisPindah) {
-        onError('Jenis pindah wajib dipilih');
-        return;
-      }
-      // Validasi field sesuai alur
-      if (jenisPindah === '0') { // Seluruh keluarga
-        if (!alamatBaru || !kalurahanBaru || !alasanPindah) {
-          onError('Alamat lengkap, kalurahan, dan alasan pindah wajib diisi');
-          return;
-        }
-        if (alasanPindah === 'Lainnya' && !alasanPindahLainnya) {
-          onError('Alasan pindah lainnya wajib diisi');
-          return;
-        }
-      } else if (jenisPindah === '1') { // Mandiri
-        if (anggotaPindah.length === 0) {
-          onError('Pilih minimal satu anggota yang pindah');
-          return;
-        }
-        if (!nikKepalaKeluargaBaru) {
-          onError('Pilih kepala keluarga baru');
-          return;
-        }
-        if (!alamatBaru || !kalurahanBaru || !alasanPindah) {
-          onError('Alamat lengkap, kalurahan, dan alasan pindah wajib diisi');
-          return;
-        }
-        if (alasanPindah === 'Lainnya' && !alasanPindahLainnya) {
-          onError('Alasan pindah lainnya wajib diisi');
-          return;
-        }
-      } else if (jenisPindah === '2') { // Gabung KK
-        if (anggotaPindah.length === 0) {
-          onError('Pilih minimal satu anggota yang pindah');
-          return;
-        }
-        if (!nikKepalaKeluargaTujuan) {
-          onError('NIK kepala keluarga tujuan wajib diisi');
-          return;
-        }
-        if (!alasanPindah) {
-          onError('Alasan pindah wajib diisi');
-          return;
-        }
-        if (alasanPindah === 'Lainnya' && !alasanPindahLainnya) {
-          onError('Alasan pindah lainnya wajib diisi');
-          return;
-        }
-      }
-      setIsLoading(true);
-      try {
-        // Ambil id kalurahan dari mapping berdasarkan nama
-        const idKalurahanAsal = getIdKalurahanByNama(citizenData?.kkData?.alamatLengkap?.kelurahan || '');
-        const idKalurahanTujuan = getIdKalurahanByNama(kalurahanBaru);
-        if (!idKalurahanAsal || !idKalurahanTujuan) {
-          onError('ID Kalurahan asal/tujuan tidak ditemukan.');
+    // Check if any files are still uploading
+    const isAnyFileUploading = Object.values(uploadingFiles).some(isUploading => isUploading);
+    if (isAnyFileUploading) {
+      console.error(`❌ [Submit-Permohonan] Masih ada file yang sedang diupload`);
+      onPermohonanError('Tunggu sampai semua file selesai diupload');
+      return;
+    }
+
+    // Check if kalurahan mapping is loaded
+    if (kalurahanMapping.length === 0) {
+      console.error(`❌ [Submit-Permohonan] Kalurahan mapping belum dimuat`);
+      onPermohonanError('Data kalurahan belum dimuat, silakan coba lagi');
+      return;
+    }
+
+    // Get kalurahan asal ID
+    console.log(`🔍 [Submit-Permohonan] Mencari ID Kalurahan asal...`);
+    console.log(`📋 [Submit-Permohonan] Citizen Data:`, citizenData);
+    console.log(`📋 [Submit-Permohonan] KK Data:`, citizenData?.kkData);
+    console.log(`📋 [Submit-Permohonan] Alamat Lengkap:`, citizenData?.kkData?.alamatLengkap);
+    console.log(`📋 [Submit-Permohonan] Kalurahan Mapping:`, kalurahanMapping);
+    console.log(`📋 [Submit-Permohonan] Available Kalurahan Names:`, kalurahanMapping.map(k => k.nama));
+    
+    const kelurahanName = citizenData?.kkData?.alamatLengkap?.kelurahan || '';
+    console.log(`📋 [Submit-Permohonan] Kelurahan Name from Data: "${kelurahanName}"`);
+    
+    const idKalurahanAsal = getIdKalurahanByNama(kelurahanName);
+    console.log(`📋 [Submit-Permohonan] Kalurahan Asal: "${kelurahanName}" -> ID: ${idKalurahanAsal}`);
+    
+    if (!idKalurahanAsal) {
+      console.error(`❌ [Submit-Permohonan] ID Kalurahan asal tidak ditemukan`);
+      console.error(`❌ [Submit-Permohonan] Kelurahan name: "${kelurahanName}"`);
+      console.error(`❌ [Submit-Permohonan] Available names:`, kalurahanMapping.map(k => `"${k.nama}"`));
+      onPermohonanError('ID Kalurahan asal tidak ditemukan');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let cidIPFS;
+      let idKalurahanTujuan = 0;
+
+      // Handle permohonan pindah separately
+      if (jenisPermohonan === '4') {
+        console.log(`🔄 [Submit-Permohonan] Processing permohonan pindah...`);
+        
+        if (!jenisPindah) {
+          console.error(`❌ [Submit-Permohonan] Jenis pindah tidak dipilih`);
+          onPermohonanError('Jenis pindah wajib dipilih');
           setIsLoading(false);
           return;
         }
-        // Dummy CID IPFS
-        const cidIPFS = 'dummy-cid';
+
+        // Get kalurahan tujuan ID for pindah
+        console.log(`🔍 [Submit-Permohonan] Mencari ID Kalurahan tujuan...`);
+        idKalurahanTujuan = getIdKalurahanByNama(kalurahanBaru);
+        console.log(`📋 [Submit-Permohonan] Kalurahan Tujuan: ${kalurahanBaru} -> ID: ${idKalurahanTujuan}`);
         
-        // Buat alamat lengkap
-        const alamatLengkap = `${alamatBaru}, ${kalurahanBaru}, Gamping, Sleman, Daerah Istimewa Yogyakarta`;
-        const alasanFinal = alasanPindah === 'Lainnya' ? alasanPindahLainnya : alasanPindah;
-        
+        if (!idKalurahanTujuan) {
+          console.error(`❌ [Submit-Permohonan] ID Kalurahan tujuan tidak ditemukan`);
+          onPermohonanError('ID Kalurahan tujuan tidak ditemukan');
+          setIsLoading(false);
+          return;
+        }
+
+        // Collect pindah form data
+        console.log(`📝 [Submit-Permohonan] Mengumpulkan data form pindah...`);
+        const pindahFormData = {
+          alamatBaru,
+          kalurahanBaru,
+          alasanPindah,
+          alasanPindahLainnya,
+          anggotaPindah,
+          nikKepalaKeluargaBaru,
+          nikKepalaKeluargaTujuan
+        };
+        console.log(`📋 [Submit-Permohonan] Pindah Form Data:`, pindahFormData);
+
+        // Process and upload pindah data
+        console.log(`☁️ [Submit-Permohonan] Memulai upload data pindah ke IPFS...`);
+        cidIPFS = await processAndUploadPermohonanData(
+          jenisPermohonan, 
+          pindahFormData, 
+          walletAddress, 
+          jenisPindah
+        );
+        console.log(`✅ [Submit-Permohonan] IPFS upload berhasil, CID: ${cidIPFS}`);
+
+        // Submit to smart contract
+        console.log(`📜 [Submit-Permohonan] Submitting ke smart contract...`);
+        const contractStartTime = Date.now();
         const result = await contractService.submitPermohonanPindah(
           cidIPFS,
           idKalurahanAsal,
           idKalurahanTujuan,
           parseInt(jenisPindah)
         );
-        onSuccess(`Permohonan pindah berhasil diajukan! Transaction: ${result.transactionHash}`);
-        // Reset form
+        const contractEndTime = Date.now();
+        console.log(`✅ [Submit-Permohonan] Smart contract submission berhasil dalam ${contractEndTime - contractStartTime}ms`);
+        console.log(`🔗 [Submit-Permohonan] Transaction Hash: ${result.transactionHash}`);
+
+        onPermohonanSuccess(`Permohonan pindah berhasil diajukan! Transaction: ${result.transactionHash}`);
+        
+        // Reset pindah form
+        console.log(`🔄 [Submit-Permohonan] Resetting form...`);
+        resetFormData('4');
         setJenisPermohonan('');
         setJenisPindah('');
-        setAnggotaPindah([]);
-        setPindahSemua(false);
-        setNikKepalaKeluargaBaru('');
-        setNikKepalaKeluargaTujuan('');
-        setAlamatBaru('');
-        setKalurahanBaru('');
-        setAlasanPindah('');
-        setAlasanPindahLainnya('');
-        // Reload data
-        loadDaftarPermohonan();
-      } catch (error) {
-        const errorMessage = handleContractError(error);
-        onError(errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
-      return;
-    }
+      } else {
+        console.log(`🔄 [Submit-Permohonan] Processing permohonan ${jenisPermohonanLabels[jenisPermohonan]}...`);
+        
+        // Handle other permohonan types
+        console.log(`📝 [Submit-Permohonan] Mengumpulkan data form...`);
+        const formData = collectFormData(jenisPermohonan);
+        console.log(`📋 [Submit-Permohonan] Form Data Keys:`, Object.keys(formData));
+        
+        // Process and upload data
+        console.log(`☁️ [Submit-Permohonan] Memulai upload data ke IPFS...`);
+        cidIPFS = await processAndUploadPermohonanData(
+          jenisPermohonan, 
+          formData, 
+          walletAddress
+        );
+        console.log(`✅ [Submit-Permohonan] IPFS upload berhasil, CID: ${cidIPFS}`);
 
-    // Permohonan non-pindah (default lama)
-    // Ambil id kalurahan asal dari mapping
-    const idKalurahanAsal = getIdKalurahanByNama(citizenData?.kkData?.alamatLengkap?.kelurahan || '');
-    if (!idKalurahanAsal || !cidIPFS) {
-      onError('Semua field wajib diisi');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const result = await contractService.submitPermohonan(
-        parseInt(jenisPermohonan),
-        cidIPFS,
-        idKalurahanAsal,
-        jenisPermohonan === '4' ? getIdKalurahanByNama(kalurahanBaru) : 0
-      );
-      onSuccess(`Permohonan berhasil diajukan! Transaction: ${result.transactionHash}`);
-      setJenisPermohonan('');
-      setIdKalurahanAsal('');
-      setIdKalurahanTujuan('');
-      setCidIPFS('');
+        // Submit to smart contract
+        console.log(`📜 [Submit-Permohonan] Submitting ke smart contract...`);
+        const contractStartTime = Date.now();
+        const result = await contractService.submitPermohonan(
+          parseInt(jenisPermohonan),
+          cidIPFS,
+          idKalurahanAsal,
+          idKalurahanTujuan,
+          0 // jenisPindah default for non-pindah permohonan
+        );
+        const contractEndTime = Date.now();
+        console.log(`✅ [Submit-Permohonan] Smart contract submission berhasil dalam ${contractEndTime - contractStartTime}ms`);
+        console.log(`🔗 [Submit-Permohonan] Transaction Hash: ${result.transactionHash}`);
+
+        onPermohonanSuccess(`Permohonan berhasil diajukan! Transaction: ${result.transactionHash}`);
+        
+        // Reset form
+        console.log(`🔄 [Submit-Permohonan] Resetting form...`);
+        resetFormData(jenisPermohonan);
+        setJenisPermohonan('');
+      }
+
+      // Reload data
+      console.log(`🔄 [Submit-Permohonan] Reloading daftar permohonan...`);
       loadDaftarPermohonan();
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`🎉 [Submit-Permohonan] Submit permohonan berhasil dalam ${totalTime}ms!`);
+      
     } catch (error) {
-      const errorMessage = handleContractError(error);
-      onError(errorMessage);
+      const totalTime = Date.now() - startTime;
+      console.error(`❌ [Submit-Permohonan] Error dalam ${totalTime}ms:`, error);
+      console.error(`❌ [Submit-Permohonan] Error stack:`, error.stack);
+      const errorMessage = error.message || handleContractError(error);
+      onPermohonanError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -247,15 +358,33 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       const detail = await contractService.getPermohonanDetail(id);
       setSelectedPermohonan(detail);
       setShowPermohonanDetail(true);
+      
+      // Load detailed data from IPFS
+      if (detail.cidIPFS && detail.cidIPFS !== 'dummy-cid') {
+        setLoadingDetailData(true);
+        try {
+          const detailData = await loadPermohonanDataForDisplay(detail.cidIPFS);
+          setPermohonanDetailData(detailData);
+        } catch (error) {
+          console.error('Failed to load IPFS data:', error);
+          setPermohonanDetailData(null);
+        } finally {
+          setLoadingDetailData(false);
+        }
+      } else {
+        setPermohonanDetailData(null);
+      }
     } catch (error) {
       console.error('Failed to get permohonan detail:', error);
-      onError('Gagal memuat detail permohonan');
+      onPermohonanError('Gagal memuat detail permohonan');
     }
   };
 
   const closePermohonanDetail = () => {
     setShowPermohonanDetail(false);
     setSelectedPermohonan(null);
+    setPermohonanDetailData(null);
+    setLoadingDetailData(false);
   };
 
   const formatAddress = (address) => {
@@ -290,6 +419,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     if (jenisPindah === 1 || jenisPindah === '1') return 'Pindah Mandiri';
     if (jenisPindah === 2 || jenisPindah === '2') return 'Pindah Gabung KK';
     return '';
+  };
+
+  // Helper function untuk cek apakah file sedang diupload
+  const isFileUploading = (jenisPermohonan, fieldName) => {
+    const uploadKey = `${jenisPermohonan}_${fieldName}`;
+    return uploadingFiles[uploadKey] || false;
   };
 
   const [parentNames, setParentNames] = useState({ ayah: '-', ibu: '-' });
@@ -342,18 +477,38 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   // Fetch mapping kalurahan dari IPFS via CID di smart contract
   useEffect(() => {
     async function fetchKalurahanMapping() {
-      if (!contractService || !contractService.contract) return;
+      console.log(`🔄 [Kalurahan-Mapping] Starting to fetch kalurahan mapping...`);
+      if (!contractService || !contractService.contract) {
+        console.log(`❌ [Kalurahan-Mapping] Contract service not available`);
+        return;
+      }
       setIsLoadingKalurahan(true);
       try {
         // Ambil CID dari smart contract
+        console.log(`🔍 [Kalurahan-Mapping] Getting CID from smart contract...`);
         const cid = await contractService.contract.getKalurahanMappingCID();
-        if (!cid) return;
+        console.log(`📋 [Kalurahan-Mapping] CID from contract: ${cid}`);
+        
+        if (!cid) {
+          console.log(`⚠️ [Kalurahan-Mapping] No CID found in contract`);
+          setKalurahanMapping([]);
+          return;
+        }
+        
         // Fetch file dari IPFS
+        console.log(`🌐 [Kalurahan-Mapping] Fetching from IPFS: https://ipfs.io/ipfs/${cid}`);
         const url = `https://ipfs.io/ipfs/${cid}`;
         const resp = await fetch(url);
+        
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        }
+        
         const data = await resp.json();
+        console.log(`✅ [Kalurahan-Mapping] Successfully loaded ${data.length} kalurahan mappings:`, data);
         setKalurahanMapping(data);
       } catch (e) {
+        console.error(`❌ [Kalurahan-Mapping] Error fetching kalurahan mapping:`, e);
         setKalurahanMapping([]);
       } finally {
         setIsLoadingKalurahan(false);
@@ -364,8 +519,170 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   // Helper: dapatkan id dari nama kalurahan
   const getIdKalurahanByNama = (nama) => {
-    const found = kalurahanMapping.find(k => k.nama === nama);
-    return found ? found.id : '';
+    if (!nama || !kalurahanMapping || kalurahanMapping.length === 0) {
+      return '';
+    }
+    
+    const cleanNama = nama.trim();
+    console.log(`🔍 [Kalurahan-Lookup] Looking for: "${cleanNama}"`);
+    
+    // Try exact match first
+    let found = kalurahanMapping.find(k => k.nama === cleanNama);
+    if (found) {
+      console.log(`✅ [Kalurahan-Lookup] Exact match found: ${found.nama} -> ID: ${found.id}`);
+      return found.id;
+    }
+    
+    // Try case-insensitive match
+    found = kalurahanMapping.find(k => k.nama.toLowerCase() === cleanNama.toLowerCase());
+    if (found) {
+      console.log(`✅ [Kalurahan-Lookup] Case-insensitive match found: ${found.nama} -> ID: ${found.id}`);
+      return found.id;
+    }
+    
+    // Try partial match (contains)
+    found = kalurahanMapping.find(k => k.nama.toLowerCase().includes(cleanNama.toLowerCase()) || cleanNama.toLowerCase().includes(k.nama.toLowerCase()));
+    if (found) {
+      console.log(`✅ [Kalurahan-Lookup] Partial match found: ${found.nama} -> ID: ${found.id}`);
+      return found.id;
+    }
+    
+    console.log(`❌ [Kalurahan-Lookup] No match found for: "${cleanNama}"`);
+    console.log(`📋 [Kalurahan-Lookup] Available names:`, kalurahanMapping.map(k => `"${k.nama}"`));
+    return '';
+  };
+
+  // Helper: collect form data based on jenis permohonan
+  const collectFormData = (jenisPermohonan) => {
+    switch(jenisPermohonan) {
+      case '0': return formDataKelahiran;
+      case '1': return formDataKematian;
+      case '2': return formDataPerkawinan;
+      case '3': return formDataPerceraian;
+      case '4': return {
+        alamatBaru,
+        kalurahanBaru,
+        alasanPindah,
+        alasanPindahLainnya,
+        anggotaPindah,
+        nikKepalaKeluargaBaru,
+        nikKepalaKeluargaTujuan
+      };
+      default: return {};
+    }
+  };
+
+  // Helper: reset form data
+  const resetFormData = (jenisPermohonan) => {
+    switch(jenisPermohonan) {
+      case '0':
+        setFormDataKelahiran({
+          namaAnak: '', tempatLahirAnak: '', tanggalLahirAnak: '', jamLahirAnak: '',
+          nikAyah: '', nikIbu: '', nikSaksi1: '', nikSaksi2: '', suratKeteranganLahir: null
+        });
+        break;
+      case '1':
+        setFormDataKematian({
+          nikAlmarhum: '', nikPelapor: '', nikSaksi1: '', nikSaksi2: '',
+          hubunganPelapor: '', tempatKematian: '', tanggalKematian: '',
+          penyebabKematian: '', suratKeteranganKematian: null
+        });
+        break;
+      case '2':
+        setFormDataPerkawinan({
+          nikPria: '', nikWanita: '', nikSaksi1: '', nikSaksi2: '',
+          tempatPernikahan: '', tanggalPernikahan: '',
+          suratKeteranganPernikahan: null, fotoPria: null, fotoWanita: null
+        });
+        break;
+      case '3':
+        setFormDataPerceraian({
+          nikSuami: '', nikIstri: '', suratPutusanPengadilan: null
+        });
+        break;
+      case '4':
+        setAlamatBaru('');
+        setKalurahanBaru('');
+        setAlasanPindah('');
+        setAlasanPindahLainnya('');
+        setAnggotaPindah([]);
+        setNikKepalaKeluargaBaru('');
+        setNikKepalaKeluargaTujuan('');
+        setJenisPindah('');
+        break;
+    }
+    setFormErrors({});
+  };
+
+  // Helper: handle file upload
+  const handleFileUpload = async (file, jenisPermohonan, fieldName) => {
+    const startTime = Date.now();
+    const jenisPermohonanLabels = {
+      '0': 'Kelahiran',
+      '1': 'Kematian', 
+      '2': 'Perkawinan',
+      '3': 'Perceraian',
+      '4': 'Pindah'
+    };
+    
+    const uploadKey = `${jenisPermohonan}_${fieldName}`;
+    
+    console.log(`📁 [File-Upload] Memulai upload file...`);
+    console.log(`📋 [File-Upload] File: ${file.name} (${file.size} bytes)`);
+    console.log(`📋 [File-Upload] Type: ${file.type}`);
+    console.log(`📋 [File-Upload] Jenis Permohonan: ${jenisPermohonanLabels[jenisPermohonan]}`);
+    console.log(`📋 [File-Upload] Field: ${fieldName}`);
+    
+    // Set uploading state
+    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
+    
+    try {
+      // Convert file to base64 first
+      console.log(`🔄 [File-Upload] Converting file to base64...`);
+      const base64 = await convertFileToBase64(file);
+      console.log(`✅ [File-Upload] Base64 conversion berhasil (${base64.length} characters)`);
+      
+      // Upload to IPFS to get CID
+      console.log(`☁️ [File-Upload] Uploading to IPFS...`);
+      const uploadStartTime = Date.now();
+      const filename = `${fieldName}_${Date.now()}_${file.name}`;
+      const cidIPFS = await uploadToPinata(base64, filename);
+      const uploadEndTime = Date.now();
+      
+      console.log(`✅ [File-Upload] IPFS upload berhasil dalam ${uploadEndTime - uploadStartTime}ms`);
+      console.log(`🔗 [File-Upload] IPFS CID: ${cidIPFS}`);
+      console.log(`🔗 [File-Upload] IPFS URL: https://ipfs.io/ipfs/${cidIPFS}`);
+      
+      // Save CID to form state
+      console.log(`💾 [File-Upload] Saving CID to form state...`);
+      switch(jenisPermohonan) {
+        case '0':
+          setFormDataKelahiran(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          break;
+        case '1':
+          setFormDataKematian(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          break;
+        case '2':
+          setFormDataPerkawinan(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          break;
+        case '3':
+          setFormDataPerceraian(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          break;
+      }
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`✅ [File-Upload] File upload berhasil dalam ${totalTime}ms`);
+      onPermohonanSuccess(`File ${file.name} berhasil diupload ke IPFS!`);
+      
+    } catch (error) {
+      const totalTime = Date.now() - startTime;
+      console.error(`❌ [File-Upload] Error dalam ${totalTime}ms:`, error);
+      console.error(`❌ [File-Upload] Error stack:`, error.stack);
+      onPermohonanError('Gagal mengupload file ke IPFS');
+    } finally {
+      // Clear uploading state
+      setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
+    }
   };
 
   const renderProfile = () => {
@@ -456,95 +773,124 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   <input
                     type="text"
                     id="namaAnak"
-                    name="namaAnak"
+                    value={formDataKelahiran.namaAnak}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, namaAnak: e.target.value }))}
                     className="form-input"
                     required
                   />
+                  {formErrors.namaAnak && <span className="error">{formErrors.namaAnak}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="tempatLahirAnak">Tempat Lahir</label>
                   <input
                     type="text"
                     id="tempatLahirAnak"
-                    name="tempatLahirAnak"
+                    value={formDataKelahiran.tempatLahirAnak}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, tempatLahirAnak: e.target.value }))}
                     className="form-input"
                     required
                   />
+                  {formErrors.tempatLahirAnak && <span className="error">{formErrors.tempatLahirAnak}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="tanggalLahirAnak">Tanggal Lahir</label>
                   <input
                     type="date"
                     id="tanggalLahirAnak"
-                    name="tanggalLahirAnak"
+                    value={formDataKelahiran.tanggalLahirAnak}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, tanggalLahirAnak: e.target.value }))}
                     className="form-input"
                     required
                   />
+                  {formErrors.tanggalLahirAnak && <span className="error">{formErrors.tanggalLahirAnak}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="jamLahirAnak">Jam Lahir</label>
                   <input
                     type="time"
                     id="jamLahirAnak"
-                    name="jamLahirAnak"
+                    value={formDataKelahiran.jamLahirAnak}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, jamLahirAnak: e.target.value }))}
                     className="form-input"
                     required
                   />
+                  {formErrors.jamLahirAnak && <span className="error">{formErrors.jamLahirAnak}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikAyah">NIK Ayah</label>
                   <input
                     type="text"
                     id="nikAyah"
-                    name="nikAyah"
+                    value={formDataKelahiran.nikAyah}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, nikAyah: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikAyah && <span className="error">{formErrors.nikAyah}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikIbu">NIK Ibu</label>
                   <input
                     type="text"
                     id="nikIbu"
-                    name="nikIbu"
+                    value={formDataKelahiran.nikIbu}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, nikIbu: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikIbu && <span className="error">{formErrors.nikIbu}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikSaksi1">NIK Saksi 1</label>
                   <input
                     type="text"
                     id="nikSaksi1"
-                    name="nikSaksi1"
+                    value={formDataKelahiran.nikSaksi1}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, nikSaksi1: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikSaksi1 && <span className="error">{formErrors.nikSaksi1}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikSaksi2">NIK Saksi 2</label>
                   <input
                     type="text"
                     id="nikSaksi2"
-                    name="nikSaksi2"
+                    value={formDataKelahiran.nikSaksi2}
+                    onChange={(e) => setFormDataKelahiran(prev => ({ ...prev, nikSaksi2: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikSaksi2 && <span className="error">{formErrors.nikSaksi2}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="suratKeteranganLahir">Surat Keterangan Lahir</label>
                   <input
                     type="file"
                     id="suratKeteranganLahir"
-                    name="suratKeteranganLahir"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFileUpload(file, '0', 'suratKeteranganLahir');
+                      }
+                    }}
                     className="form-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
+                    disabled={isFileUploading('0', 'suratKeteranganLahir')}
                   />
+                  {isFileUploading('0', 'suratKeteranganLahir') && (
+                    <span className="upload-status">📤 Mengupload file...</span>
+                  )}
+                  {formDataKelahiran.suratKeteranganLahir && !isFileUploading('0', 'suratKeteranganLahir') && (
+                    <span className="upload-status success">✅ File berhasil diupload</span>
+                  )}
+                  {formErrors.suratKeteranganLahir && <span className="error">{formErrors.suratKeteranganLahir}</span>}
                 </div>
                 <button
                   type="submit"
@@ -563,97 +909,119 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   <input
                     type="text"
                     id="nikAlmarhum"
-                    name="nikAlmarhum"
+                    value={formDataKematian.nikAlmarhum}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, nikAlmarhum: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikAlmarhum && <span className="error">{formErrors.nikAlmarhum}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikPelapor">NIK Pelapor</label>
                   <input
                     type="text"
                     id="nikPelapor"
-                    name="nikPelapor"
+                    value={formDataKematian.nikPelapor}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, nikPelapor: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikPelapor && <span className="error">{formErrors.nikPelapor}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikSaksi1">NIK Saksi 1</label>
                   <input
                     type="text"
                     id="nikSaksi1"
-                    name="nikSaksi1"
+                    value={formDataKematian.nikSaksi1}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, nikSaksi1: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikSaksi1 && <span className="error">{formErrors.nikSaksi1}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikSaksi2">NIK Saksi 2</label>
                   <input
                     type="text"
                     id="nikSaksi2"
-                    name="nikSaksi2"
+                    value={formDataKematian.nikSaksi2}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, nikSaksi2: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikSaksi2 && <span className="error">{formErrors.nikSaksi2}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="hubunganPelapor">Hubungan Pelapor</label>
                   <input
                     type="text"
                     id="hubunganPelapor"
-                    name="hubunganPelapor"
+                    value={formDataKematian.hubunganPelapor}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, hubunganPelapor: e.target.value }))}
                     className="form-input"
                     placeholder="Contoh: Anak, Suami, Istri, dll"
                     required
                   />
+                  {formErrors.hubunganPelapor && <span className="error">{formErrors.hubunganPelapor}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="tempatKematian">Tempat Kematian</label>
                   <input
                     type="text"
                     id="tempatKematian"
-                    name="tempatKematian"
+                    value={formDataKematian.tempatKematian}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, tempatKematian: e.target.value }))}
                     className="form-input"
                     required
                   />
+                  {formErrors.tempatKematian && <span className="error">{formErrors.tempatKematian}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="tanggalKematian">Tanggal Kematian</label>
                   <input
                     type="date"
                     id="tanggalKematian"
-                    name="tanggalKematian"
+                    value={formDataKematian.tanggalKematian}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, tanggalKematian: e.target.value }))}
                     className="form-input"
                     required
                   />
+                  {formErrors.tanggalKematian && <span className="error">{formErrors.tanggalKematian}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="penyebabKematian">Penyebab Kematian</label>
                   <textarea
                     id="penyebabKematian"
-                    name="penyebabKematian"
+                    value={formDataKematian.penyebabKematian}
+                    onChange={(e) => setFormDataKematian(prev => ({ ...prev, penyebabKematian: e.target.value }))}
                     className="form-input"
                     rows="3"
                     placeholder="Jelaskan penyebab kematian"
                     required
                   />
+                  {formErrors.penyebabKematian && <span className="error">{formErrors.penyebabKematian}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="suratKeteranganKematian">Surat Keterangan Kematian</label>
                   <input
                     type="file"
                     id="suratKeteranganKematian"
-                    name="suratKeteranganKematian"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFileUpload(file, '1', 'suratKeteranganKematian');
+                      }
+                    }}
                     className="form-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
                   />
+                  {formErrors.suratKeteranganKematian && <span className="error">{formErrors.suratKeteranganKematian}</span>}
                 </div>
                 <button
                   type="submit"
@@ -672,98 +1040,128 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   <input
                     type="text"
                     id="nikPria"
-                    name="nikPria"
+                    value={formDataPerkawinan.nikPria}
+                    onChange={(e) => setFormDataPerkawinan(prev => ({ ...prev, nikPria: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikPria && <span className="error">{formErrors.nikPria}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikWanita">NIK Calon Pengantin Wanita</label>
                   <input
                     type="text"
                     id="nikWanita"
-                    name="nikWanita"
+                    value={formDataPerkawinan.nikWanita}
+                    onChange={(e) => setFormDataPerkawinan(prev => ({ ...prev, nikWanita: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikWanita && <span className="error">{formErrors.nikWanita}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikSaksi1">NIK Saksi 1</label>
                   <input
                     type="text"
                     id="nikSaksi1"
-                    name="nikSaksi1"
+                    value={formDataPerkawinan.nikSaksi1}
+                    onChange={(e) => setFormDataPerkawinan(prev => ({ ...prev, nikSaksi1: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikSaksi1 && <span className="error">{formErrors.nikSaksi1}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikSaksi2">NIK Saksi 2</label>
                   <input
                     type="text"
                     id="nikSaksi2"
-                    name="nikSaksi2"
+                    value={formDataPerkawinan.nikSaksi2}
+                    onChange={(e) => setFormDataPerkawinan(prev => ({ ...prev, nikSaksi2: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikSaksi2 && <span className="error">{formErrors.nikSaksi2}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="tempatPernikahan">Tempat Pernikahan</label>
                   <input
                     type="text"
                     id="tempatPernikahan"
-                    name="tempatPernikahan"
+                    value={formDataPerkawinan.tempatPernikahan}
+                    onChange={(e) => setFormDataPerkawinan(prev => ({ ...prev, tempatPernikahan: e.target.value }))}
                     className="form-input"
                     placeholder="Contoh: Masjid, Kantor Catatan Sipil, dll"
                     required
                   />
+                  {formErrors.tempatPernikahan && <span className="error">{formErrors.tempatPernikahan}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="tanggalPernikahan">Tanggal Pernikahan</label>
                   <input
                     type="date"
                     id="tanggalPernikahan"
-                    name="tanggalPernikahan"
+                    value={formDataPerkawinan.tanggalPernikahan}
+                    onChange={(e) => setFormDataPerkawinan(prev => ({ ...prev, tanggalPernikahan: e.target.value }))}
                     className="form-input"
                     required
                   />
+                  {formErrors.tanggalPernikahan && <span className="error">{formErrors.tanggalPernikahan}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="suratKeteranganPernikahan">Surat Keterangan Pernikahan</label>
                   <input
                     type="file"
                     id="suratKeteranganPernikahan"
-                    name="suratKeteranganPernikahan"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFileUpload(file, '2', 'suratKeteranganPernikahan');
+                      }
+                    }}
                     className="form-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
                   />
+                  {formErrors.suratKeteranganPernikahan && <span className="error">{formErrors.suratKeteranganPernikahan}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="fotoPria">Pas Foto Calon Pengantin Pria</label>
                   <input
                     type="file"
                     id="fotoPria"
-                    name="fotoPria"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFileUpload(file, '2', 'fotoPria');
+                      }
+                    }}
                     className="form-input"
                     accept=".jpg,.jpeg,.png"
                     required
                   />
+                  {formErrors.fotoPria && <span className="error">{formErrors.fotoPria}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="fotoWanita">Pas Foto Calon Pengantin Wanita</label>
                   <input
                     type="file"
                     id="fotoWanita"
-                    name="fotoWanita"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFileUpload(file, '2', 'fotoWanita');
+                      }
+                    }}
                     className="form-input"
                     accept=".jpg,.jpeg,.png"
                     required
                   />
+                  {formErrors.fotoWanita && <span className="error">{formErrors.fotoWanita}</span>}
                 </div>
                 <button
                   type="submit"
@@ -782,33 +1180,43 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   <input
                     type="text"
                     id="nikSuami"
-                    name="nikSuami"
+                    value={formDataPerceraian.nikSuami}
+                    onChange={(e) => setFormDataPerceraian(prev => ({ ...prev, nikSuami: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikSuami && <span className="error">{formErrors.nikSuami}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="nikIstri">NIK Istri</label>
                   <input
                     type="text"
                     id="nikIstri"
-                    name="nikIstri"
+                    value={formDataPerceraian.nikIstri}
+                    onChange={(e) => setFormDataPerceraian(prev => ({ ...prev, nikIstri: e.target.value }))}
                     className="form-input"
                     maxLength={16}
                     required
                   />
+                  {formErrors.nikIstri && <span className="error">{formErrors.nikIstri}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="suratPutusanPengadilan">Surat Putusan Pengadilan</label>
                   <input
                     type="file"
                     id="suratPutusanPengadilan"
-                    name="suratPutusanPengadilan"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFileUpload(file, '3', 'suratPutusanPengadilan');
+                      }
+                    }}
                     className="form-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
                   />
+                  {formErrors.suratPutusanPengadilan && <span className="error">{formErrors.suratPutusanPengadilan}</span>}
                 </div>
                 <button
                   type="submit"
@@ -1350,7 +1758,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     setIsLoading(true);
     try {
       await contractService.contract.konfirmasiPindahGabungKK(id, isSetuju);
-      onSuccess(isSetuju ? 'Permohonan gabung KK disetujui.' : 'Permohonan gabung KK ditolak.');
+              onPermohonanSuccess(isSetuju ? 'Permohonan gabung KK disetujui.' : 'Permohonan gabung KK ditolak.');
       setShowKonfirmasiModal(false);
       setPermohonanUntukKonfirmasi(null);
       // Refresh daftar
@@ -1430,10 +1838,10 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     </div>
                     <div className="info-row">
                       <span className="info-label">Jenis Pindah:</span>
-                                              <span className="info-value">{getJenisPindahLabel(selectedPermohonan.jenisPindah)}</span>
+                      <span className="info-value">{getJenisPindahLabel(selectedPermohonan.jenisPindah)}</span>
                     </div>
 
-                                          {selectedPermohonan.jenisPindah === 2 && (
+                    {selectedPermohonan.jenisPindah === 2 && (
                       <div className="info-row">
                         <span className="info-label">Status Konfirmasi KK Tujuan:</span>
                         <span className="info-value">
@@ -1457,6 +1865,40 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   <div className="info-row">
                     <span className="info-label">Alasan Penolakan:</span>
                     <span className="info-value">{selectedPermohonan.alasanPenolakan}</span>
+                  </div>
+                )}
+                
+                {/* Detail Data dari IPFS */}
+                {loadingDetailData && (
+                  <div className="info-row">
+                    <span className="info-label">Data Detail:</span>
+                    <span className="info-value">Memuat data dari IPFS...</span>
+                  </div>
+                )}
+                
+                {permohonanDetailData && !loadingDetailData && (
+                  <>
+                    <div className="info-row">
+                      <span className="info-label">Data Detail:</span>
+                      <span className="info-value">
+                        {permohonanDetailData.jenis}
+                        {permohonanDetailData.jenisPindah && ` - ${permohonanDetailData.jenisPindah}`}
+                      </span>
+                    </div>
+                    
+                    {Object.entries(permohonanDetailData.data).map(([key, value]) => (
+                      <div key={key} className="info-row">
+                        <span className="info-label">{key}:</span>
+                        <span className="info-value">{value}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+                
+                {!permohonanDetailData && !loadingDetailData && selectedPermohonan.cidIPFS && selectedPermohonan.cidIPFS !== 'dummy-cid' && (
+                  <div className="info-row">
+                    <span className="info-label">Data Detail:</span>
+                    <span className="info-value">Gagal memuat data dari IPFS</span>
                   </div>
                 )}
               </div>
@@ -1488,4 +1930,33 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   );
 };
 
-export default CitizenDashboard; 
+export default CitizenDashboard;
+
+// Inline CSS untuk error messages dan upload status
+const styles = `
+  .error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+  }
+  
+  .upload-status {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+    color: #6b7280;
+  }
+  
+  .upload-status.success {
+    color: #059669;
+  }
+`;
+
+// Inject styles
+if (!document.getElementById('citizen-dashboard-styles')) {
+  const styleSheet = document.createElement('style');
+  styleSheet.id = 'citizen-dashboard-styles';
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+} 
