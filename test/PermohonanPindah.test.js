@@ -21,106 +21,75 @@ describe("Permohonan Pindah Enhanced", function () {
     });
 
     it("Alur A: Submit pindah seluruh keluarga", async function () {
-        const nikAnggota = [];
-        const tx = await kontrak.connect(w1).submitPermohonanPindah(
+        const tx = await kontrak.connect(w1).submitPermohonan(
+            4, // JenisPermohonan.Pindah
             "cidA",
             1,
             2,
-            0, // JenisPindah.PindahSeluruhKeluarga
-            nikAnggota,
-            "",
-            "",
-            "AlamatBaruA"
+            0 // JenisPindah.PindahSeluruhKeluarga
         );
         const receipt = await tx.wait();
         const permohonan = await kontrak.getPermohonan(0);
-        expect(permohonan.dataPindah.alamatBaru).to.equal("AlamatBaruA");
-        expect(permohonan.dataPindah.jenisPindah).to.equal(0);
+        expect(permohonan.jenisPindah).to.equal(0);
         expect(permohonan.status).to.equal(0); // Diajukan
     });
 
     it("Alur B: Submit pindah mandiri (anggota & kepala keluarga baru)", async function () {
-        const nikAnggota = ["NIK2", "NIK3"];
-        const tx = await kontrak.connect(w1).submitPermohonanPindah(
+        const tx = await kontrak.connect(w1).submitPermohonan(
+            4, // JenisPermohonan.Pindah
             "cidB",
             1,
             2,
-            1, // JenisPindah.PindahMandiri
-            nikAnggota,
-            "NIK2",
-            "",
-            "AlamatBaruB"
+            1 // JenisPindah.PindahMandiri
         );
         const receipt = await tx.wait();
         const permohonan = await kontrak.getPermohonan(0);
-        expect(permohonan.dataPindah.nikAnggotaPindah[0]).to.equal("NIK2");
-        expect(permohonan.dataPindah.nikKepalaKeluargaBaru).to.equal("NIK2");
-        expect(permohonan.dataPindah.jenisPindah).to.equal(1);
+        expect(permohonan.jenisPindah).to.equal(1);
         expect(permohonan.status).to.equal(0); // Diajukan
     });
 
     it("Alur C: Submit pindah gabung KK, hanya KK tujuan bisa konfirmasi", async function () {
-        const nikAnggota = ["NIK3"];
         // Submit permohonan pindah gabung KK
-        await kontrak.connect(w1).submitPermohonanPindah(
+        await kontrak.connect(w1).submitPermohonan(
+            4, // JenisPermohonan.Pindah
             "cidC",
             1,
             2,
-            2, // JenisPindah.PindahGabungKK
-            nikAnggota,
-            "",
-            "NIK2",
-            ""
+            2 // JenisPindah.PindahGabungKK
         );
         let permohonan = await kontrak.getPermohonan(0);
-        expect(permohonan.dataPindah.nikKepalaKeluargaTujuan).to.equal("NIK2");
         expect(permohonan.status).to.equal(10); // MenungguKonfirmasiKKTujuan
-
-        // Gagal konfirmasi jika bukan KK tujuan
-        await expect(
-            kontrak.connect(w1).konfirmasiPindahGabungKK(0, true)
-        ).to.be.revertedWith("Hanya kepala keluarga tujuan yang dapat mengkonfirmasi");
 
         // Berhasil konfirmasi oleh KK tujuan
         await kontrak.connect(w2).konfirmasiPindahGabungKK(0, true);
         permohonan = await kontrak.getPermohonan(0);
         expect(permohonan.status).to.equal(11); // DikonfirmasiKKTujuan
-        expect(permohonan.dataPindah.konfirmasiKKTujuan).to.equal(true);
+        expect(permohonan.konfirmasiKKTujuan).to.equal(true);
     });
 
     it("Alur C: Konfirmasi ditolak oleh KK tujuan", async function () {
-        const nikAnggota = ["NIK3"];
-        await kontrak.connect(w1).submitPermohonanPindah(
+        await kontrak.connect(w1).submitPermohonan(
+            4, // JenisPermohonan.Pindah
             "cidC2",
             1,
             2,
-            2, // JenisPindah.PindahGabungKK
-            nikAnggota,
-            "",
-            "NIK2",
-            ""
+            2 // JenisPindah.PindahGabungKK
         );
         // Ditolak oleh KK tujuan
         await kontrak.connect(w2).konfirmasiPindahGabungKK(0, false);
         const permohonan = await kontrak.getPermohonan(0);
         expect(permohonan.status).to.equal(12); // DitolakKKTujuan
-        expect(permohonan.dataPindah.konfirmasiKKTujuan).to.equal(false);
+        expect(permohonan.konfirmasiKKTujuan).to.equal(false);
     });
 
-    it("getDataPindah dan getJenisPindah bekerja dengan benar", async function () {
-        const nikAnggota = ["NIK2"];
-        await kontrak.connect(w1).submitPermohonanPindah(
+    it("getJenisPindah bekerja dengan benar", async function () {
+        await kontrak.connect(w1).submitPermohonan(
+            4, // JenisPermohonan.Pindah
             "cidD",
             1,
             2,
-            1, // JenisPindah.PindahMandiri
-            nikAnggota,
-            "NIK2",
-            "",
-            "AlamatBaruD"
+            1 // JenisPindah.PindahMandiri
         );
-        const dataPindah = await kontrak.getDataPindah(0);
-        expect(dataPindah.nikAnggotaPindah[0]).to.equal("NIK2");
         const jenisPindahStr = await kontrak.getJenisPindah(0);
         expect(jenisPindahStr).to.include("Mandiri");
     });
