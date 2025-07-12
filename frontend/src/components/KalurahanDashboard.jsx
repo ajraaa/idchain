@@ -120,15 +120,24 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     async function fetchPermohonanPindah() {
       if (!contractService || !contractService.contract) return;
       try {
+        console.log('🔄 [Kalurahan-Pindah] Fetching permohonan pindah...');
         const ids = await contractService.contract.getPermohonanByKalurahanTujuan();
+        console.log(`📋 [Kalurahan-Pindah] Found ${ids.length} permohonan di kalurahan tujuan`);
+        
         const list = [];
         for (let id of ids) {
           const detail = await contractService.getPermohonanDetail(Number(id));
-          // Filter status DisetujuiKalurahanAsal (menunggu verifikasi tujuan)
-          if (detail.status === 'DisetujuiKalurahanAsal') list.push(detail);
+          console.log(`📋 [Kalurahan-Pindah] Permohonan ${id}: status = "${detail.status}"`);
+          // Filter status Disetujui Kalurahan Asal (menunggu verifikasi tujuan)
+          if (detail.status === 'Disetujui Kalurahan Asal') {
+            list.push(detail);
+            console.log(`✅ [Kalurahan-Pindah] Added permohonan ${id} to list`);
+          }
         }
+        console.log(`📋 [Kalurahan-Pindah] Final list: ${list.length} permohonan`);
         setPermohonanPindah(list);
       } catch (e) {
+        console.error('❌ [Kalurahan-Pindah] Error:', e);
         setPermohonanPindah([]);
       }
     }
@@ -206,21 +215,61 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       console.log(`📋 [Kalurahan-Verifikasi] Active Tab: ${activeTab}`);
       console.log(`📋 [Kalurahan-Verifikasi] Contract Service:`, contractService);
       
-      if (isSetuju) {
-        // Verifikasi setuju
-        const result = await contractService.contract.verifikasiKalurahan(selectedPermohonan.id, true, '');
-        await result.wait();
-        console.log(`✅ [Kalurahan-Verifikasi] Verifikasi setuju berhasil dalam ${Date.now() - startTime}ms`);
-        onSuccess(`Permohonan ${selectedPermohonan.id} berhasil diverifikasi!`);
-      } else {
-        // Verifikasi tolak
-        const result = await contractService.contract.verifikasiKalurahan(selectedPermohonan.id, false, alasanPenolakan);
-        await result.wait();
-        console.log(`✅ [Kalurahan-Verifikasi] Verifikasi tolak berhasil dalam ${Date.now() - startTime}ms`);
-        onSuccess(`Permohonan ${selectedPermohonan.id} ditolak.`);
-      }
+      // Cek apakah ini permohonan pindah
+      const isPermohonanPindah = selectedPermohonan.jenis === '4' || selectedPermohonan.jenis === 'Pindah';
+      console.log(`📋 [Kalurahan-Verifikasi] Jenis Permohonan: ${selectedPermohonan.jenis} (${isPermohonanPindah ? 'Pindah' : 'Biasa'})`);
       
-      // Reload data
+      if (isSetuju) {
+        if (isPermohonanPindah) {
+          // Verifikasi setuju untuk permohonan pindah
+          console.log(`🔄 [Kalurahan-Verifikasi] Menggunakan verifikasiKalurahanAsalPindah...`);
+          const result = await contractService.contract.verifikasiKalurahanAsalPindah(
+            selectedPermohonan.id, 
+            true, 
+            '', 
+            selectedPermohonan.idKalurahanTujuan
+          );
+          await result.wait();
+          console.log(`✅ [Kalurahan-Verifikasi] Verifikasi pindah setuju berhasil dalam ${Date.now() - startTime}ms`);
+          onSuccess(`Permohonan pindah ${selectedPermohonan.id} berhasil diverifikasi!`);
+        } else {
+          // Verifikasi setuju untuk permohonan biasa
+          console.log(`🔄 [Kalurahan-Verifikasi] Menggunakan verifikasiKalurahan...`);
+          const result = await contractService.contract.verifikasiKalurahan(selectedPermohonan.id, true, '');
+          await result.wait();
+          console.log(`✅ [Kalurahan-Verifikasi] Verifikasi setuju berhasil dalam ${Date.now() - startTime}ms`);
+          onSuccess(`Permohonan ${selectedPermohonan.id} berhasil diverifikasi!`);
+        }
+      } else {
+        if (isPermohonanPindah) {
+          // Verifikasi tolak untuk permohonan pindah
+          console.log(`🔄 [Kalurahan-Verifikasi] Menggunakan verifikasiKalurahanAsalPindah...`);
+          const result = await contractService.contract.verifikasiKalurahanAsalPindah(
+            selectedPermohonan.id, 
+            false, 
+            alasanPenolakan, 
+            selectedPermohonan.idKalurahanTujuan
+          );
+          await result.wait();
+          console.log(`✅ [Kalurahan-Verifikasi] Verifikasi pindah tolak berhasil dalam ${Date.now() - startTime}ms`);
+          onSuccess(`Permohonan pindah ${selectedPermohonan.id} ditolak.`);
+        } else {
+          // Verifikasi tolak untuk permohonan biasa
+          console.log(`🔄 [Kalurahan-Verifikasi] Menggunakan verifikasiKalurahan...`);
+          const result = await contractService.contract.verifikasiKalurahan(selectedPermohonan.id, false, alasanPenolakan);
+          await result.wait();
+          console.log(`✅ [Kalurahan-Verifikasi] Verifikasi tolak berhasil dalam ${Date.now() - startTime}ms`);
+          onSuccess(`Permohonan ${selectedPermohonan.id} ditolak.`);
+        }
+              }
+        
+        // Cek status permohonan setelah verifikasi
+        const updatedPermohonan = await contractService.getPermohonanDetail(selectedPermohonan.id);
+        console.log(`📋 [Kalurahan-Verifikasi] Status setelah verifikasi: ${updatedPermohonan.status}`);
+        
+        // Reload data berdasarkan active tab
+      console.log(`🔄 [Kalurahan-Verifikasi] Reloading data untuk tab: ${activeTab}`);
+      
       if (activeTab === 'masuk') {
         const ids = await contractService.contract.getPermohonanByKalurahanAsal();
         const list = [];
@@ -228,14 +277,16 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
           const detail = await contractService.getPermohonanDetail(Number(id));
           if (detail.status === 'Diajukan') list.push(detail);
         }
+        console.log(`📋 [Kalurahan-Verifikasi] Reloaded ${list.length} permohonan masuk`);
         setPermohonanMasuk(list);
       } else if (activeTab === 'pindah') {
         const ids = await contractService.contract.getPermohonanByKalurahanTujuan();
         const list = [];
         for (let id of ids) {
           const detail = await contractService.getPermohonanDetail(Number(id));
-          if (detail.status === 'DisetujuiKalurahanAsal') list.push(detail);
+          if (detail.status === 'Disetujui Kalurahan Asal') list.push(detail);
         }
+        console.log(`📋 [Kalurahan-Verifikasi] Reloaded ${list.length} permohonan pindah`);
         setPermohonanPindah(list);
       }
       
@@ -255,6 +306,40 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     } catch (error) {
       const totalTime = Date.now() - startTime;
       console.error(`❌ [Kalurahan-Verifikasi] Error dalam ${totalTime}ms:`, error);
+      const errorMessage = error.message || handleContractError(error);
+      onError(errorMessage);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Tambahkan handler baru untuk verifikasi kalurahan tujuan
+  const handleVerifikasiTujuan = async (isSetuju, alasanPenolakan = '') => {
+    if (!selectedPermohonan) return;
+    setIsVerifying(true);
+    const startTime = Date.now();
+    try {
+      console.log(`🔄 [Kalurahan-VerifikasiTujuan] Memulai verifikasi permohonan ${selectedPermohonan.id}...`);
+      const result = await contractService.contract.verifikasiKalurahanTujuanPindah(
+        selectedPermohonan.id,
+        isSetuju,
+        alasanPenolakan || ''
+      );
+      await result.wait();
+      console.log(`✅ [Kalurahan-VerifikasiTujuan] Verifikasi tujuan ${isSetuju ? 'setuju' : 'tolak'} berhasil dalam ${Date.now() - startTime}ms`);
+      onSuccess(`Permohonan ${selectedPermohonan.id} ${isSetuju ? 'disetujui' : 'ditolak'} oleh kalurahan tujuan!`);
+      // Reload data
+      const ids = await contractService.contract.getPermohonanByKalurahanTujuan();
+      const list = [];
+      for (let id of ids) {
+        const detail = await contractService.getPermohonanDetail(Number(id));
+        if (detail.status === 'Disetujui Kalurahan Asal') list.push(detail);
+      }
+      setPermohonanPindah(list);
+      closeDetailModal();
+    } catch (error) {
+      const totalTime = Date.now() - startTime;
+      console.error(`❌ [Kalurahan-VerifikasiTujuan] Error dalam ${totalTime}ms:`, error);
       const errorMessage = error.message || handleContractError(error);
       onError(errorMessage);
     } finally {
@@ -527,37 +612,60 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
             </div>
 
             {/* Tombol Aksi */}
-            {selectedPermohonan.status === 'Diajukan' || selectedPermohonan.status === 'DisetujuiKalurahanAsal' ? (
-              <div className="modal-footer">
-                <div className="action-buttons">
-                  <button 
-                    className="btn-reject" 
-                    onClick={() => {
-                      const alasan = prompt('Masukkan alasan penolakan (opsional):');
-                      if (alasan !== null) {
-                        handleVerifikasi(false, alasan);
-                      }
-                    }}
-                    disabled={isVerifying}
-                  >
-                    {isVerifying ? 'Memproses...' : 'Tolak'}
-                  </button>
-                  <button 
-                    className="btn-approve" 
-                    onClick={() => handleVerifikasi(true)}
-                    disabled={isVerifying}
-                  >
-                    {isVerifying ? 'Memproses...' : 'Setujui'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="modal-footer">
-                <div className="info-message">
-                  Permohonan ini sudah diproses dan tidak dapat diverifikasi lagi.
-                </div>
-              </div>
-            )}
+            {(() => {
+              const isKalurahanAsal = profile.id && selectedPermohonan.idKalurahanAsal && profile.id.toString() === selectedPermohonan.idKalurahanAsal.toString();
+              const isKalurahanTujuan = profile.id && selectedPermohonan.idKalurahanTujuan && profile.id.toString() === selectedPermohonan.idKalurahanTujuan.toString();
+              const status = selectedPermohonan.status;
+              // Tombol hanya muncul jika:
+              // - Kalurahan asal & status Diajukan
+              // - Kalurahan tujuan & status Disetujui Kalurahan Asal
+              if ((isKalurahanAsal && status === 'Diajukan') || (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal')) {
+                return (
+                  <div className="modal-footer">
+                    <div className="action-buttons">
+                      <button 
+                        className="btn-reject" 
+                        onClick={() => {
+                          const alasan = prompt('Masukkan alasan penolakan (opsional):');
+                          if (alasan !== null) {
+                            // Pilih handler sesuai peran
+                            if (isKalurahanAsal && status === 'Diajukan') {
+                              handleVerifikasi(false, alasan);
+                            } else if (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal') {
+                              handleVerifikasiTujuan(false, alasan);
+                            }
+                          }
+                        }}
+                        disabled={isVerifying}
+                      >
+                        {isVerifying ? 'Memproses...' : 'Tolak'}
+                      </button>
+                      <button 
+                        className="btn-approve" 
+                        onClick={() => {
+                          if (isKalurahanAsal && status === 'Diajukan') {
+                            handleVerifikasi(true);
+                          } else if (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal') {
+                            handleVerifikasiTujuan(true);
+                          }
+                        }}
+                        disabled={isVerifying}
+                      >
+                        {isVerifying ? 'Memproses...' : 'Setujui'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="modal-footer">
+                    <div className="info-message">
+                      Permohonan ini sudah diproses dan tidak dapat diverifikasi lagi.
+                    </div>
+                  </div>
+                );
+              }
+            })()}
           </div>
         </div>
       )}
