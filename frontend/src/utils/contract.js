@@ -283,25 +283,18 @@ export class ContractService {
         cidIPFS,
         idKalurahanAsal,
         idKalurahanTujuan,
-        jenisPindah,
-        anggotaPindah,
-        nikKepalaKeluargaBaru,
-        nikKepalaKeluargaTujuan,
-        alamatBaru
+        jenisPindah
     ) {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
         try {
-            const tx = await this.contract.submitPermohonanPindah(
+            const tx = await this.contract.submitPermohonan(
+                4, // JenisPermohonan.Pindah
                 cidIPFS,
                 idKalurahanAsal,
                 idKalurahanTujuan,
-                jenisPindah,
-                anggotaPindah,
-                nikKepalaKeluargaBaru,
-                nikKepalaKeluargaTujuan,
-                alamatBaru
+                jenisPindah
             );
             const receipt = await tx.wait();
             return {
@@ -357,7 +350,8 @@ export class ContractService {
                         idKalurahanAsal: permohonan.idKalurahanAsal,
                         idKalurahanTujuan: permohonan.idKalurahanTujuan,
                         cidIPFS: permohonan.cidIPFS,
-                        alasanPenolakan: permohonan.alasanPenolakan
+                        alasanPenolakan: permohonan.alasanPenolakan,
+                        jenisPindah: permohonan.jenisPindah
                     });
                 } catch (error) {
                     console.log(`⚠️ [ContractService] Error getting permohonan ${id}:`, error);
@@ -435,7 +429,8 @@ export class ContractService {
                 idKalurahanAsal: permohonan.idKalurahanAsal,
                 idKalurahanTujuan: permohonan.idKalurahanTujuan,
                 cidIPFS: permohonan.cidIPFS,
-                alasanPenolakan: permohonan.alasanPenolakan
+                alasanPenolakan: permohonan.alasanPenolakan,
+                jenisPindah: permohonan.jenisPindah
             };
         } catch (error) {
             console.error('Failed to get permohonan detail:', error);

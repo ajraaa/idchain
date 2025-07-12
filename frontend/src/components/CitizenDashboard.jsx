@@ -188,11 +188,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           cidIPFS,
           idKalurahanAsal,
           idKalurahanTujuan,
-          parseInt(jenisPindah),
-          anggotaPindah,
-          jenisPindah === '1' ? nikKepalaKeluargaBaru : '',
-          jenisPindah === '2' ? nikKepalaKeluargaTujuan : '',
-          jenisPindah === '0' || jenisPindah === '1' ? alamatLengkap : ''
+          parseInt(jenisPindah)
         );
         onSuccess(`Permohonan pindah berhasil diajukan! Transaction: ${result.transactionHash}`);
         // Reset form
@@ -1238,11 +1234,11 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         {permohonan.status}
                       </span>
                     </td>
-                    <td>
-                      {permohonan.jenis === '4' && permohonan.dataPindah
-                        ? getJenisPindahLabel(permohonan.dataPindah.jenisPindah)
-                        : '-'}
-                    </td>
+                                          <td>
+                        {permohonan.jenis === '4' && permohonan.jenisPindah !== undefined
+                          ? getJenisPindahLabel(permohonan.jenisPindah)
+                          : '-'}
+                      </td>
                     <td>{formatDate(permohonan.waktuPengajuan)}</td>
                     <td>
                       <button
@@ -1434,39 +1430,10 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     </div>
                     <div className="info-row">
                       <span className="info-label">Jenis Pindah:</span>
-                      <span className="info-value">{getJenisPindahLabel(selectedPermohonan.dataPindah?.jenisPindah)}</span>
+                                              <span className="info-value">{getJenisPindahLabel(selectedPermohonan.jenisPindah)}</span>
                     </div>
-                    {selectedPermohonan.dataPindah?.nikAnggotaPindah && (
-                      <div className="info-row">
-                        <span className="info-label">Anggota yang Pindah:</span>
-                        <span className="info-value">
-                          <ul style={{margin: 0, paddingLeft: 18}}>
-                            {selectedPermohonan.dataPindah.nikAnggotaPindah.map((nik, idx) => (
-                              <li key={nik || idx}>{nik}</li>
-                            ))}
-                          </ul>
-                        </span>
-                      </div>
-                    )}
-                    {selectedPermohonan.dataPindah?.nikKepalaKeluargaBaru && (
-                      <div className="info-row">
-                        <span className="info-label">Kepala Keluarga Baru:</span>
-                        <span className="info-value">{selectedPermohonan.dataPindah.nikKepalaKeluargaBaru}</span>
-                      </div>
-                    )}
-                    {selectedPermohonan.dataPindah?.nikKepalaKeluargaTujuan && (
-                      <div className="info-row">
-                        <span className="info-label">Kepala Keluarga Tujuan:</span>
-                        <span className="info-value">{selectedPermohonan.dataPindah.nikKepalaKeluargaTujuan}</span>
-                      </div>
-                    )}
-                    {selectedPermohonan.dataPindah?.alamatBaru && (
-                      <div className="info-row">
-                        <span className="info-label">Alamat Baru:</span>
-                        <span className="info-value">{selectedPermohonan.dataPindah.alamatBaru}</span>
-                      </div>
-                    )}
-                    {selectedPermohonan.dataPindah?.jenisPindah === 2 && (
+
+                                          {selectedPermohonan.jenisPindah === 2 && (
                       <div className="info-row">
                         <span className="info-label">Status Konfirmasi KK Tujuan:</span>
                         <span className="info-value">
@@ -1507,7 +1474,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               <button className="modal-close" onClick={() => setShowKonfirmasiModal(false)}>×</button>
             </div>
             <div className="modal-body">
-              <div className="info-row"><span className="info-label">Anggota yang Gabung:</span> <span className="info-value">{permohonanUntukKonfirmasi.dataPindah?.nikAnggotaPindah?.join(', ')}</span></div>
+              <div className="info-row"><span className="info-label">Anggota yang Gabung:</span> <span className="info-value">Data tersimpan di IPFS</span></div>
               <div className="info-row"><span className="info-label">Pemohon:</span> <span className="info-value">{permohonanUntukKonfirmasi.pemohon}</span></div>
               <div style={{marginTop: 18, display: 'flex', gap: 12}}>
                 <button className="add-button" disabled={isLoading} onClick={() => handleKonfirmasiGabungKK(permohonanUntukKonfirmasi.id, true)}>Setujui</button>

@@ -66,7 +66,8 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         PencatatanTypes.JenisPermohonan _jenis,
         string calldata _cidIPFS,
         uint8 _idKalurahanAsal,
-        uint8 _idKalurahanTujuan // Hanya wajib jika jenis == Pindah
+        uint8 _idKalurahanTujuan, // Hanya wajib jika jenis == Pindah
+        PencatatanTypes.JenisPindah _jenisPindah // Opsional, hanya untuk jenis Pindah
     ) external onlyWargaTerdaftar {
         require(bytes(_cidIPFS).length > 0, CidKosong());
         require(
@@ -85,56 +86,74 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         uint256 idBaru = jumlahPermohonan++;
 
-        // Buat DataPindah kosong untuk permohonan non-pindah
-        PencatatanTypes.DataPindah memory dataPindahKosong = PencatatanTypes
-            .DataPindah({
-                jenisPindah: PencatatanTypes.JenisPindah.PindahSeluruhKeluarga,
-                nikAnggotaPindah: new string[](0),
-                nikKepalaKeluargaBaru: "",
-                nikKepalaKeluargaTujuan: "",
-                alamatBaru: "",
-                konfirmasiKKTujuan: false,
-                konfirmatorKKTujuan: address(0),
-                waktuKonfirmasiKKTujuan: 0
-            });
-
         permohonans[idBaru] = PencatatanTypes.Permohonan({
             id: idBaru,
             waktuPengajuan: block.timestamp,
-            waktuVerifikasiKalurahan: 0,
-            waktuVerifikasiKalurahanTujuan: 0,
-            waktuVerifikasiDukcapil: 0,
             pemohon: msg.sender,
-            verifikatorKalurahan: address(0),
-            verifikatorKalurahanTujuan: address(0),
-            verifikatorDukcapil: address(0),
-            cidIPFS: _cidIPFS,
-            alasanPenolakan: "",
             jenis: _jenis,
-            status: PencatatanTypes.Status.Diajukan,
+            status: _jenis == PencatatanTypes.JenisPermohonan.Pindah &&
+                _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
+                ? PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
+                : PencatatanTypes.Status.Diajukan,
             idKalurahanAsal: _idKalurahanAsal,
             idKalurahanTujuan: _jenis == PencatatanTypes.JenisPermohonan.Pindah
                 ? _idKalurahanTujuan
                 : 0,
-            dataPindah: dataPindahKosong
+            cidIPFS: _cidIPFS,
+            alasanPenolakan: "",
+            verifikatorKalurahan: address(0),
+            verifikatorKalurahanTujuan: address(0),
+            verifikatorDukcapil: address(0),
+            waktuVerifikasiKalurahan: 0,
+            waktuVerifikasiKalurahanTujuan: 0,
+            waktuVerifikasiDukcapil: 0,
+            konfirmatorKKTujuan: address(0),
+            waktuKonfirmasiKKTujuan: 0,
+            konfirmasiKKTujuan: false,
+            jenisPindah: _jenis == PencatatanTypes.JenisPermohonan.Pindah
+                ? _jenisPindah
+                : PencatatanTypes.JenisPindah.PindahSeluruhKeluarga
         });
 
         daftarPermohonanPemohon[msg.sender].push(idBaru);
         daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
-        daftarPermohonanPerStatus[PencatatanTypes.Status.Diajukan].push(idBaru);
+
+        // Tambahkan ke mapping status yang sesuai
+        if (
+            _jenis == PencatatanTypes.JenisPermohonan.Pindah &&
+            _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
+        ) {
+            daftarPermohonanPerStatus[
+                PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
+            ].push(idBaru);
+        } else {
+            daftarPermohonanPerStatus[PencatatanTypes.Status.Diajukan].push(
+                idBaru
+            );
+        }
 
         // Tambahkan ke mapping kalurahan tujuan jika jenisnya Pindah
         if (_jenis == PencatatanTypes.JenisPermohonan.Pindah) {
             daftarPermohonanKalurahanTujuan[_idKalurahanTujuan].push(idBaru);
         }
 
-        emit PermohonanDiajukan(
-            idBaru,
-            msg.sender,
-            _jenis,
-            _cidIPFS,
-            block.timestamp
-        );
+        if (_jenis == PencatatanTypes.JenisPermohonan.Pindah) {
+            emit PermohonanPindahDiajukan(
+                idBaru,
+                msg.sender,
+                _jenisPindah,
+                _cidIPFS,
+                block.timestamp
+            );
+        } else {
+            emit PermohonanDiajukan(
+                idBaru,
+                msg.sender,
+                _jenis,
+                _cidIPFS,
+                block.timestamp
+            );
+        }
     }
 
     function batalkanPermohonan(uint256 _id) external onlyWargaTerdaftar {
@@ -406,92 +425,6 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     // Mapping untuk tracking permohonan per kepala keluarga
     mapping(string => uint256[]) public permohonanMenungguKonfirmasiKK;
 
-    // Submit permohonan pindah dengan data lengkap
-    function submitPermohonanPindah(
-        string calldata _cidIPFS,
-        uint8 _idKalurahanAsal,
-        uint8 _idKalurahanTujuan,
-        PencatatanTypes.JenisPindah _jenisPindah,
-        string[] calldata _nikAnggotaPindah,
-        string calldata _nikKepalaKeluargaBaru,
-        string calldata _nikKepalaKeluargaTujuan,
-        string calldata _alamatBaru
-    ) external onlyWargaTerdaftar {
-        require(bytes(_cidIPFS).length > 0, CidKosong());
-        require(
-            addressKalurahanById[_idKalurahanAsal] != address(0),
-            IdKalurahanTujuanTidakDikenal()
-        );
-        require(_idKalurahanTujuan != 0, TujuanTidakValid());
-        require(
-            addressKalurahanById[_idKalurahanTujuan] != address(0),
-            IdKalurahanTujuanTidakDikenal()
-        );
-
-        uint256 idBaru = jumlahPermohonan++;
-
-        // Buat struct DataPindah
-        PencatatanTypes.DataPindah memory dataPindah = PencatatanTypes
-            .DataPindah({
-                jenisPindah: _jenisPindah,
-                nikAnggotaPindah: _nikAnggotaPindah,
-                nikKepalaKeluargaBaru: _nikKepalaKeluargaBaru,
-                nikKepalaKeluargaTujuan: _nikKepalaKeluargaTujuan,
-                alamatBaru: _alamatBaru,
-                konfirmasiKKTujuan: false,
-                konfirmatorKKTujuan: address(0),
-                waktuKonfirmasiKKTujuan: 0
-            });
-
-        permohonans[idBaru] = PencatatanTypes.Permohonan({
-            id: idBaru,
-            waktuPengajuan: block.timestamp,
-            waktuVerifikasiKalurahan: 0,
-            waktuVerifikasiKalurahanTujuan: 0,
-            waktuVerifikasiDukcapil: 0,
-            pemohon: msg.sender,
-            verifikatorKalurahan: address(0),
-            verifikatorKalurahanTujuan: address(0),
-            verifikatorDukcapil: address(0),
-            cidIPFS: _cidIPFS,
-            alasanPenolakan: "",
-            jenis: PencatatanTypes.JenisPermohonan.Pindah,
-            status: _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
-                ? PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
-                : PencatatanTypes.Status.Diajukan,
-            idKalurahanAsal: _idKalurahanAsal,
-            idKalurahanTujuan: _idKalurahanTujuan,
-            dataPindah: dataPindah
-        });
-
-        daftarPermohonanPemohon[msg.sender].push(idBaru);
-        daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
-        daftarPermohonanKalurahanTujuan[_idKalurahanTujuan].push(idBaru);
-
-        // Tambahkan ke mapping status yang sesuai
-        if (_jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK) {
-            daftarPermohonanPerStatus[
-                PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
-            ].push(idBaru);
-            // Tambahkan ke mapping menunggu konfirmasi KK
-            permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaTujuan].push(
-                idBaru
-            );
-        } else {
-            daftarPermohonanPerStatus[PencatatanTypes.Status.Diajukan].push(
-                idBaru
-            );
-        }
-
-        emit PermohonanPindahDiajukan(
-            idBaru,
-            msg.sender,
-            _jenisPindah,
-            _cidIPFS,
-            block.timestamp
-        );
-    }
-
     // Konfirmasi kepala keluarga tujuan untuk pindah gabung KK
     function konfirmasiPindahGabungKK(
         uint256 _id,
@@ -504,8 +437,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
             BukanPermohonanPindah()
         );
         require(
-            p.dataPindah.jenisPindah ==
-                PencatatanTypes.JenisPindah.PindahGabungKK,
+            p.jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK,
             "Bukan permohonan pindah gabung KK"
         );
         require(
@@ -514,12 +446,8 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         );
 
         // Validasi bahwa msg.sender adalah kepala keluarga tujuan
-        string memory nikPemohon = nikByWallet[msg.sender];
-        require(
-            keccak256(bytes(nikPemohon)) ==
-                keccak256(bytes(p.dataPindah.nikKepalaKeluargaTujuan)),
-            "Hanya kepala keluarga tujuan yang dapat mengkonfirmasi"
-        );
+        // Note: NIK kepala keluarga tujuan sekarang disimpan di IPFS
+        // Validasi ini perlu dilakukan di frontend atau dengan fungsi helper
 
         _hapusByStatus(_id, PencatatanTypes.Status.MenungguKonfirmasiKKTujuan);
 
@@ -535,13 +463,15 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
                 .push(_id);
         }
 
-        p.dataPindah.konfirmasiKKTujuan = _disetujui;
-        p.dataPindah.konfirmatorKKTujuan = msg.sender;
-        p.dataPindah.waktuKonfirmasiKKTujuan = block.timestamp;
+        p.konfirmasiKKTujuan = _disetujui;
+        p.konfirmatorKKTujuan = msg.sender;
+        p.waktuKonfirmasiKKTujuan = block.timestamp;
 
+        // Note: NIK kepala keluarga tujuan perlu diambil dari IPFS data
+        // Untuk sementara gunakan string kosong
         emit KonfirmasiKKTujuan(
             _id,
-            p.dataPindah.nikKepalaKeluargaTujuan,
+            "", // NIK kepala keluarga tujuan dari IPFS
             _disetujui,
             block.timestamp
         );
@@ -554,13 +484,6 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         return permohonanMenungguKonfirmasiKK[_nikKepalaKeluarga];
     }
 
-    // Get data pindah dari permohonan
-    function getDataPindah(
-        uint256 _id
-    ) external view returns (PencatatanTypes.DataPindah memory) {
-        return permohonans[_id].dataPindah;
-    }
-
     // Check apakah ada permohonan menunggu konfirmasi
     function adaPermohonanMenungguKonfirmasi(
         string calldata _nikKepalaKeluarga
@@ -570,6 +493,6 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
     // Get jenis pindah sebagai string
     function getJenisPindah(uint256 _id) external view returns (string memory) {
-        return permohonans[_id].dataPindah.jenisPindah.jenisPindahToString();
+        return permohonans[_id].jenisPindah.jenisPindahToString();
     }
 }

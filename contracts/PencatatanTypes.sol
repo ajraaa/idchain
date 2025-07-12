@@ -32,34 +32,26 @@ abstract contract PencatatanTypes {
         DitolakKKTujuan // Untuk alur C
     }
 
-    struct DataPindah {
-        JenisPindah jenisPindah;
-        string[] nikAnggotaPindah;
-        string nikKepalaKeluargaBaru; // Untuk alur B
-        string nikKepalaKeluargaTujuan; // Untuk alur C
-        string alamatBaru;
-        bool konfirmasiKKTujuan; // Untuk alur C
-        address konfirmatorKKTujuan;
-        uint256 waktuKonfirmasiKKTujuan;
-    }
-
     struct Permohonan {
         uint256 id;
         uint256 waktuPengajuan;
-        uint256 waktuVerifikasiKalurahan;
-        uint256 waktuVerifikasiKalurahanTujuan;
-        uint256 waktuVerifikasiDukcapil;
         address pemohon;
-        address verifikatorKalurahan;
-        address verifikatorKalurahanTujuan;
-        address verifikatorDukcapil;
-        string cidIPFS;
-        string alasanPenolakan;
         JenisPermohonan jenis;
         Status status;
         uint8 idKalurahanAsal;
         uint8 idKalurahanTujuan;
-        DataPindah dataPindah; // Hanya terisi jika jenis == Pindah
+        string cidIPFS; // JSON berisi data lengkap
+        string alasanPenolakan;
+        address verifikatorKalurahan;
+        address verifikatorKalurahanTujuan;
+        address verifikatorDukcapil;
+        uint256 waktuVerifikasiKalurahan;
+        uint256 waktuVerifikasiKalurahanTujuan;
+        uint256 waktuVerifikasiDukcapil;
+        address konfirmatorKKTujuan; // jika alur C
+        uint256 waktuKonfirmasiKKTujuan;
+        bool konfirmasiKKTujuan;
+        JenisPindah jenisPindah; // tetap disimpan di sini!
     }
 
     event PermohonanDiajukan(
@@ -110,13 +102,6 @@ abstract contract PencatatanTypes {
     event DokumenResmiDiunggah(
         uint256 indexed idPermohonan,
         string cidDokumen,
-        uint256 waktu
-    );
-
-    event ProsesKKSelesai(
-        uint256 indexed idPermohonan,
-        JenisPindah jenisPindah,
-        string[] nikTerlibat,
         uint256 waktu
     );
 }
