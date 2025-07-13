@@ -40,7 +40,7 @@ abstract contract PencatatanTypes {
         Status status;
         uint8 idKalurahanAsal;
         uint8 idKalurahanTujuan;
-        string cidIPFS; // JSON berisi data lengkap
+        string cidIPFS; // JSON berisi data permohonan
         string alasanPenolakan;
         address verifikatorKalurahan;
         address verifikatorKalurahanTujuan;
