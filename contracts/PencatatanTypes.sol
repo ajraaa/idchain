@@ -51,7 +51,7 @@ abstract contract PencatatanTypes {
         address konfirmatorKKTujuan; // jika alur C
         uint256 waktuKonfirmasiKKTujuan;
         bool konfirmasiKKTujuan;
-        JenisPindah jenisPindah; // tetap disimpan di sini!
+        JenisPindah jenisPindah;
     }
 
     event PermohonanDiajukan(
