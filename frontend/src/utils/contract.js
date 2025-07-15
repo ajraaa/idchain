@@ -235,6 +235,44 @@ export class ContractService {
         }
     }
 
+    // Tambahkan method unggahDokumenResmi
+    async unggahDokumenResmi(id, cidDokumen) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.unggahDokumenResmi(id, cidDokumen);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to upload dokumen resmi:', error);
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
+        }
+    }
+
+    // Tambahkan method verifikasiDukcapil
+    async verifikasiDukcapil(id, disetujui, alasan = '') {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            const tx = await this.contract.verifikasiDukcapil(id, disetujui, alasan);
+            const receipt = await tx.wait();
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to verify Dukcapil:', error);
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
+        }
+    }
+
     // Citizen Dashboard Functions
     async getCitizenData(walletAddress) {
         if (!this.contract) {

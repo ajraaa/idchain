@@ -30,10 +30,10 @@ export const CONTRACT_CONFIG = {
 };
 
 // Import the full ABI from the frontend folder (updated version)
-import PermohonanManagerABI from '../abis/PermohonanManager.json';
+import PencatatanSipilABI from '../abis/PencatatanSipil.json';
 
 // Contract ABI - using the full ABI from the frontend folder
-export const CONTRACT_ABI = PermohonanManagerABI.abi;
+export const CONTRACT_ABI = PencatatanSipilABI.abi;
 
 // IPFS configuration
 export const IPFS_CONFIG = {

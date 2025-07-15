@@ -5,6 +5,8 @@ import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import { uploadToPinata } from '../utils/pinata';
 import { loadPermohonanDataForDisplay } from '../utils/permohonanDataUtils.js';
+import { encryptAes256CbcNodeStyle } from '../utils/crypto.js';
+import { CRYPTO_CONFIG } from '../config/crypto.js';
 
 const sidebarMenus = [
   { key: 'kalurahan', label: 'Kelola Kalurahan', icon: <FaBuilding /> },
@@ -50,6 +52,10 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   const [permohonanDetailData, setPermohonanDetailData] = useState(null);
   const [loadingDetailData, setLoadingDetailData] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // State untuk upload dokumen resmi
+  const [uploadingDokumen, setUploadingDokumen] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
 
   useEffect(() => {
     async function fetchKalurahanMapping() {
@@ -322,6 +328,43 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
     }
   };
 
+  // Handler upload dokumen resmi
+  const handleUploadDokumenResmi = async (e) => {
+    e.preventDefault();
+    if (!selectedPermohonan) return;
+    const fileInput = document.getElementById('dokumen-resmi-file');
+    if (!fileInput.files || fileInput.files.length === 0) {
+      setUploadStatus('Pilih file terlebih dahulu!');
+      return;
+    }
+    const file = fileInput.files[0];
+    setUploadingDokumen(true);
+    setUploadStatus('Membaca file...');
+    try {
+      // 1. Baca file sebagai ArrayBuffer dan ubah ke string base64
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const binaryString = String.fromCharCode.apply(null, uint8Array);
+      const base64Data = btoa(binaryString);
+      setUploadStatus('Mengenkripsi dokumen...');
+      // 2. Enkripsi file pakai secret key
+      const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
+      setUploadStatus('Mengupload ke IPFS...');
+      // 3. Upload ke IPFS
+      const cid = await uploadToPinata(encrypted, file.name + '.enc');
+      setUploadStatus('Menyimpan CID ke smart contract...');
+      // 4. Simpan CID ke smart contract
+      await contractService.unggahDokumenResmi(selectedPermohonan.id, cid);
+      setUploadStatus('✅ Dokumen resmi berhasil diupload & CID disimpan!');
+      onSuccess('Dokumen resmi berhasil diupload dan CID disimpan di smart contract!');
+    } catch (err) {
+      setUploadStatus('❌ Gagal upload dokumen resmi: ' + (err.message || err));
+      onError('Gagal upload dokumen resmi: ' + (err.message || err));
+    } finally {
+      setUploadingDokumen(false);
+    }
+  };
+
   // Render daftar permohonan masuk
   const renderPermohonanMasuk = () => (
     <div className="management-card">
@@ -532,6 +575,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     <span className={`status-badge status-${selectedPermohonan.status.toLowerCase().replace(/\s+/g, '-')}`}>{selectedPermohonan.status}</span>
                   </span>
                 </div>
+                {/* (Hapus form upload dan tombol aksi dari sini) */}
                 {selectedPermohonan.alasanPenolakan && (
                   <div className="info-row">
                     <span className="info-label">Alasan Penolakan:</span>
@@ -589,25 +633,67 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
               (selectedPermohonan.status === 'Disetujui Kalurahan' && selectedPermohonan.jenis !== '4' && selectedPermohonan.jenis !== 'Pindah')
             ) && (
               <div className="modal-footer">
-                <div className="action-buttons">
-                  <button 
-                    className="btn-reject" 
-                    onClick={() => {
-                      const alasan = prompt('Masukkan alasan penolakan (opsional):');
-                      if (alasan !== null) handleVerifikasiDukcapil(false, alasan);
-                    }}
-                    disabled={isVerifying}
-                  >
-                    {isVerifying ? 'Memproses...' : 'Tolak'}
-                  </button>
-                  <button 
-                    className="btn-approve" 
-                    onClick={() => handleVerifikasiDukcapil(true)}
-                    disabled={isVerifying}
-                  >
-                    {isVerifying ? 'Memproses...' : 'Setujui'}
-                  </button>
-                </div>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!selectedPermohonan) return;
+                  const fileInput = document.getElementById('dokumen-resmi-file');
+                  if (!fileInput.files || fileInput.files.length === 0) {
+                    setUploadStatus('Pilih file terlebih dahulu!');
+                    return;
+                  }
+                  const file = fileInput.files[0];
+                  setUploadingDokumen(true);
+                  setUploadStatus('Membaca file...');
+                  try {
+                    // 1. Baca file sebagai ArrayBuffer dan ubah ke string base64
+                    const arrayBuffer = await file.arrayBuffer();
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    const binaryString = String.fromCharCode.apply(null, uint8Array);
+                    const base64Data = btoa(binaryString);
+                    setUploadStatus('Mengenkripsi dokumen...');
+                    // 2. Enkripsi file pakai secret key
+                    const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
+                    setUploadStatus('Mengupload ke IPFS...');
+                    // 3. Upload ke IPFS
+                    const cid = await uploadToPinata(encrypted, file.name + '.enc');
+                    setUploadStatus('Menyetujui permohonan...');
+                    // 4. Ubah status permohonan dulu
+                    await contractService.verifikasiDukcapil(selectedPermohonan.id, true, '');
+                    setUploadStatus('Menyimpan CID ke smart contract...');
+                    // 5. Setelah status berubah, simpan CID ke smart contract
+                    await contractService.unggahDokumenResmi(selectedPermohonan.id, cid);
+                    setUploadStatus('✅ Dokumen resmi diupload & permohonan disetujui!');
+                    onSuccess('Dokumen resmi berhasil diupload dan permohonan disetujui!');
+                    closeDetailModal();
+                  } catch (err) {
+                    setUploadStatus('❌ Gagal upload dokumen/setujui: ' + (err.message || err));
+                    onError('Gagal upload dokumen/setujui: ' + (err.message || err));
+                  } finally {
+                    setUploadingDokumen(false);
+                  }
+                }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: 12 }}>
+                    <label htmlFor="dokumen-resmi-file" style={{ fontWeight: 500, marginRight: 12, minWidth: 160 }}>Upload Dokumen Resmi:</label>
+                    <input type="file" id="dokumen-resmi-file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploadingDokumen} style={{ flex: 1 }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                    <button type="submit" className="btn-approve" disabled={uploadingDokumen}>
+                      {uploadingDokumen ? 'Memproses...' : 'Upload & Setujui'}
+                    </button>
+                    <button 
+                      className="btn-reject" 
+                      type="button"
+                      onClick={() => {
+                        const alasan = prompt('Masukkan alasan penolakan (opsional):');
+                        if (alasan !== null) handleVerifikasiDukcapil(false, alasan);
+                      }}
+                      disabled={isVerifying || uploadingDokumen}
+                    >
+                      {isVerifying ? 'Memproses...' : 'Tolak'}
+                    </button>
+                  </div>
+                  {uploadStatus && <span className="upload-status" style={{ color: uploadStatus.startsWith('✅') ? '#059669' : uploadStatus.startsWith('❌') ? '#ef4444' : '#6b7280', marginTop: 10 }}>{uploadStatus}</span>}
+                </form>
               </div>
             )}
           </div>
