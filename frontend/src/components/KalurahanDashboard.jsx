@@ -626,8 +626,16 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
               // - Kalurahan tujuan & status Disetujui Kalurahan Asal
               if ((isKalurahanAsal && status === 'Diajukan') || (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal')) {
                 return (
-                  <div className="modal-footer">
-                    <div className="action-buttons">
+                  <div className="modal-footer" style={{
+                    position: 'sticky',
+                    bottom: 0,
+                    background: 'white',
+                    zIndex: 10,
+                    padding: '16px 0 0 0',
+                    display: 'flex',
+                    justifyContent: 'center',
+                  }}>
+                    <div className="action-buttons" style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                       <button 
                         className="btn-reject" 
                         onClick={() => setShowAlasanInput(!showAlasanInput)}
@@ -669,7 +677,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                           }
                           setAlasanPenolakan('');
                         }}
-                        style={{ marginTop: 16 }}
+                        style={{ marginTop: 16, textAlign: 'center' }}
                       >
                         <input
                           type="text"
@@ -698,6 +706,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                           type="submit"
                           className="btn-reject"
                           disabled={isVerifying}
+                          style={{ width: '100%' }}
                         >
                           {isVerifying ? 'Memproses...' : 'Submit Penolakan'}
                         </button>

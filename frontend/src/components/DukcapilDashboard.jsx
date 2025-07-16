@@ -62,6 +62,9 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   const [alasanPenolakan, setAlasanPenolakan] = useState('');
   const [alasanError, setAlasanError] = useState('');
 
+  // Tambahkan state di atas komponen
+  const [showUploadInput, setShowUploadInput] = useState(false);
+
   useEffect(() => {
     async function fetchKalurahanMapping() {
       if (!contractService || !contractService.contract) return;
@@ -637,110 +640,107 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
               selectedPermohonan.status === 'Disetujui Kalurahan Tujuan' ||
               (selectedPermohonan.status === 'Disetujui Kalurahan' && selectedPermohonan.jenis !== '4' && selectedPermohonan.jenis !== 'Pindah')
             ) && (
-              <div className="modal-footer">
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!selectedPermohonan) return;
-                  const fileInput = document.getElementById('dokumen-resmi-file');
-                  if (!fileInput.files || fileInput.files.length === 0) {
-                    setUploadStatus('Pilih file terlebih dahulu!');
-                    return;
-                  }
-                  const file = fileInput.files[0];
-                  setUploadingDokumen(true);
-                  setUploadStatus('Membaca file...');
-                  try {
-                    // 1. Baca file sebagai ArrayBuffer dan ubah ke string base64
-                    const arrayBuffer = await file.arrayBuffer();
-                    const uint8Array = new Uint8Array(arrayBuffer);
-                    const binaryString = String.fromCharCode.apply(null, uint8Array);
-                    const base64Data = btoa(binaryString);
-                    setUploadStatus('Mengenkripsi dokumen...');
-                    // 2. Enkripsi file pakai secret key
-                    const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
-                    setUploadStatus('Mengupload ke IPFS...');
-                    // 3. Upload ke IPFS
-                    const cid = await uploadToPinata(encrypted, file.name + '.enc');
-                    setUploadStatus('Menyetujui permohonan...');
-                    // 4. Ubah status permohonan dulu
-                    await contractService.verifikasiDukcapil(selectedPermohonan.id, true, '');
-                    setUploadStatus('Menyimpan CID ke smart contract...');
-                    // 5. Setelah status berubah, simpan CID ke smart contract
-                    await contractService.unggahDokumenResmi(selectedPermohonan.id, cid);
-                    setUploadStatus('✅ Dokumen resmi diupload & permohonan disetujui!');
-                    onSuccess('Dokumen resmi berhasil diupload dan permohonan disetujui!');
-                    closeDetailModal();
-                  } catch (err) {
-                    setUploadStatus('❌ Gagal upload dokumen/setujui: ' + (err.message || err));
-                    onError('Gagal upload dokumen/setujui: ' + (err.message || err));
-                  } finally {
-                    setUploadingDokumen(false);
-                  }
-                }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: 12 }}>
-                    <label htmlFor="dokumen-resmi-file" style={{ fontWeight: 500, marginRight: 12, minWidth: 160 }}>Upload Dokumen Resmi:</label>
-                    <input type="file" id="dokumen-resmi-file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploadingDokumen} style={{ flex: 1 }} />
+              <div className="modal-footer" style={{
+                position: 'sticky',
+                bottom: 0,
+                background: 'white',
+                zIndex: 10,
+                padding: '16px 0 0 0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn-approve"
+                    disabled={uploadingDokumen}
+                    onClick={() => setShowUploadInput(!showUploadInput)}
+                  >
+                    {uploadingDokumen ? 'Memproses...' : (showUploadInput ? 'Batal' : 'Upload & Setujui')}
+                  </button>
+                  <button 
+                    className="btn-reject" 
+                    type="button"
+                    onClick={() => setShowAlasanInput(!showAlasanInput)}
+                    disabled={isVerifying || uploadingDokumen}
+                  >
+                    {isVerifying ? 'Memproses...' : (showAlasanInput ? 'Batal' : 'Tolak')}
+                  </button>
+                </div>
+                {showUploadInput && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', marginBottom: 12, marginTop: 16 }}>
+                    <label htmlFor="dokumen-resmi-file" style={{ fontWeight: 500, marginBottom: 6 }}>Upload Dokumen Resmi:</label>
+                    <input
+                      type="file"
+                      id="dokumen-resmi-file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      disabled={uploadingDokumen}
+                      style={{
+                        borderRadius: '8px',
+                        background: 'rgba(255,255,255,0.7)',
+                        border: '1px solid #d1d5db',
+                        padding: '10px 12px',
+                        fontSize: '1rem',
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                        color: '#222',
+                        cursor: uploadingDokumen ? 'not-allowed' : 'pointer',
+                        maxWidth: '100%',
+                        width: '100%',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                      onBlur={e => e.target.style.borderColor = '#d1d5db'}
+                    />
                   </div>
-                  <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                    <button type="submit" className="btn-approve" disabled={uploadingDokumen}>
-                      {uploadingDokumen ? 'Memproses...' : 'Upload & Setujui'}
-                    </button>
-                    <button 
-                      className="btn-reject" 
-                      type="button"
-                      onClick={() => setShowAlasanInput(!showAlasanInput)}
+                )}
+                {showAlasanInput && (
+                  <div style={{ marginTop: 16, width: '100%', textAlign: 'center' }}>
+                    <input
+                      type="text"
+                      className="input-alasan"
+                      placeholder="Masukkan alasan penolakan"
+                      value={alasanPenolakan}
+                      onChange={e => setAlasanPenolakan(e.target.value)}
                       disabled={isVerifying || uploadingDokumen}
+                      style={{
+                        width: '100%',
+                        marginBottom: 8,
+                        borderRadius: '8px',
+                        background: 'rgba(255,255,255,0.7)',
+                        border: '1px solid #d1d5db',
+                        padding: '10px 12px',
+                        fontSize: '1rem',
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                        color: '#222',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                      onBlur={e => e.target.style.borderColor = '#d1d5db'}
+                    />
+                    {alasanError && <div style={{ color: '#dc2626', fontSize: '0.9em', marginBottom: 8 }}>{alasanError}</div>}
+                    <button
+                      type="button"
+                      className="btn-reject"
+                      disabled={isVerifying || uploadingDokumen}
+                      style={{ width: '100%' }}
+                      onClick={() => {
+                        if (!alasanPenolakan.trim()) {
+                          setAlasanError('Alasan penolakan wajib diisi.');
+                          return;
+                        }
+                        setAlasanError('');
+                        setShowAlasanInput(false);
+                        handleVerifikasiDukcapil(false, alasanPenolakan);
+                        setAlasanPenolakan('');
+                      }}
                     >
-                      {isVerifying ? 'Memproses...' : (showAlasanInput ? 'Batal' : 'Tolak')}
+                      {isVerifying ? 'Memproses...' : 'Submit Penolakan'}
                     </button>
                   </div>
-                  {showAlasanInput && (
-                    <div style={{ marginTop: 16, width: '100%' }}>
-                      <input
-                        type="text"
-                        className="input-alasan"
-                        placeholder="Masukkan alasan penolakan"
-                        value={alasanPenolakan}
-                        onChange={e => setAlasanPenolakan(e.target.value)}
-                        disabled={isVerifying || uploadingDokumen}
-                        style={{
-                          width: '100%',
-                          marginBottom: 8,
-                          borderRadius: '8px',
-                          background: 'rgba(255,255,255,0.7)',
-                          border: '1px solid #d1d5db',
-                          padding: '10px 12px',
-                          fontSize: '1rem',
-                          outline: 'none',
-                          transition: 'border-color 0.2s',
-                          color: '#222',
-                        }}
-                        onFocus={e => e.target.style.borderColor = '#3b82f6'}
-                        onBlur={e => e.target.style.borderColor = '#d1d5db'}
-                      />
-                      {alasanError && <div style={{ color: '#dc2626', fontSize: '0.9em', marginBottom: 8 }}>{alasanError}</div>}
-                      <button
-                        type="button"
-                        className="btn-reject"
-                        disabled={isVerifying || uploadingDokumen}
-                        style={{ width: '100%' }}
-                        onClick={() => {
-                          if (!alasanPenolakan.trim()) {
-                            setAlasanError('Alasan penolakan wajib diisi.');
-                            return;
-                          }
-                          setAlasanError('');
-                          setShowAlasanInput(false);
-                          handleVerifikasiDukcapil(false, alasanPenolakan);
-                          setAlasanPenolakan('');
-                        }}
-                      >
-                        {isVerifying ? 'Memproses...' : 'Submit Penolakan'}
-                      </button>
-                    </div>
-                  )}
-                  {uploadStatus && <span className="upload-status" style={{ color: uploadStatus.startsWith('✅') ? '#059669' : uploadStatus.startsWith('❌') ? '#ef4444' : '#6b7280', marginTop: 10 }}>{uploadStatus}</span>}
-                </form>
+                )}
+                {uploadStatus && <span className="upload-status" style={{ color: uploadStatus.startsWith('✅') ? '#059669' : uploadStatus.startsWith('❌') ? '#ef4444' : '#6b7280', marginTop: 10 }}>{uploadStatus}</span>}
               </div>
             )}
           </div>
