@@ -29,6 +29,11 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
   const [loadingDetailData, setLoadingDetailData] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
+  // State untuk input alasan penolakan (global di komponen)
+  const [showAlasanInput, setShowAlasanInput] = useState(false);
+  const [alasanPenolakan, setAlasanPenolakan] = useState('');
+  const [alasanError, setAlasanError] = useState('');
+
   // Judul dan subjudul dinamis
   const getHeaderTitle = () => {
     switch (activeTab) {
@@ -625,24 +630,17 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                     <div className="action-buttons">
                       <button 
                         className="btn-reject" 
-                        onClick={() => {
-                          const alasan = prompt('Masukkan alasan penolakan (opsional):');
-                          if (alasan !== null) {
-                            // Pilih handler sesuai peran
-                            if (isKalurahanAsal && status === 'Diajukan') {
-                              handleVerifikasi(false, alasan);
-                            } else if (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal') {
-                              handleVerifikasiTujuan(false, alasan);
-                            }
-                          }
-                        }}
+                        onClick={() => setShowAlasanInput(!showAlasanInput)}
                         disabled={isVerifying}
                       >
-                        {isVerifying ? 'Memproses...' : 'Tolak'}
+                        {isVerifying ? 'Memproses...' : (showAlasanInput ? 'Batal' : 'Tolak')}
                       </button>
                       <button 
                         className="btn-approve" 
                         onClick={() => {
+                          setShowAlasanInput(false);
+                          setAlasanPenolakan('');
+                          setAlasanError('');
                           if (isKalurahanAsal && status === 'Diajukan') {
                             handleVerifikasi(true);
                           } else if (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal') {
@@ -654,6 +652,57 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                         {isVerifying ? 'Memproses...' : 'Setujui'}
                       </button>
                     </div>
+                    {showAlasanInput && (
+                      <form
+                        onSubmit={e => {
+                          e.preventDefault();
+                          if (!alasanPenolakan.trim()) {
+                            setAlasanError('Alasan penolakan wajib diisi.');
+                            return;
+                          }
+                          setAlasanError('');
+                          setShowAlasanInput(false);
+                          if (isKalurahanAsal && status === 'Diajukan') {
+                            handleVerifikasi(false, alasanPenolakan);
+                          } else if (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal') {
+                            handleVerifikasiTujuan(false, alasanPenolakan);
+                          }
+                          setAlasanPenolakan('');
+                        }}
+                        style={{ marginTop: 16 }}
+                      >
+                        <input
+                          type="text"
+                          className="input-alasan"
+                          placeholder="Masukkan alasan penolakan"
+                          value={alasanPenolakan}
+                          onChange={e => setAlasanPenolakan(e.target.value)}
+                          disabled={isVerifying}
+                          style={{
+                            width: '100%',
+                            marginBottom: 8,
+                            borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.7)',
+                            border: '1px solid #d1d5db',
+                            padding: '10px 12px',
+                            fontSize: '1rem',
+                            outline: 'none',
+                            transition: 'border-color 0.2s',
+                            color: '#222',
+                          }}
+                          onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                          onBlur={e => e.target.style.borderColor = '#d1d5db'}
+                        />
+                        {alasanError && <div style={{ color: '#dc2626', fontSize: '0.9em', marginBottom: 8 }}>{alasanError}</div>}
+                        <button
+                          type="submit"
+                          className="btn-reject"
+                          disabled={isVerifying}
+                        >
+                          {isVerifying ? 'Memproses...' : 'Submit Penolakan'}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 );
               } else {

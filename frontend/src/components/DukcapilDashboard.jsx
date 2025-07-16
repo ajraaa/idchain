@@ -57,6 +57,11 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   const [uploadingDokumen, setUploadingDokumen] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
 
+  // State untuk input alasan penolakan (global di komponen)
+  const [showAlasanInput, setShowAlasanInput] = useState(false);
+  const [alasanPenolakan, setAlasanPenolakan] = useState('');
+  const [alasanError, setAlasanError] = useState('');
+
   useEffect(() => {
     async function fetchKalurahanMapping() {
       if (!contractService || !contractService.contract) return;
@@ -683,15 +688,57 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     <button 
                       className="btn-reject" 
                       type="button"
-                      onClick={() => {
-                        const alasan = prompt('Masukkan alasan penolakan (opsional):');
-                        if (alasan !== null) handleVerifikasiDukcapil(false, alasan);
-                      }}
+                      onClick={() => setShowAlasanInput(!showAlasanInput)}
                       disabled={isVerifying || uploadingDokumen}
                     >
-                      {isVerifying ? 'Memproses...' : 'Tolak'}
+                      {isVerifying ? 'Memproses...' : (showAlasanInput ? 'Batal' : 'Tolak')}
                     </button>
                   </div>
+                  {showAlasanInput && (
+                    <div style={{ marginTop: 16, width: '100%' }}>
+                      <input
+                        type="text"
+                        className="input-alasan"
+                        placeholder="Masukkan alasan penolakan"
+                        value={alasanPenolakan}
+                        onChange={e => setAlasanPenolakan(e.target.value)}
+                        disabled={isVerifying || uploadingDokumen}
+                        style={{
+                          width: '100%',
+                          marginBottom: 8,
+                          borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.7)',
+                          border: '1px solid #d1d5db',
+                          padding: '10px 12px',
+                          fontSize: '1rem',
+                          outline: 'none',
+                          transition: 'border-color 0.2s',
+                          color: '#222',
+                        }}
+                        onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                        onBlur={e => e.target.style.borderColor = '#d1d5db'}
+                      />
+                      {alasanError && <div style={{ color: '#dc2626', fontSize: '0.9em', marginBottom: 8 }}>{alasanError}</div>}
+                      <button
+                        type="button"
+                        className="btn-reject"
+                        disabled={isVerifying || uploadingDokumen}
+                        style={{ width: '100%' }}
+                        onClick={() => {
+                          if (!alasanPenolakan.trim()) {
+                            setAlasanError('Alasan penolakan wajib diisi.');
+                            return;
+                          }
+                          setAlasanError('');
+                          setShowAlasanInput(false);
+                          handleVerifikasiDukcapil(false, alasanPenolakan);
+                          setAlasanPenolakan('');
+                        }}
+                      >
+                        {isVerifying ? 'Memproses...' : 'Submit Penolakan'}
+                      </button>
+                    </div>
+                  )}
                   {uploadStatus && <span className="upload-status" style={{ color: uploadStatus.startsWith('✅') ? '#059669' : uploadStatus.startsWith('❌') ? '#ef4444' : '#6b7280', marginTop: 10 }}>{uploadStatus}</span>}
                 </form>
               </div>
