@@ -210,6 +210,7 @@ function App() {
         onPermohonanError={handlePermohonanError}
         isLoading={isCheckingDukcapil || isCheckingNIK}
         onCitizenNameLoaded={setCitizenName}
+        citizenName={citizenName}
       />
     )
   } else {

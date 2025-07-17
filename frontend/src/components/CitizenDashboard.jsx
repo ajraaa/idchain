@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaUser, FaFileAlt, FaList, FaDownload, FaPowerOff } from 'react-icons/fa';
+import { FaUser, FaFileAlt, FaList, FaDownload, FaPowerOff, FaBell } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
@@ -14,6 +14,7 @@ import {
   validatePermohonanData,
   loadPermohonanDataForDisplay
 } from '../utils/permohonanDataUtils.js';
+import CitizenAppHeader from './CitizenAppHeader';
 
 const sidebarMenus = [
   { key: 'profile', label: 'Profile', icon: <FaUser /> },
@@ -22,7 +23,7 @@ const sidebarMenus = [
   { key: 'dokumen', label: 'Dokumen Resmi', icon: <FaDownload /> },
 ];
 
-const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, onPermohonanSuccess, onPermohonanError, isLoading, onCitizenNameLoaded }) => {
+const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, onPermohonanSuccess, onPermohonanError, isLoading, onCitizenNameLoaded, citizenName }) => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoadingLocal, setIsLoading] = useState(false);
   const [citizenData, setCitizenData] = useState(null);
@@ -1777,6 +1778,13 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     }
   };
 
+  // Cek apakah user adalah kepala keluarga
+  const isKepalaKeluarga = anggota?.statusHubunganKeluarga === 'Kepala Keluarga';
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+
+  // Pindahkan bell ke header
+  const handleBellClick = () => setShowNotifPanel(v => !v);
+
   return (
     <div className="dukcapil-app-root">
       <div className="dukcapil-app-body">
@@ -1786,6 +1794,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           onMenuClick={setActiveTab}
         />
         <main className="dukcapil-main-area">
+         <CitizenAppHeader
+           walletAddress={walletAddress}
+           citizenName={citizenName}
+           onDisconnect={onDisconnect}
+           isLoading={isLoading}
+           notificationBadge={isKepalaKeluarga && permohonanGabungKK.length > 0}
+           onBellClick={handleBellClick}
+         />
           <div className="dukcapil-main-card">
             {/* Judul dinamis */}
             <div className="card-title-dynamic">
@@ -1807,6 +1823,48 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           </div>
         </main>
       </div>
+
+      {/* Panel Notifikasi Gabung KK (pindah ke bawah header kanan) */}
+      {showNotifPanel && (
+        <div style={{
+          position: 'fixed',
+          top: 68,
+          right: 48,
+          zIndex: 1000,
+          width: 400,
+          maxWidth: '90vw',
+          background: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: 12,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.13)',
+          padding: 0,
+          overflow: 'hidden',
+        }}>
+          <div style={{padding: '16px 20px', borderBottom: '1px solid #eee', fontWeight: 700, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+            Notifikasi Gabung KK
+            <button onClick={() => setShowNotifPanel(false)} style={{background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888'}}>×</button>
+          </div>
+          <div style={{maxHeight: 350, overflowY: 'auto', padding: '8px 0'}}>
+            {isKepalaKeluarga && permohonanGabungKK.length > 0 ? (
+              permohonanGabungKK.map((p) => (
+                <div key={p.id} style={{borderBottom: '1px solid #eee', padding: '16px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} onClick={() => { setPermohonanUntukKonfirmasi(p); setShowKonfirmasiModal(true); setShowNotifPanel(false); }}>
+                  <div>
+                    <div style={{fontWeight: 700, fontSize: 18, marginBottom: 6}}>Permohonan Bergabung KK</div>
+                    <div style={{fontSize: 15, marginBottom: 2}}>Nama Pemohon: <b>{p.namaPemohon || p.pemohon}</b></div>
+                    <div style={{fontSize: 15, marginBottom: 2}}>NIK: <b>{p.nikPemohon || '-'}</b></div>
+                    <div style={{fontSize: 15}}>Alasan Pindah: <b>{p.alasanPindah || '-'}</b></div>
+                  </div>
+                  <div style={{fontSize: 13, color: '#444', minWidth: 120, textAlign: 'right'}}>
+                    Waktu Pengajuan<br/>{formatDate(p.waktuPengajuan)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{padding: '32px 0', textAlign: 'center', color: '#888', fontSize: 16}}>Tidak ada notifikasi yang masuk</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal Detail Permohonan */}
       {showPermohonanDetail && selectedPermohonan && (
@@ -1916,6 +1974,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               <button className="modal-close" onClick={() => setShowKonfirmasiModal(false)}>×</button>
             </div>
             <div className="modal-body">
+              {/* Card detail permohonan seperti desain user */}
+              <div style={{fontWeight: 700, fontSize: 20, marginBottom: 10}}>Permohonan Bergabung KK</div>
+              <div style={{marginBottom: 6}}>Nama Pemohon: <b>{permohonanUntukKonfirmasi.namaPemohon || permohonanUntukKonfirmasi.pemohon}</b></div>
+              <div style={{marginBottom: 6}}>NIK: <b>{permohonanUntukKonfirmasi.nikPemohon || '-'}</b></div>
+              <div style={{marginBottom: 6}}>Alasan Pindah: <b>{permohonanUntukKonfirmasi.alasanPindah || '-'}</b></div>
+              <div style={{marginBottom: 6, color: '#444'}}>Waktu Pengajuan: {formatDate(permohonanUntukKonfirmasi.waktuPengajuan)}</div>
               <div className="info-row"><span className="info-label">Anggota yang Gabung:</span> <span className="info-value">Data tersimpan di IPFS</span></div>
               <div className="info-row"><span className="info-label">Pemohon:</span> <span className="info-value">{permohonanUntukKonfirmasi.pemohon}</span></div>
               <div style={{marginTop: 18, display: 'flex', gap: 12}}>
