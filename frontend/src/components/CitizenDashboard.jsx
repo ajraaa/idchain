@@ -243,16 +243,48 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         }
 
         // Get kalurahan tujuan ID for pindah
-        console.log(`🔍 [Submit-Permohonan] Mencari ID Kalurahan tujuan...`);
-        idKalurahanTujuan = getIdKalurahanByNama(kalurahanBaru);
-        console.log(`📋 [Submit-Permohonan] Kalurahan Tujuan: ${kalurahanBaru} -> ID: ${idKalurahanTujuan}`);
-        
-        if (!idKalurahanTujuan) {
-          console.error(`❌ [Submit-Permohonan] ID Kalurahan tujuan tidak ditemukan`);
-          onPermohonanError('ID Kalurahan tujuan tidak ditemukan');
-          setIsLoading(false);
-          return;
+        let idKalurahanTujuanLocal = '';
+        if (jenisPindah === '2') {
+          // Gabung KK: ambil nama kalurahan dari KK tujuan berdasarkan NIK
+          try {
+            const mapping = await loadNIKMapping();
+            const cidKKTujuan = mapping[nikKepalaKeluargaTujuan];
+            if (!cidKKTujuan) {
+              onPermohonanError('NIK Kepala Keluarga Tujuan tidak ditemukan di sistem');
+              setIsLoading(false);
+              return;
+            }
+            const encryptedData = await fetchFromIPFS(cidKKTujuan);
+            const kkTujuan = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+            const namaKalurahanTujuan = kkTujuan?.alamatLengkap?.kelurahan;
+            if (!namaKalurahanTujuan) {
+              onPermohonanError('Data kalurahan tujuan tidak ditemukan di KK tujuan');
+              setIsLoading(false);
+              return;
+            }
+            idKalurahanTujuanLocal = getIdKalurahanByNama(namaKalurahanTujuan);
+            console.log(`📋 [Submit-Permohonan] Kalurahan Tujuan (Gabung KK): ${namaKalurahanTujuan} -> ID: ${idKalurahanTujuanLocal}`);
+            if (!idKalurahanTujuanLocal) {
+              onPermohonanError('ID Kalurahan tujuan tidak ditemukan');
+              setIsLoading(false);
+              return;
+            }
+          } catch (e) {
+            onPermohonanError('Gagal mengambil data KK tujuan');
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          idKalurahanTujuanLocal = getIdKalurahanByNama(kalurahanBaru);
+          console.log(`📋 [Submit-Permohonan] Kalurahan Tujuan: ${kalurahanBaru} -> ID: ${idKalurahanTujuanLocal}`);
+          if (!idKalurahanTujuanLocal) {
+            console.error(`❌ [Submit-Permohonan] ID Kalurahan tujuan tidak ditemukan`);
+            onPermohonanError('ID Kalurahan tujuan tidak ditemukan');
+            setIsLoading(false);
+            return;
+          }
         }
+        idKalurahanTujuan = idKalurahanTujuanLocal;
 
         // Collect pindah form data
         console.log(`📝 [Submit-Permohonan] Mengumpulkan data form pindah...`);
