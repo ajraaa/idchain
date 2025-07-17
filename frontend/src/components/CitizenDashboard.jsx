@@ -1770,16 +1770,29 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   // Cek permohonan gabung KK yang menunggu konfirmasi jika user adalah kepala keluarga
   useEffect(() => {
     async function cekGabungKK() {
-      if (!contractService || !citizenData?.nik) return;
+      console.log('[NotifGabungKK] Mulai cek notifikasi gabung KK...');
+      if (!contractService) {
+        console.log('[NotifGabungKK] contractService belum tersedia');
+        return;
+      }
+      if (!citizenData?.nik) {
+        console.log('[NotifGabungKK] citizenData.nik belum tersedia');
+        return;
+      }
+      console.log('[NotifGabungKK] NIK kepala keluarga yang login:', citizenData.nik);
       try {
         const ids = await contractService.contract.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
+        console.log('[NotifGabungKK] Hasil getPermohonanMenungguKonfirmasiKK:', ids);
         const list = [];
         for (let id of ids) {
           const detail = await contractService.getPermohonanDetail(Number(id));
+          console.log(`[NotifGabungKK] Detail permohonan id ${id}:`, detail);
           list.push(detail);
         }
         setPermohonanGabungKK(list);
+        console.log('[NotifGabungKK] permohonanGabungKK terisi:', list);
       } catch (e) {
+        console.log('[NotifGabungKK] Error saat ambil notifikasi gabung KK:', e);
         setPermohonanGabungKK([]);
       }
     }
@@ -1790,20 +1803,25 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const handleKonfirmasiGabungKK = async (id, isSetuju) => {
     setIsLoading(true);
     try {
+      console.log(`[NotifGabungKK] Konfirmasi permohonan gabung KK id ${id}, setuju: ${isSetuju}`);
       await contractService.contract.konfirmasiPindahGabungKK(id, isSetuju);
-              onPermohonanSuccess(isSetuju ? 'Permohonan gabung KK disetujui.' : 'Permohonan gabung KK ditolak.');
+      onPermohonanSuccess(isSetuju ? 'Permohonan gabung KK disetujui.' : 'Permohonan gabung KK ditolak.');
       setShowKonfirmasiModal(false);
       setPermohonanUntukKonfirmasi(null);
       // Refresh daftar
       const ids = await contractService.contract.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
+      console.log('[NotifGabungKK] (refresh) Hasil getPermohonanMenungguKonfirmasiKK:', ids);
       const list = [];
       for (let id of ids) {
         const detail = await contractService.getPermohonanDetail(Number(id));
+        console.log(`[NotifGabungKK] (refresh) Detail permohonan id ${id}:`, detail);
         list.push(detail);
       }
       setPermohonanGabungKK(list);
+      console.log('[NotifGabungKK] (refresh) permohonanGabungKK terisi:', list);
       loadDaftarPermohonan();
     } catch (e) {
+      console.log('[NotifGabungKK] Error saat konfirmasi gabung KK:', e);
       onError('Gagal konfirmasi gabung KK');
     } finally {
       setIsLoading(false);
@@ -1811,7 +1829,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   };
 
   // Cek apakah user adalah kepala keluarga
-  const isKepalaKeluarga = anggota?.statusHubunganKeluarga === 'Kepala Keluarga';
+  const isKepalaKeluarga = anggota?.statusHubunganKeluarga === 'KEPALA KELUARGA';
+  console.log('[NotifGabungKK] Status user kepala keluarga:', isKepalaKeluarga, '| NIK:', anggota?.nik, '| Status:', anggota?.statusHubunganKeluarga);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
 
   // Pindahkan bell ke header
