@@ -659,9 +659,9 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     onClick={() => setShowUploadInput(!showUploadInput)}
                   >
                     {uploadingDokumen ? 'Memproses...' : (showUploadInput ? 'Batal' : 'Upload & Setujui')}
-                  </button>
-                  <button 
-                    className="btn-reject" 
+                    </button>
+                    <button 
+                      className="btn-reject" 
                     type="button"
                     onClick={() => setShowAlasanInput(!showAlasanInput)}
                     disabled={isVerifying || uploadingDokumen}
@@ -740,7 +740,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     </button>
                   </div>
                 )}
-                {uploadStatus && <span className="upload-status" style={{ color: uploadStatus.startsWith('✅') ? '#059669' : uploadStatus.startsWith('❌') ? '#ef4444' : '#6b7280', marginTop: 10 }}>{uploadStatus}</span>}
+                  {uploadStatus && <span className="upload-status" style={{ color: uploadStatus.startsWith('✅') ? '#059669' : uploadStatus.startsWith('❌') ? '#ef4444' : '#6b7280', marginTop: 10 }}>{uploadStatus}</span>}
               </div>
             )}
           </div>
