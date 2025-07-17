@@ -91,10 +91,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
             waktuPengajuan: block.timestamp,
             pemohon: msg.sender,
             jenis: _jenis,
-            status: _jenis == PencatatanTypes.JenisPermohonan.Pindah &&
-                _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
-                ? PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
-                : PencatatanTypes.Status.Diajukan,
+            status: PencatatanTypes.Status.Diajukan, // Selalu mulai dari Diajukan
             idKalurahanAsal: _idKalurahanAsal,
             idKalurahanTujuan: _jenis == PencatatanTypes.JenisPermohonan.Pindah
                 ? _idKalurahanTujuan
@@ -119,18 +116,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
 
         // Tambahkan ke mapping status yang sesuai
-        if (
-            _jenis == PencatatanTypes.JenisPermohonan.Pindah &&
-            _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
-        ) {
-            daftarPermohonanPerStatus[
-                PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
-            ].push(idBaru);
-        } else {
-            daftarPermohonanPerStatus[PencatatanTypes.Status.Diajukan].push(
-                idBaru
-            );
-        }
+        daftarPermohonanPerStatus[PencatatanTypes.Status.Diajukan].push(idBaru);
 
         // Tambahkan ke mapping kalurahan tujuan jika jenisnya Pindah
         if (_jenis == PencatatanTypes.JenisPermohonan.Pindah) {
@@ -287,10 +273,18 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         _hapusByStatus(_id, PencatatanTypes.Status.DisetujuiKalurahanAsal);
 
         if (_disetujui) {
-            p.status = PencatatanTypes.Status.DisetujuiKalurahanTujuan;
-            daftarPermohonanPerStatus[
-                PencatatanTypes.Status.DisetujuiKalurahanTujuan
-            ].push(_id);
+            if (p.jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK) {
+                // Setelah disetujui kalurahan tujuan, baru masuk ke konfirmasi KK tujuan
+                p.status = PencatatanTypes.Status.MenungguKonfirmasiKKTujuan;
+                daftarPermohonanPerStatus[
+                    PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
+                ].push(_id);
+            } else {
+                p.status = PencatatanTypes.Status.DisetujuiKalurahanTujuan;
+                daftarPermohonanPerStatus[
+                    PencatatanTypes.Status.DisetujuiKalurahanTujuan
+                ].push(_id);
+            }
         } else {
             p.status = PencatatanTypes.Status.DitolakKalurahanTujuan;
             p.alasanPenolakan = _alasan;
