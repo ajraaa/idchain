@@ -5,6 +5,7 @@ import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import KalurahanAppHeader from './KalurahanAppHeader';
 import { loadPermohonanDataForDisplay } from '../utils/permohonanDataUtils.js';
+import { decryptPermohonanData } from '../utils/permohonanDataUtils.js';
 
 const sidebarMenus = [
   { key: 'masuk', label: 'Permohonan Masuk', icon: <FaInbox /> },
@@ -180,8 +181,17 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       if (permohonan.cidIPFS && permohonan.cidIPFS !== 'dummy-cid') {
         setLoadingDetailData(true);
         try {
-          const detailData = await loadPermohonanDataForDisplay(permohonan.cidIPFS);
-          setPermohonanDetailData(detailData);
+          // Ambil data mentah hasil decrypt
+          const decrypted = await decryptPermohonanData(permohonan.cidIPFS);
+          console.log('[KalurahanDashboard] Setelah decrypt:', decrypted);
+          console.log('[KalurahanDashboard] dataPindah:', decrypted.dataPindah);
+          if (decrypted && decrypted.dataPindah) {
+            console.log('[KalurahanDashboard] Object.keys(dataPindah):', Object.keys(decrypted.dataPindah));
+          }
+          // Untuk tampilan, jika ingin tetap pakai data terformat:
+          // const detailData = await loadPermohonanDataForDisplay(permohonan.cidIPFS);
+          // setPermohonanDetailData(detailData);
+          setPermohonanDetailData(decrypted); // set data mentah agar bisa diakses di komponen/modal
         } catch (error) {
           console.error('Failed to load IPFS data:', error);
           setPermohonanDetailData(null);
@@ -325,12 +335,33 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     const startTime = Date.now();
     try {
       console.log(`🔄 [Kalurahan-VerifikasiTujuan] Memulai verifikasi permohonan ${selectedPermohonan.id}...`);
+      // Ambil nikKepalaKeluargaTujuan langsung dari dataPindah
+      let nikKepalaKeluargaTujuan = '';
+      if (
+        permohonanDetailData &&
+        permohonanDetailData.dataPindah &&
+        permohonanDetailData.dataPindah.nikKepalaKeluargaTujuan
+      ) {
+        console.log('[VerifikasiKalurahanTujuan] dataPindah:', permohonanDetailData.dataPindah);
+        nikKepalaKeluargaTujuan = permohonanDetailData.dataPindah.nikKepalaKeluargaTujuan;
+      }
+      console.log('[VerifikasiKalurahanTujuan] NIK Kepala Keluarga Tujuan yang dikirim ke contract:', nikKepalaKeluargaTujuan);
+      if (!nikKepalaKeluargaTujuan) {
+        console.error('[VerifikasiKalurahanTujuan] ERROR: NIK Kepala Keluarga Tujuan tidak ditemukan di dataPindah!');
+        setIsVerifying(false);
+        onError('NIK Kepala Keluarga Tujuan tidak ditemukan di data permohonan.');
+        return;
+      }
       const result = await contractService.contract.verifikasiKalurahanTujuanPindah(
         selectedPermohonan.id,
         isSetuju,
-        alasanPenolakan || ''
+        alasanPenolakan || '',
+        nikKepalaKeluargaTujuan
       );
+      console.log('[VerifikasiKalurahanTujuan] TX result:', result);
       await result.wait();
+      const updatedPermohonan = await contractService.getPermohonanDetail(selectedPermohonan.id);
+      console.log('[VerifikasiKalurahanTujuan] Status permohonan setelah verifikasi:', updatedPermohonan.status);
       console.log(`✅ [Kalurahan-VerifikasiTujuan] Verifikasi tujuan ${isSetuju ? 'setuju' : 'tolak'} berhasil dalam ${Date.now() - startTime}ms`);
       onSuccess(`Permohonan ${selectedPermohonan.id} ${isSetuju ? 'disetujui' : 'ditolak'} oleh kalurahan tujuan!`);
       // Reload data
@@ -584,26 +615,47 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                         {permohonanDetailData.jenisPindah && ` - ${permohonanDetailData.jenisPindah}`}
                       </span>
                     </div>
-                    
-                    {Object.entries(permohonanDetailData.data).map(([key, value]) => (
-                      <div key={key} className="info-row">
-                        <span className="info-label">{key}:</span>
-                        <span className="info-value">
-                          {typeof value === 'string' && value.startsWith('https://ipfs.io/ipfs/') ? (
-                            <a 
-                              href={value} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="document-link"
-                            >
-                              📄 Download Dokumen
-                            </a>
-                          ) : (
-                            value
-                          )}
-                        </span>
-                      </div>
-                    ))}
+                    {(() => {
+                      let dataEntries = [];
+                      if (permohonanDetailData) {
+                        if (permohonanDetailData.dataPindah) {
+                          dataEntries = Object.entries(permohonanDetailData.dataPindah);
+                        } else if (permohonanDetailData.data) {
+                          dataEntries = Object.entries(permohonanDetailData.data);
+                        }
+                      }
+                      // Helper untuk format label
+                      const formatLabel = (label) => label
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, str => str.toUpperCase())
+                        .replace(/Nik/g, 'NIK')
+                        .replace(/Kk/g, 'KK');
+                      return dataEntries.map(([key, value]) => {
+                        // Sembunyikan alasanPindahLainnya & nikKepalaKeluargaBaru jika kosong
+                        if ((key === 'alasanPindahLainnya' || key === 'nikKepalaKeluargaBaru') && (!value || value === '')) return null;
+                        // Tampilkan anggotaPindah sebagai list jika array
+                        if (key === 'anggotaPindah' && Array.isArray(value)) {
+                          return (
+                            <div key={key} className="info-row" style={{marginBottom: 8}}>
+                              <span className="info-label">{formatLabel(key)}:</span>
+                              <span className="info-value">
+                                <ul style={{margin: 0, paddingLeft: 18}}>
+                                  {value.length > 0 ? value.map((nik, idx) => (
+                                    <li key={idx}>{nik}</li>
+                                  )) : <li>-</li>}
+                                </ul>
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={key} className="info-row" style={{marginBottom: 8}}>
+                            <span className="info-label">{formatLabel(key)}:</span>
+                            <span className="info-value">{value && value !== '' ? value : '-'}</span>
+                          </div>
+                        );
+                      });
+                    })()}
                   </>
                 )}
                 

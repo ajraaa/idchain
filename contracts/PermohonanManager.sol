@@ -251,7 +251,8 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     function verifikasiKalurahanTujuanPindah(
         uint256 _id,
         bool _disetujui,
-        string calldata _alasan
+        string calldata _alasan,
+        string calldata _nikKepalaKeluargaTujuan
     ) external onlyKalurahan {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
 
@@ -279,6 +280,10 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
                 daftarPermohonanPerStatus[
                     PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
                 ].push(_id);
+                // TAMBAHKAN INI:
+                permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaTujuan].push(
+                    _id
+                );
             } else {
                 p.status = PencatatanTypes.Status.DisetujuiKalurahanTujuan;
                 daftarPermohonanPerStatus[
@@ -314,13 +319,23 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         if (p.jenis == PencatatanTypes.JenisPermohonan.Pindah) {
             require(
-                p.status == PencatatanTypes.Status.DisetujuiKalurahanTujuan,
+                p.status == PencatatanTypes.Status.DisetujuiKalurahanTujuan ||
+                    p.status == PencatatanTypes.Status.DikonfirmasiKKTujuan,
                 PermohonanPindahBelumDisetujuiKalurahanTujuan()
             );
-            _hapusByStatus(
-                _id,
-                PencatatanTypes.Status.DisetujuiKalurahanTujuan
-            );
+            if (p.status == PencatatanTypes.Status.DisetujuiKalurahanTujuan) {
+                _hapusByStatus(
+                    _id,
+                    PencatatanTypes.Status.DisetujuiKalurahanTujuan
+                );
+            } else if (
+                p.status == PencatatanTypes.Status.DikonfirmasiKKTujuan
+            ) {
+                _hapusByStatus(
+                    _id,
+                    PencatatanTypes.Status.DikonfirmasiKKTujuan
+                );
+            }
         } else {
             require(
                 p.status == PencatatanTypes.Status.DisetujuiKalurahan,
@@ -422,7 +437,8 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     // Konfirmasi kepala keluarga tujuan untuk pindah gabung KK
     function konfirmasiPindahGabungKK(
         uint256 _id,
-        bool _disetujui
+        bool _disetujui,
+        string calldata _nikKepalaKeluargaTujuan
     ) external onlyWargaTerdaftar {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
 
@@ -445,6 +461,18 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         _hapusByStatus(_id, PencatatanTypes.Status.MenungguKonfirmasiKKTujuan);
 
+        // Hapus dari mapping permohonanMenungguKonfirmasiKK
+        uint256[] storage arr = permohonanMenungguKonfirmasiKK[
+            _nikKepalaKeluargaTujuan
+        ];
+        for (uint i = 0; i < arr.length; i++) {
+            if (arr[i] == _id) {
+                arr[i] = arr[arr.length - 1];
+                arr.pop();
+                break;
+            }
+        }
+
         if (_disetujui) {
             p.status = PencatatanTypes.Status.DikonfirmasiKKTujuan;
             daftarPermohonanPerStatus[
@@ -461,11 +489,9 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         p.konfirmatorKKTujuan = msg.sender;
         p.waktuKonfirmasiKKTujuan = block.timestamp;
 
-        // Note: NIK kepala keluarga tujuan perlu diambil dari IPFS data
-        // Untuk sementara gunakan string kosong
         emit KonfirmasiKKTujuan(
             _id,
-            "", // NIK kepala keluarga tujuan dari IPFS
+            _nikKepalaKeluargaTujuan, // Sekarang diisi dari parameter
             _disetujui,
             block.timestamp
         );

@@ -25,7 +25,11 @@ const STATUS_ENUM = {
   'Ditolak Kalurahan Asal': 6,
   'Disetujui Kalurahan Tujuan': 7,
   'Ditolak Kalurahan Tujuan': 8,
-  'Selesai': 9
+  'Selesai': 9,
+  'Dibatalkan oleh Pemohon': 9,
+  'Menunggu Konfirmasi KK Tujuan': 10,
+  'Dikonfirmasi KK Tujuan': 11,
+  'Ditolak KK Tujuan': 12
 };
 
 const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, isLoading }) => {
@@ -91,11 +95,14 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         console.log('[Dukcapil] Fetching permohonan masuk (pindah & non-pindah)...');
         const statusIntPindah = STATUS_ENUM['Disetujui Kalurahan Tujuan'];
         const statusIntNonPindah = STATUS_ENUM['Disetujui Kalurahan'];
+        const statusIntGabungKK = STATUS_ENUM['Dikonfirmasi KK Tujuan'];
         const idsPindah = await contractService.contract.getPermohonanForDukcapil(statusIntPindah);
         const idsNonPindah = await contractService.contract.getPermohonanForDukcapil(statusIntNonPindah);
+        const idsGabungKK = await contractService.contract.getPermohonanForDukcapil(statusIntGabungKK);
         const allIds = Array.from(new Set([
           ...idsPindah.map(id => Number(id)),
-          ...idsNonPindah.map(id => Number(id))
+          ...idsNonPindah.map(id => Number(id)),
+          ...idsGabungKK.map(id => Number(id))
         ]));
         console.log(`[Dukcapil] Found ${allIds.length} permohonan masuk`, allIds);
         const list = [];
@@ -103,7 +110,8 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
           const detail = await contractService.getPermohonanDetail(Number(id));
           if (
             detail.status === 'Disetujui Kalurahan Tujuan' ||
-            detail.status === 'Disetujui Kalurahan'
+            detail.status === 'Disetujui Kalurahan' ||
+            detail.status === 'Dikonfirmasi KK Tujuan'
           ) {
             list.push(detail);
           }
@@ -114,7 +122,10 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         setPermohonanMasuk([]);
       }
     }
-    if (activeTab === 'permohonan') fetchPermohonanMasuk();
+    // Pastikan fetchPermohonanMasuk dipanggil setiap kali tab 'permohonan' aktif
+    if (activeTab === 'permohonan') {
+      fetchPermohonanMasuk();
+    }
   }, [contractService, activeTab]);
 
   // Fetch riwayat permohonan (semua status utama Dukcapil)
@@ -131,7 +142,8 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
           'Ditolak Kalurahan',
           'Ditolak Kalurahan Tujuan',
           'Diajukan',
-          'Selesai'
+          'Selesai',
+          'Dikonfirmasi KK Tujuan'
         ];
         let allIds = [];
         for (const status of statusList) {
@@ -310,18 +322,22 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
       // Reload daftar permohonan masuk (gabungan status)
       const statusIntPindah = STATUS_ENUM['Disetujui Kalurahan Tujuan'];
       const statusIntNonPindah = STATUS_ENUM['Disetujui Kalurahan'];
+      const statusIntGabungKK = STATUS_ENUM['Dikonfirmasi KK Tujuan'];
       const idsPindah = await contractService.contract.getPermohonanForDukcapil(statusIntPindah);
       const idsNonPindah = await contractService.contract.getPermohonanForDukcapil(statusIntNonPindah);
+      const idsGabungKK = await contractService.contract.getPermohonanForDukcapil(statusIntGabungKK);
       const allIds = Array.from(new Set([
         ...idsPindah.map(id => Number(id)),
-        ...idsNonPindah.map(id => Number(id))
+        ...idsNonPindah.map(id => Number(id)),
+        ...idsGabungKK.map(id => Number(id))
       ]));
       const list = [];
       for (let id of allIds) {
         const detail = await contractService.getPermohonanDetail(Number(id));
         if (
           detail.status === 'Disetujui Kalurahan Tujuan' ||
-          (detail.status === 'Disetujui Kalurahan' && detail.jenis !== '4' && detail.jenis !== 'Pindah')
+          (detail.status === 'Disetujui Kalurahan' && detail.jenis !== '4' && detail.jenis !== 'Pindah') ||
+          detail.status === 'Dikonfirmasi KK Tujuan'
         ) {
           list.push(detail);
         }
@@ -374,30 +390,39 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   };
 
   // Render daftar permohonan masuk
-  const renderPermohonanMasuk = () => (
-    <div className="management-card">
-      {permohonanMasuk.length === 0 ? <div>Tidak ada permohonan masuk.</div> : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>ID</th><th>Jenis</th><th>Status</th><th>Pemohon</th><th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {permohonanMasuk.map(p => (
-              <tr key={p.id}>
-                <td>{p.id}</td>
-                <td>{p.jenis}</td>
-                <td>{p.status}</td>
-                <td>{p.pemohon}</td>
-                <td><button className="detail-button" onClick={() => handlePermohonanClick(p)}>Detail</button></td>
+  const renderPermohonanMasuk = () => {
+    const semuaPermohonan = [...permohonanMasuk, ...riwayatPermohonan];
+    const permohonanUntukDukcapil = semuaPermohonan.filter(p =>
+      p.status === 'Menunggu Verifikasi Dukcapil' ||
+      p.status === 'Menunggu Verifikasi' ||
+      p.status === 'Disetujui Kalurahan Tujuan' ||
+      p.status === 'Dikonfirmasi KK Tujuan' // pastikan ini ada
+    );
+    return (
+      <div className="management-card">
+        {permohonanUntukDukcapil.length === 0 ? <div>Tidak ada permohonan masuk.</div> : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>Jenis</th><th>Status</th><th>Pemohon</th><th>Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
+            </thead>
+            <tbody>
+              {permohonanUntukDukcapil.map(p => (
+                <tr key={p.id}>
+                  <td>{p.id}</td>
+                  <td>{p.jenis}</td>
+                  <td>{p.status}</td>
+                  <td>{p.pemohon}</td>
+                  <td><button className="detail-button" onClick={() => handlePermohonanClick(p)}>Detail</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
+  };
 
   // Render riwayat permohonan
   const renderRiwayat = () => (
@@ -606,25 +631,47 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                         {permohonanDetailData.jenisPindah && ` - ${permohonanDetailData.jenisPindah}`}
                       </span>
                     </div>
-                    {Object.entries(permohonanDetailData.data).map(([key, value]) => (
-                      <div key={key} className="info-row">
-                        <span className="info-label">{key}:</span>
-                        <span className="info-value">
-                          {typeof value === 'string' && value.startsWith('https://ipfs.io/ipfs/') ? (
-                            <a 
-                              href={value} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="document-link"
-                            >
-                              📄 Download Dokumen
-                            </a>
-                          ) : (
-                            value
-                          )}
-                        </span>
-                      </div>
-                    ))}
+                    {(() => {
+                      let dataEntries = [];
+                      if (permohonanDetailData) {
+                        if (permohonanDetailData.dataPindah) {
+                          dataEntries = Object.entries(permohonanDetailData.dataPindah);
+                        } else if (permohonanDetailData.data) {
+                          dataEntries = Object.entries(permohonanDetailData.data);
+                        }
+                      }
+                      // Helper untuk format label
+                      const formatLabel = (label) => label
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, str => str.toUpperCase())
+                        .replace(/Nik/g, 'NIK')
+                        .replace(/Kk/g, 'KK');
+                      return dataEntries.map(([key, value]) => {
+                        // Sembunyikan alasanPindahLainnya & nikKepalaKeluargaBaru jika kosong
+                        if ((key === 'alasanPindahLainnya' || key === 'nikKepalaKeluargaBaru') && (!value || value === '')) return null;
+                        // Tampilkan anggotaPindah sebagai list jika array
+                        if (key === 'anggotaPindah' && Array.isArray(value)) {
+                          return (
+                            <div key={key} className="info-row" style={{marginBottom: 8}}>
+                              <span className="info-label">{formatLabel(key)}:</span>
+                              <span className="info-value">
+                                <ul style={{margin: 0, paddingLeft: 18}}>
+                                  {value.length > 0 ? value.map((nik, idx) => (
+                                    <li key={idx}>{nik}</li>
+                                  )) : <li>-</li>}
+                                </ul>
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={key} className="info-row" style={{marginBottom: 8}}>
+                            <span className="info-label">{formatLabel(key)}:</span>
+                            <span className="info-value">{value && value !== '' ? value : '-'}</span>
+                          </div>
+                        );
+                      });
+                    })()}
                   </>
                 )}
                 {!permohonanDetailData && !loadingDetailData && selectedPermohonan.cidIPFS && selectedPermohonan.cidIPFS !== 'dummy-cid' && (
@@ -635,97 +682,72 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                 )}
               </div>
             </div>
-            {/* Tombol Aksi */}
             {(
               selectedPermohonan.status === 'Disetujui Kalurahan Tujuan' ||
-              (selectedPermohonan.status === 'Disetujui Kalurahan' && selectedPermohonan.jenis !== '4' && selectedPermohonan.jenis !== 'Pindah')
+              selectedPermohonan.status === 'Disetujui Kalurahan' ||
+              selectedPermohonan.status === 'Dikonfirmasi KK Tujuan'
             ) && (
-              <div className="modal-footer" style={{
-                position: 'sticky',
-                bottom: 0,
-                background: 'white',
-                zIndex: 10,
-                padding: '16px 0 0 0',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                  <button
-                    type="button"
-                    className="btn-approve"
-                    disabled={uploadingDokumen}
-                    onClick={() => setShowUploadInput(!showUploadInput)}
-                  >
-                    {uploadingDokumen ? 'Memproses...' : (showUploadInput ? 'Batal' : 'Upload & Setujui')}
-                    </button>
-                    <button 
-                      className="btn-reject" 
-                    type="button"
-                    onClick={() => setShowAlasanInput(!showAlasanInput)}
-                    disabled={isVerifying || uploadingDokumen}
-                  >
-                    {isVerifying ? 'Memproses...' : (showAlasanInput ? 'Batal' : 'Tolak')}
-                  </button>
-                </div>
-                {showUploadInput && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', marginBottom: 12, marginTop: 16 }}>
-                    <label htmlFor="dokumen-resmi-file" style={{ fontWeight: 500, marginBottom: 6 }}>Upload Dokumen Resmi:</label>
-                    <input
-                      type="file"
-                      id="dokumen-resmi-file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      disabled={uploadingDokumen}
-                      style={{
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.7)',
-                        border: '1px solid #d1d5db',
-                        padding: '10px 12px',
-                        fontSize: '1rem',
-                        outline: 'none',
-                        transition: 'border-color 0.2s',
-                        color: '#222',
-                        cursor: uploadingDokumen ? 'not-allowed' : 'pointer',
-                        maxWidth: '100%',
-                        width: '100%',
-                      }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'}
-                      onBlur={e => e.target.style.borderColor = '#d1d5db'}
-                    />
-                  </div>
-                )}
-                {showAlasanInput && (
-                  <div style={{ marginTop: 16, width: '100%', textAlign: 'center' }}>
-                    <input
-                      type="text"
-                      className="input-alasan"
-                      placeholder="Masukkan alasan penolakan"
-                      value={alasanPenolakan}
-                      onChange={e => setAlasanPenolakan(e.target.value)}
-                      disabled={isVerifying || uploadingDokumen}
-                      style={{
-                        width: '100%',
-                        marginBottom: 8,
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.7)',
-                        border: '1px solid #d1d5db',
-                        padding: '10px 12px',
-                        fontSize: '1rem',
-                        outline: 'none',
-                        transition: 'border-color 0.2s',
-                        color: '#222',
-                      }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'}
-                      onBlur={e => e.target.style.borderColor = '#d1d5db'}
-                    />
-                    {alasanError && <div style={{ color: '#dc2626', fontSize: '0.9em', marginBottom: 8 }}>{alasanError}</div>}
-                    <button
-                      type="button"
-                      className="btn-reject"
-                      disabled={isVerifying || uploadingDokumen}
-                      style={{ width: '100%' }}
-                      onClick={() => {
+              <div className="modal-footer" style={{display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16}}>
+                {showUploadInput ? (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', marginBottom: 12 }}>
+                      <label htmlFor="dokumen-resmi-file" style={{ fontWeight: 500, marginBottom: 6 }}>Upload Dokumen Resmi:</label>
+                      <input
+                        type="file"
+                        id="dokumen-resmi-file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        disabled={uploadingDokumen}
+                        style={{
+                          borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.7)',
+                          border: '1px solid #d1d5db',
+                          padding: '10px 12px',
+                          fontSize: '1rem',
+                          outline: 'none',
+                          transition: 'border-color 0.2s',
+                          color: '#222',
+                          cursor: uploadingDokumen ? 'not-allowed' : 'pointer',
+                          maxWidth: '100%',
+                          width: '100%',
+                        }}
+                        onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                        onBlur={e => e.target.style.borderColor = '#d1d5db'}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button className="add-button" disabled={isVerifying || uploadingDokumen} onClick={() => handleVerifikasiDukcapil(true)}>Setujui</button>
+                      <button className="remove-button" disabled={isVerifying || uploadingDokumen} onClick={() => setShowUploadInput(false)}>Batal</button>
+                    </div>
+                  </>
+                ) : showAlasanInput ? (
+                  <>
+                    <div style={{ marginTop: 8, width: '100%', textAlign: 'center' }}>
+                      <input
+                        type="text"
+                        className="input-alasan"
+                        placeholder="Masukkan alasan penolakan"
+                        value={alasanPenolakan}
+                        onChange={e => setAlasanPenolakan(e.target.value)}
+                        disabled={isVerifying || uploadingDokumen}
+                        style={{
+                          width: '100%',
+                          marginBottom: 8,
+                          borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.7)',
+                          border: '1px solid #d1d5db',
+                          padding: '10px 12px',
+                          fontSize: '1rem',
+                          outline: 'none',
+                          transition: 'border-color 0.2s',
+                          color: '#222',
+                        }}
+                        onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                        onBlur={e => e.target.style.borderColor = '#d1d5db'}
+                      />
+                      {alasanError && <div style={{ color: '#dc2626', fontSize: '0.9em', marginBottom: 8 }}>{alasanError}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                      <button className="remove-button" disabled={isVerifying || uploadingDokumen} onClick={() => {
                         if (!alasanPenolakan.trim()) {
                           setAlasanError('Alasan penolakan wajib diisi.');
                           return;
@@ -734,13 +756,16 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                         setShowAlasanInput(false);
                         handleVerifikasiDukcapil(false, alasanPenolakan);
                         setAlasanPenolakan('');
-                      }}
-                    >
-                      {isVerifying ? 'Memproses...' : 'Submit Penolakan'}
-                    </button>
+                      }}>Tolak</button>
+                      <button className="add-button" disabled={isVerifying || uploadingDokumen} onClick={() => setShowAlasanInput(false)}>Batal</button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                    <button className="add-button" disabled={isVerifying || uploadingDokumen} onClick={() => setShowUploadInput(true)}>Upload & Setujui</button>
+                    <button className="remove-button" disabled={isVerifying || uploadingDokumen} onClick={() => setShowAlasanInput(true)}>Tolak</button>
                   </div>
                 )}
-                  {uploadStatus && <span className="upload-status" style={{ color: uploadStatus.startsWith('✅') ? '#059669' : uploadStatus.startsWith('❌') ? '#ef4444' : '#6b7280', marginTop: 10 }}>{uploadStatus}</span>}
               </div>
             )}
           </div>

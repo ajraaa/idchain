@@ -269,6 +269,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               setIsLoading(false);
               return;
             }
+            console.log('[Submit-PindahGabungKK] NIK Kepala Keluarga Tujuan:', nikKepalaKeluargaTujuan);
           } catch (e) {
             onPermohonanError('Gagal mengambil data KK tujuan');
             setIsLoading(false);
@@ -292,11 +293,17 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           alamatBaru,
           kalurahanBaru,
           alasanPindah,
-          alasanPindahLainnya,
           anggotaPindah,
-          nikKepalaKeluargaBaru,
           nikKepalaKeluargaTujuan
         };
+        if (alasanPindah === 'Lainnya' && alasanPindahLainnya) {
+          pindahFormData.alasanPindahLainnya = alasanPindahLainnya;
+        }
+        if (jenisPindah === '1' && nikKepalaKeluargaBaru) {
+          pindahFormData.nikKepalaKeluargaBaru = nikKepalaKeluargaBaru;
+        }
+        console.log('[Submit-PindahGabungKK] NIK Kepala Keluarga Tujuan:', nikKepalaKeluargaTujuan);
+        console.log('[Submit-PindahGabungKK] Data yang dikirim:', pindahFormData);
         console.log(`📋 [Submit-Permohonan] Pindah Form Data:`, pindahFormData);
 
         // Process and upload pindah data
@@ -342,7 +349,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         cidIPFS = await processAndUploadPermohonanData(
           jenisPermohonan, 
           formData, 
-          walletAddress
+          walletAddress,
+          jenisPindah
         );
         console.log(`✅ [Submit-Permohonan] IPFS upload berhasil, CID: ${cidIPFS}`);
 
@@ -588,13 +596,47 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   // Helper: collect form data based on jenis permohonan
   const collectFormData = (jenisPermohonan) => {
     switch(jenisPermohonan) {
-      case '0': return formDataKelahiran;
-      case '1': return formDataKematian;
-      case '2': return formDataPerkawinan;
-      case '3': return formDataPerceraian;
+      case '0': return {
+        namaAnak: formDataKelahiran.namaAnak,
+        tempatLahirAnak: formDataKelahiran.tempatLahirAnak,
+        tanggalLahirAnak: formDataKelahiran.tanggalLahirAnak,
+        jamLahirAnak: formDataKelahiran.jamLahirAnak,
+        nikAyah: formDataKelahiran.nikAyah,
+        nikIbu: formDataKelahiran.nikIbu,
+        nikSaksi1: formDataKelahiran.nikSaksi1,
+        nikSaksi2: formDataKelahiran.nikSaksi2,
+        suratKeteranganLahir: formDataKelahiran.suratKeteranganLahir
+      };
+      case '1': return {
+        nikAlmarhum: formDataKematian.nikAlmarhum,
+        nikPelapor: formDataKematian.nikPelapor,
+        nikSaksi1: formDataKematian.nikSaksi1,
+        nikSaksi2: formDataKematian.nikSaksi2,
+        hubunganPelapor: formDataKematian.hubunganPelapor,
+        tempatKematian: formDataKematian.tempatKematian,
+        tanggalKematian: formDataKematian.tanggalKematian,
+        penyebabKematian: formDataKematian.penyebabKematian,
+        suratKeteranganKematian: formDataKematian.suratKeteranganKematian
+      };
+      case '2': return {
+        nikPria: formDataPerkawinan.nikPria,
+        nikWanita: formDataPerkawinan.nikWanita,
+        nikSaksi1: formDataPerkawinan.nikSaksi1,
+        nikSaksi2: formDataPerkawinan.nikSaksi2,
+        tempatPernikahan: formDataPerkawinan.tempatPernikahan,
+        tanggalPernikahan: formDataPerkawinan.tanggalPernikahan,
+        suratKeteranganPernikahan: formDataPerkawinan.suratKeteranganPernikahan,
+        fotoPria: formDataPerkawinan.fotoPria,
+        fotoWanita: formDataPerkawinan.fotoWanita
+      };
+      case '3': return {
+        nikSuami: formDataPerceraian.nikSuami,
+        nikIstri: formDataPerceraian.nikIstri,
+        suratPutusanPengadilan: formDataPerceraian.suratPutusanPengadilan
+      };
       case '4': return {
-        alamatBaru,
-        kalurahanBaru,
+        alamatTujuan: alamatBaru,
+        kalurahanTujuan: kalurahanBaru,
         alasanPindah,
         alasanPindahLainnya,
         anggotaPindah,
@@ -1542,49 +1584,52 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                 {jenisPindah === '2' && (
                   <>
                     <div className="form-group">
-                      <label>Anggota Keluarga yang Ikut Pindah</label>
-                      <div style={{overflowX: 'auto'}}>
-                        <table className="anggota-table">
-                          <thead>
-                            <tr>
-                              <th></th>
-                              <th>Nama</th>
-                              <th>Hubungan</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {anggotaArr.map((a, idx) => (
-                              <tr key={a.nik || idx}>
-                                <td>
-                                  <input
-                                    type="checkbox"
-                                    checked={anggotaPindah.includes(a.nik)}
-                                    onChange={e => {
-                                      if (e.target.checked) {
-                                        setAnggotaPindah(prev => [...prev, a.nik]);
-                                      } else {
-                                        setAnggotaPindah(prev => prev.filter(nik => nik !== a.nik));
-                                      }
-                                    }}
-                                  />
-                                </td>
-                                <td>{a.nama}</td>
-                                <td>{a.statusHubunganKeluarga}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <div className="form-group">
                       <label htmlFor="nikKepalaKeluargaTujuan">NIK Kepala Keluarga Tujuan</label>
                       <input
                         type="text"
                         id="nikKepalaKeluargaTujuan"
                         value={nikKepalaKeluargaTujuan}
-                        onChange={e => setNikKepalaKeluargaTujuan(e.target.value)}
+                        onChange={async (e) => {
+                          setNikKepalaKeluargaTujuan(e.target.value);
+                          // Ambil alamat & kalurahan tujuan dari data KK tujuan (IPFS)
+                          const mapping = await loadNIKMapping();
+                          const cidKKTujuan = mapping[e.target.value];
+                          if (cidKKTujuan) {
+                            const encryptedData = await fetchFromIPFS(cidKKTujuan);
+                            const kkTujuan = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+                            setAlamatBaru(kkTujuan?.alamatLengkap?.alamat || '');
+                            setKalurahanBaru(kkTujuan?.alamatLengkap?.kelurahan || '');
+                          } else {
+                            setAlamatBaru('');
+                            setKalurahanBaru('');
+                          }
+                        }}
                         className="form-input"
                         placeholder="Masukkan NIK kepala keluarga tujuan"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="alamatBaru">Alamat Tujuan</label>
+                      <input
+                        type="text"
+                        id="alamatBaru"
+                        value={alamatBaru}
+                        className="form-input"
+                        placeholder="Alamat tujuan akan terisi otomatis"
+                        readOnly
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="kalurahanBaru">Kalurahan Tujuan</label>
+                      <input
+                        type="text"
+                        id="kalurahanBaru"
+                        value={kalurahanBaru}
+                        className="form-input"
+                        placeholder="Kalurahan tujuan akan terisi otomatis"
+                        readOnly
                         required
                       />
                     </div>
@@ -1620,6 +1665,43 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         />
                       </div>
                     )}
+                    <div className="form-group">
+                      <label>Anggota Keluarga yang Ikut Pindah</label>
+                      <div style={{overflowX: 'auto'}}>
+                        <table className="anggota-table">
+                          <thead>
+                            <tr>
+                              <th></th>
+                              <th>Nama</th>
+                              <th>NIK</th>
+                              <th>Hubungan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {anggotaArr.map((a, idx) => (
+                              <tr key={a.nik || idx}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={anggotaPindah.includes(a.nik)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        setAnggotaPindah(prev => [...prev, a.nik]);
+                                      } else {
+                                        setAnggotaPindah(prev => prev.filter(nik => nik !== a.nik));
+                                      }
+                                    }}
+                                  />
+                                </td>
+                                <td>{a.nama}</td>
+                                <td>{a.nik}</td>
+                                <td>{a.statusHubunganKeluarga}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </>
                 )}
                 <button
@@ -1804,7 +1886,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     setIsLoading(true);
     try {
       console.log(`[NotifGabungKK] Konfirmasi permohonan gabung KK id ${id}, setuju: ${isSetuju}`);
-      await contractService.contract.konfirmasiPindahGabungKK(id, isSetuju);
+      console.log('[NotifGabungKK] NIK kepala keluarga yang login (untuk konfirmasi):', citizenData.nik);
+      await contractService.contract.konfirmasiPindahGabungKK(id, isSetuju, citizenData.nik);
       onPermohonanSuccess(isSetuju ? 'Permohonan gabung KK disetujui.' : 'Permohonan gabung KK ditolak.');
       setShowKonfirmasiModal(false);
       setPermohonanUntukKonfirmasi(null);
@@ -1897,7 +1980,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           </div>
           <div style={{maxHeight: 350, overflowY: 'auto', padding: '8px 0'}}>
             {isKepalaKeluarga && permohonanGabungKK.length > 0 ? (
-              permohonanGabungKK.map((p) => (
+              permohonanGabungKK.filter(p => p.status === 'Menunggu Konfirmasi KK Tujuan').map((p) => (
                 <div key={p.id} style={{borderBottom: '1px solid #eee', padding: '16px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} onClick={() => { setPermohonanUntukKonfirmasi(p); setShowKonfirmasiModal(true); setShowNotifPanel(false); }}>
                   <div>
                     <div style={{fontWeight: 700, fontSize: 18, marginBottom: 6}}>Permohonan Bergabung KK</div>

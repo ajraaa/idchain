@@ -278,30 +278,26 @@ export const preparePerceraianData = (formData, walletAddress) => ({
  * @returns {Object} - Prepared data structure
  */
 export const preparePindahData = (formData, walletAddress, jenisPindah) => {
-    const alamatLengkap = `${formData.alamatBaru}, ${formData.kalurahanBaru}, Gamping, Sleman, Daerah Istimewa Yogyakarta`;
-    const alasanFinal = formData.alasanPindah === 'Lainnya' ? formData.alasanPindahLainnya : formData.alasanPindah;
-
+    console.log('[preparePindahData] formData yang diterima:', formData);
+    const dataPindah = {
+        alamatTujuan: formData.alamatTujuan || formData.alamatBaru,
+        kalurahanTujuan: formData.kalurahanTujuan || formData.kalurahanBaru,
+        alasanPindah: formData.alasanPindah,
+        alasanPindahLainnya: formData.alasanPindahLainnya,
+        anggotaPindah: formData.anggotaPindah,
+        nikKepalaKeluargaBaru: formData.nikKepalaKeluargaBaru,
+        nikKepalaKeluargaTujuan: formData.nikKepalaKeluargaTujuan
+    };
+    console.log('[preparePindahData] dataPindah yang akan disimpan:', dataPindah);
     return {
         metadata: {
             jenisPermohonan: "Pindah",
-            jenisPindah: parseInt(jenisPindah),
+            jenisPindah: jenisPindah,
             timestamp: new Date().toISOString(),
             pemohon: walletAddress,
             version: "1.0"
         },
-        dataPindah: {
-            alasanPindah: alasanFinal,
-            alamatTujuan: {
-                alamat: formData.alamatBaru,
-                kalurahan: formData.kalurahanBaru,
-                kecamatan: "Gamping",
-                kabupaten: "Sleman",
-                provinsi: "Daerah Istimewa Yogyakarta"
-            },
-            anggotaPindah: formData.anggotaPindah || [],
-            nikKepalaKeluargaBaru: formData.nikKepalaKeluargaBaru || null,
-            nikKepalaKeluargaTujuan: formData.nikKepalaKeluargaTujuan || null
-        }
+        dataPindah
     };
 };
 
@@ -378,12 +374,7 @@ export const processAndUploadPermohonanData = async (jenisPermohonan, formData, 
         // 2. Prepare data structure
         console.log(`📝 [IPFS-Upload] Step 2: Menyiapkan struktur data...`);
         const permohonanData = preparePermohonanData(jenisPermohonan, formData, walletAddress, jenisPindah);
-        console.log(`📝 [IPFS-Upload] Data structure prepared:`, {
-            jenisPermohonan: permohonanData.metadata.jenisPermohonan,
-            timestamp: permohonanData.metadata.timestamp,
-            pemohon: permohonanData.metadata.pemohon,
-            dataKeys: Object.keys(permohonanData).filter(key => key !== 'metadata')
-        });
+        console.log('📝 [IPFS-Upload] Hasil prepare data (akan diencrypt):', permohonanData);
 
         // 3. Encrypt data
         console.log(`🔐 [IPFS-Upload] Step 3: Enkripsi data...`);
