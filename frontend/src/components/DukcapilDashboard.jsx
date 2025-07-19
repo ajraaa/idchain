@@ -311,15 +311,76 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   const handleVerifikasiDukcapil = async (isSetuju, alasanPenolakan = '') => {
     if (!selectedPermohonan) return;
     setIsVerifying(true);
+    const startTime = Date.now();
+    
     try {
+      console.log(`🔄 [Dukcapil-Verifikasi] Memulai verifikasi permohonan ${selectedPermohonan.id}...`);
+      console.log(`📋 [Dukcapil-Verifikasi] Status: ${isSetuju ? 'Setuju' : 'Tolak'}`);
+      console.log(`📋 [Dukcapil-Verifikasi] Alasan: ${alasanPenolakan}`);
+      
+      // Verifikasi permohonan di smart contract terlebih dahulu
+      console.log(`📜 [Dukcapil-Verifikasi] Verifikasi di smart contract...`);
+      const verifyStartTime = Date.now();
       const result = await contractService.contract.verifikasiDukcapil(
         selectedPermohonan.id,
         isSetuju,
         alasanPenolakan || ''
       );
       await result.wait();
+      const verifyEndTime = Date.now();
+      console.log(`✅ [Dukcapil-Verifikasi] Smart contract verifikasi berhasil dalam ${verifyEndTime - verifyStartTime}ms`);
+      
+      // Jika setuju, upload dokumen resmi setelah verifikasi
+      if (isSetuju) {
+        const fileInput = document.getElementById('dokumen-resmi-file');
+        if (!fileInput.files || fileInput.files.length === 0) {
+          console.error('❌ [Dukcapil-Verifikasi] File dokumen resmi tidak dipilih!');
+          onError('File dokumen resmi wajib diupload untuk persetujuan!');
+          setIsVerifying(false);
+          return;
+        }
+        
+        const file = fileInput.files[0];
+        console.log(`📁 [Dukcapil-Verifikasi] File dokumen: ${file.name} (${file.size} bytes)`);
+        
+        // Upload dokumen resmi ke IPFS
+        console.log(`☁️ [Dukcapil-Verifikasi] Upload dokumen resmi ke IPFS...`);
+        const uploadStartTime = Date.now();
+        
+        // 1. Baca file sebagai ArrayBuffer dan ubah ke string base64
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        const binaryString = String.fromCharCode.apply(null, uint8Array);
+        const base64Data = btoa(binaryString);
+        console.log(`✅ [Dukcapil-Verifikasi] File converted to base64 (${base64Data.length} chars)`);
+        
+        // 2. Enkripsi file pakai secret key
+        const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
+        console.log(`✅ [Dukcapil-Verifikasi] File encrypted (${encrypted.length} chars)`);
+        
+        // 3. Upload ke IPFS
+        const cid = await uploadToPinata(encrypted, file.name + '.enc');
+        const uploadEndTime = Date.now();
+        console.log(`✅ [Dukcapil-Verifikasi] Dokumen resmi uploaded ke IPFS dalam ${uploadEndTime - uploadStartTime}ms`);
+        console.log(`🔗 [Dukcapil-Verifikasi] IPFS CID: ${cid}`);
+        
+        // 4. Simpan CID ke smart contract
+        console.log(`📜 [Dukcapil-Verifikasi] Menyimpan CID ke smart contract...`);
+        const saveStartTime = Date.now();
+        await contractService.unggahDokumenResmi(selectedPermohonan.id, cid);
+        const saveEndTime = Date.now();
+        console.log(`✅ [Dukcapil-Verifikasi] CID disimpan ke smart contract dalam ${saveEndTime - saveStartTime}ms`);
+      }
+      
+
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`🎉 [Dukcapil-Verifikasi] Verifikasi berhasil dalam ${totalTime}ms`);
+      
       onSuccess(`Permohonan ${selectedPermohonan.id} ${isSetuju ? 'disetujui' : 'ditolak'} oleh Dukcapil!`);
+      
       // Reload daftar permohonan masuk (gabungan status)
+      console.log(`🔄 [Dukcapil-Verifikasi] Reloading data...`);
       const statusIntPindah = STATUS_ENUM['Disetujui Kalurahan Tujuan'];
       const statusIntNonPindah = STATUS_ENUM['Disetujui Kalurahan'];
       const statusIntGabungKK = STATUS_ENUM['Dikonfirmasi KK Tujuan'];
@@ -345,6 +406,8 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
       setPermohonanMasuk(list);
       closeDetailModal();
     } catch (error) {
+      const totalTime = Date.now() - startTime;
+      console.error(`❌ [Dukcapil-Verifikasi] Error dalam ${totalTime}ms:`, error);
       const errorMessage = error.message || handleContractError(error);
       onError(errorMessage);
     } finally {
@@ -352,42 +415,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
     }
   };
 
-  // Handler upload dokumen resmi
-  const handleUploadDokumenResmi = async (e) => {
-    e.preventDefault();
-    if (!selectedPermohonan) return;
-    const fileInput = document.getElementById('dokumen-resmi-file');
-    if (!fileInput.files || fileInput.files.length === 0) {
-      setUploadStatus('Pilih file terlebih dahulu!');
-      return;
-    }
-    const file = fileInput.files[0];
-    setUploadingDokumen(true);
-    setUploadStatus('Membaca file...');
-    try {
-      // 1. Baca file sebagai ArrayBuffer dan ubah ke string base64
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const binaryString = String.fromCharCode.apply(null, uint8Array);
-      const base64Data = btoa(binaryString);
-      setUploadStatus('Mengenkripsi dokumen...');
-      // 2. Enkripsi file pakai secret key
-      const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
-      setUploadStatus('Mengupload ke IPFS...');
-      // 3. Upload ke IPFS
-      const cid = await uploadToPinata(encrypted, file.name + '.enc');
-      setUploadStatus('Menyimpan CID ke smart contract...');
-      // 4. Simpan CID ke smart contract
-      await contractService.unggahDokumenResmi(selectedPermohonan.id, cid);
-      setUploadStatus('✅ Dokumen resmi berhasil diupload & CID disimpan!');
-      onSuccess('Dokumen resmi berhasil diupload dan CID disimpan di smart contract!');
-    } catch (err) {
-      setUploadStatus('❌ Gagal upload dokumen resmi: ' + (err.message || err));
-      onError('Gagal upload dokumen resmi: ' + (err.message || err));
-    } finally {
-      setUploadingDokumen(false);
-    }
-  };
+
 
   // Render daftar permohonan masuk
   const renderPermohonanMasuk = () => {

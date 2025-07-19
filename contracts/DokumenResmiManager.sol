@@ -5,6 +5,7 @@ import "./PermohonanManager.sol";
 import "./PencatatanTypes.sol";
 
 error BelumDisetujuiDukcapil();
+error StatusTidakValidUntukUploadDokumen();
 
 abstract contract DokumenResmiManager {
     mapping(uint256 => string) public cidDokumenResmi;
@@ -14,9 +15,14 @@ abstract contract DokumenResmiManager {
         string calldata _cidDokumen,
         PencatatanTypes.Status statusPermohonan
     ) internal {
+        // Izinkan upload dokumen untuk status yang sudah siap diverifikasi dukcapil
         require(
-            statusPermohonan == PencatatanTypes.Status.DisetujuiDukcapil,
-            BelumDisetujuiDukcapil()
+            statusPermohonan == PencatatanTypes.Status.DisetujuiDukcapil ||
+                statusPermohonan ==
+                PencatatanTypes.Status.DisetujuiKalurahanTujuan ||
+                statusPermohonan == PencatatanTypes.Status.DisetujuiKalurahan ||
+                statusPermohonan == PencatatanTypes.Status.DikonfirmasiKKTujuan,
+            StatusTidakValidUntukUploadDokumen()
         );
         require(bytes(_cidDokumen).length > 0, CidKosong());
         cidDokumenResmi[_id] = _cidDokumen;

@@ -489,35 +489,43 @@ export class ContractService {
                 throw new Error('Wallet address not available');
             }
 
+            console.log('🔍 [ContractService] Getting dokumen resmi for wallet:', address);
+
             // Cek apakah wallet terdaftar
             const nik = await this.contract.nikByWallet(address);
+            console.log('📋 [ContractService] NIK for wallet:', nik);
             if (!nik || nik === '') {
-                // Wallet belum terdaftar, return array kosong
+                console.log('⚠️ [ContractService] Wallet not registered, returning empty array');
                 return [];
             }
 
             const permohonanIds = await this.contract.getPermohonanIDsByPemohon(address);
+            console.log('📋 [ContractService] Permohonan IDs for wallet:', permohonanIds);
             const dokumenResmi = [];
 
             for (const id of permohonanIds) {
                 try {
+                    console.log(`🔍 [ContractService] Checking dokumen resmi for permohonan ${id}...`);
                     const cidDokumen = await this.contract.cidDokumenResmi(id);
+                    console.log(`📋 [ContractService] CID dokumen for permohonan ${id}:`, cidDokumen);
                     if (cidDokumen && cidDokumen !== '') {
                         dokumenResmi.push({
                             id: id.toString(),
                             cidDokumen: cidDokumen
                         });
+                        console.log(`✅ [ContractService] Added dokumen resmi for permohonan ${id}`);
+                    } else {
+                        console.log(`⚠️ [ContractService] No dokumen resmi for permohonan ${id}`);
                     }
                 } catch (error) {
-                    // Skip if no official document for this application
-                    console.log(`No official document for application ${id}`);
+                    console.log(`❌ [ContractService] Error getting dokumen resmi for permohonan ${id}:`, error.message);
                 }
             }
 
+            console.log('✅ [ContractService] Final dokumen resmi array:', dokumenResmi);
             return dokumenResmi;
         } catch (error) {
-            console.error('Failed to get dokumen resmi:', error);
-            // Return array kosong jika ada error
+            console.error('❌ [ContractService] Failed to get dokumen resmi:', error);
             return [];
         }
     }

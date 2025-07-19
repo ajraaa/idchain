@@ -161,8 +161,10 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       console.log('📄 [CitizenDashboard] Loading dokumen resmi for wallet:', walletAddress);
       const data = await contractService.getDokumenResmi(walletAddress);
       console.log('✅ [CitizenDashboard] Dokumen resmi loaded:', data.length, 'items');
+      console.log('📋 [CitizenDashboard] Dokumen resmi details:', data);
       setDokumenResmi(data);
     } catch (error) {
+      console.error('❌ [CitizenDashboard] Error loading dokumen resmi:', error);
       console.log('⚠️ [CitizenDashboard] No dokumen resmi available, setting empty array');
       setDokumenResmi([]);
     }
