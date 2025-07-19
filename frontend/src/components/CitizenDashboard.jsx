@@ -95,6 +95,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   // Tambahkan state untuk kalurahan
   const [kalurahanBaru, setKalurahanBaru] = useState('');
+  const [kecamatanBaru, setKecamatanBaru] = useState('');
+  const [kabupatenBaru, setKabupatenBaru] = useState('');
+  const [provinsiBaru, setProvinsiBaru] = useState('');
 
   // Form validation errors
   const [formErrors, setFormErrors] = useState({});
@@ -291,13 +294,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
         // Collect pindah form data
         console.log(`📝 [Submit-Permohonan] Mengumpulkan data form pindah...`);
-        const pindahFormData = {
-          alamatBaru,
-          kalurahanBaru,
-          alasanPindah,
-          anggotaPindah,
-          nikKepalaKeluargaTujuan
-        };
+        const pindahFormData = collectFormData(jenisPermohonan);
+        console.log('[DEBUG] Data yang akan dikirim ke IPFS:', pindahFormData);
         if (alasanPindah === 'Lainnya' && alasanPindahLainnya) {
           pindahFormData.alasanPindahLainnya = alasanPindahLainnya;
         }
@@ -636,15 +634,35 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         nikIstri: formDataPerceraian.nikIstri,
         suratPutusanPengadilan: formDataPerceraian.suratPutusanPengadilan
       };
-      case '4': return {
-        alamatTujuan: alamatBaru,
-        kalurahanTujuan: kalurahanBaru,
-        alasanPindah,
-        alasanPindahLainnya,
-        anggotaPindah,
-        nikKepalaKeluargaBaru,
-        nikKepalaKeluargaTujuan
-      };
+      case '4':
+        // Untuk pindah seluruh keluarga, mandiri, atau gabung KK, kirim alamatTujuan sebagai objek lengkap
+        if (jenisPindah === '0' || jenisPindah === '1' || jenisPindah === '2') {
+          return {
+            alamatTujuan: {
+              alamat: alamatBaru,
+              kalurahan: kalurahanBaru,
+              kecamatan: kecamatanBaru,
+              kabupaten: kabupatenBaru,
+              provinsi: provinsiBaru
+            },
+            kalurahanTujuan: kalurahanBaru,
+            alasanPindah,
+            alasanPindahLainnya,
+            anggotaPindah,
+            nikKepalaKeluargaBaru,
+            nikKepalaKeluargaTujuan
+          };
+        }
+        // Default: tetap seperti sebelumnya
+        return {
+          alamatTujuan: alamatBaru,
+          kalurahanTujuan: kalurahanBaru,
+          alasanPindah,
+          alasanPindahLainnya,
+          anggotaPindah,
+          nikKepalaKeluargaBaru,
+          nikKepalaKeluargaTujuan
+        };
       default: return {};
     }
   };
@@ -680,6 +698,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       case '4':
         setAlamatBaru('');
         setKalurahanBaru('');
+        setKecamatanBaru('');
+        setKabupatenBaru('');
+        setProvinsiBaru('');
         setAlasanPindah('');
         setAlasanPindahLainnya('');
         setAnggotaPindah([]);
@@ -1320,6 +1341,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       setNikKepalaKeluargaTujuan('');
                       setAlamatBaru('');
                       setKalurahanBaru('');
+                      setKecamatanBaru('');
+                      setKabupatenBaru('');
+                      setProvinsiBaru('');
                       setAlasanPindah('');
                       setAlasanPindahLainnya('');
                     }}
@@ -1601,9 +1625,16 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                             const kkTujuan = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
                             setAlamatBaru(kkTujuan?.alamatLengkap?.alamat || '');
                             setKalurahanBaru(kkTujuan?.alamatLengkap?.kelurahan || '');
+                            // Tambahan: simpan kecamatan, kabupaten, provinsi ke state
+                            setKecamatanBaru(kkTujuan?.alamatLengkap?.kecamatan || '');
+                            setKabupatenBaru(kkTujuan?.alamatLengkap?.kabupaten || '');
+                            setProvinsiBaru(kkTujuan?.alamatLengkap?.provinsi || '');
                           } else {
                             setAlamatBaru('');
                             setKalurahanBaru('');
+                            setKecamatanBaru('');
+                            setKabupatenBaru('');
+                            setProvinsiBaru('');
                           }
                         }}
                         className="form-input"
@@ -2076,14 +2107,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <span className="info-label">Data Detail:</span>
                       <span className="info-value">
                         {permohonanDetailData.jenis}
-                        {permohonanDetailData.jenisPindah && ` - ${permohonanDetailData.jenisPindah}`}
                       </span>
                     </div>
-                    
-                    {Object.entries(permohonanDetailData.data).map(([key, value]) => (
-                      <div key={key} className="info-row">
+                    {permohonanDetailData.data && Object.entries(permohonanDetailData.data).map(([key, value]) => (
+                      <div key={key} className="info-row" style={{marginBottom: 8}}>
                         <span className="info-label">{key}:</span>
-                        <span className="info-value">{value}</span>
+                        <span className="info-value">{value && value !== '' ? value : '-'}</span>
                       </div>
                     ))}
                   </>

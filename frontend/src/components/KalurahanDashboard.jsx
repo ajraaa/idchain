@@ -176,22 +176,13 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     try {
       setSelectedPermohonan(permohonan);
       setShowDetailModal(true);
-      
       // Load detailed data from IPFS
       if (permohonan.cidIPFS && permohonan.cidIPFS !== 'dummy-cid') {
         setLoadingDetailData(true);
         try {
-          // Ambil data mentah hasil decrypt
-          const decrypted = await decryptPermohonanData(permohonan.cidIPFS);
-          console.log('[KalurahanDashboard] Setelah decrypt:', decrypted);
-          console.log('[KalurahanDashboard] dataPindah:', decrypted.dataPindah);
-          if (decrypted && decrypted.dataPindah) {
-            console.log('[KalurahanDashboard] Object.keys(dataPindah):', Object.keys(decrypted.dataPindah));
-          }
-          // Untuk tampilan, jika ingin tetap pakai data terformat:
-          // const detailData = await loadPermohonanDataForDisplay(permohonan.cidIPFS);
-          // setPermohonanDetailData(detailData);
-          setPermohonanDetailData(decrypted); // set data mentah agar bisa diakses di komponen/modal
+          // Gunakan utilitas format agar hasilnya konsisten (ada key 'data' dan 'jenis')
+          const detailData = await loadPermohonanDataForDisplay(permohonan.cidIPFS);
+          setPermohonanDetailData(detailData);
         } catch (error) {
           console.error('Failed to load IPFS data:', error);
           setPermohonanDetailData(null);
@@ -611,51 +602,15 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                     <div className="info-row">
                       <span className="info-label">Data Detail:</span>
                       <span className="info-value">
-                        {permohonanDetailData.jenis}
-                        {permohonanDetailData.jenisPindah && ` - ${permohonanDetailData.jenisPindah}`}
+                        {permohonanDetailData.jenis || permohonanDetailData.metadata?.jenisPermohonan}
                       </span>
                     </div>
-                    {(() => {
-                      let dataEntries = [];
-                      if (permohonanDetailData) {
-                        if (permohonanDetailData.dataPindah) {
-                          dataEntries = Object.entries(permohonanDetailData.dataPindah);
-                        } else if (permohonanDetailData.data) {
-                          dataEntries = Object.entries(permohonanDetailData.data);
-                        }
-                      }
-                      // Helper untuk format label
-                      const formatLabel = (label) => label
-                        .replace(/([A-Z])/g, ' $1')
-                        .replace(/^./, str => str.toUpperCase())
-                        .replace(/Nik/g, 'NIK')
-                        .replace(/Kk/g, 'KK');
-                      return dataEntries.map(([key, value]) => {
-                        // Sembunyikan alasanPindahLainnya & nikKepalaKeluargaBaru jika kosong
-                        if ((key === 'alasanPindahLainnya' || key === 'nikKepalaKeluargaBaru') && (!value || value === '')) return null;
-                        // Tampilkan anggotaPindah sebagai list jika array
-                        if (key === 'anggotaPindah' && Array.isArray(value)) {
-                          return (
-                            <div key={key} className="info-row" style={{marginBottom: 8}}>
-                              <span className="info-label">{formatLabel(key)}:</span>
-                              <span className="info-value">
-                                <ul style={{margin: 0, paddingLeft: 18}}>
-                                  {value.length > 0 ? value.map((nik, idx) => (
-                                    <li key={idx}>{nik}</li>
-                                  )) : <li>-</li>}
-                                </ul>
-                              </span>
-                            </div>
-                          );
-                        }
-                        return (
-                          <div key={key} className="info-row" style={{marginBottom: 8}}>
-                            <span className="info-label">{formatLabel(key)}:</span>
-                            <span className="info-value">{value && value !== '' ? value : '-'}</span>
-                          </div>
-                        );
-                      });
-                    })()}
+                    {permohonanDetailData.data && Object.entries(permohonanDetailData.data).map(([key, value]) => (
+                      <div key={key} className="info-row" style={{marginBottom: 8}}>
+                        <span className="info-label">{key}:</span>
+                        <span className="info-value">{value && value !== '' ? value : '-'}</span>
+                      </div>
+                    ))}
                   </>
                 )}
                 

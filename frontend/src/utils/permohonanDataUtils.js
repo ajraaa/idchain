@@ -141,29 +141,18 @@ export const validatePindahData = (formData, jenisPindah) => {
         return { isValid: false, errors };
     }
 
-    if (jenisPindah === '0') { // Seluruh keluarga
-        if (!formData.alamatBaru?.trim()) errors.alamatBaru = 'Alamat tujuan wajib diisi';
-        if (!formData.kalurahanBaru?.trim()) errors.kalurahanBaru = 'Kalurahan tujuan wajib dipilih';
-        if (!formData.alasanPindah?.trim()) errors.alasanPindah = 'Alasan pindah wajib dipilih';
-        if (formData.alasanPindah === 'Lainnya' && !formData.alasanPindahLainnya?.trim()) {
-            errors.alasanPindahLainnya = 'Alasan pindah lainnya wajib diisi';
-        }
-    } else if (jenisPindah === '1') { // Mandiri
-        if (formData.anggotaPindah?.length === 0) errors.anggotaPindah = 'Pilih minimal satu anggota yang pindah';
-        if (!formData.nikKepalaKeluargaBaru?.trim()) errors.nikKepalaKeluargaBaru = 'Pilih kepala keluarga baru';
-        if (!formData.alamatBaru?.trim()) errors.alamatBaru = 'Alamat tujuan wajib diisi';
-        if (!formData.kalurahanBaru?.trim()) errors.kalurahanBaru = 'Kalurahan tujuan wajib dipilih';
-        if (!formData.alasanPindah?.trim()) errors.alasanPindah = 'Alasan pindah wajib dipilih';
-        if (formData.alasanPindah === 'Lainnya' && !formData.alasanPindahLainnya?.trim()) {
-            errors.alasanPindahLainnya = 'Alasan pindah lainnya wajib diisi';
-        }
-    } else if (jenisPindah === '2') { // Gabung KK
-        if (formData.anggotaPindah?.length === 0) errors.anggotaPindah = 'Pilih minimal satu anggota yang pindah';
-        if (!formData.nikKepalaKeluargaTujuan?.trim()) errors.nikKepalaKeluargaTujuan = 'NIK kepala keluarga tujuan wajib diisi';
-        if (!formData.alasanPindah?.trim()) errors.alasanPindah = 'Alasan pindah wajib dipilih';
-        if (formData.alasanPindah === 'Lainnya' && !formData.alasanPindahLainnya?.trim()) {
-            errors.alasanPindahLainnya = 'Alasan pindah lainnya wajib diisi';
-        }
+    // Validasi alamat tujuan dan kalurahan tujuan (support objek dan string)
+    if (typeof formData.alamatTujuan === 'object') {
+        if (!formData.alamatTujuan.alamat?.trim()) errors.alamatBaru = 'Alamat tujuan wajib diisi';
+        if (!formData.alamatTujuan.kalurahan?.trim()) errors.kalurahanBaru = 'Kalurahan tujuan wajib dipilih';
+    } else {
+        if (!formData.alamatTujuan?.trim()) errors.alamatBaru = 'Alamat tujuan wajib diisi';
+        if (!formData.kalurahanTujuan?.trim()) errors.kalurahanBaru = 'Kalurahan tujuan wajib dipilih';
+    }
+
+    if (!formData.alasanPindah?.trim()) errors.alasanPindah = 'Alasan pindah wajib dipilih';
+    if (formData.alasanPindah === 'Lainnya' && !formData.alasanPindahLainnya?.trim()) {
+        errors.alasanPindahLainnya = 'Alasan pindah lainnya wajib diisi';
     }
 
     return {
@@ -531,16 +520,33 @@ export const getFormattedPermohonanData = (permohonanData) => {
                 2: 'Gabung KK'
             };
 
+            // Susun field agar 'Alasan Pindah (Lainnya)' langsung di bawah 'Alasan Pindah'
+            const pindahData = {};
+            pindahData['Alasan Pindah'] = data.dataPindah.alasanPindah;
+            if (data.dataPindah.alasanPindah === 'Lainnya' && data.dataPindah.alasanPindahLainnya) {
+                pindahData['Alasan Pindah (Lainnya)'] = data.dataPindah.alasanPindahLainnya;
+            }
+            pindahData['Alamat Tujuan'] = (() => {
+                const at = data.dataPindah.alamatTujuan;
+                if (!at) return '-';
+                if (typeof at === 'object') {
+                    const parts = [];
+                    if (at.alamat) parts.push(at.alamat);
+                    if (at.kalurahan) parts.push('Kalurahan ' + at.kalurahan);
+                    if (at.kecamatan) parts.push('Kecamatan ' + at.kecamatan);
+                    if (at.kabupaten) parts.push('Kabupaten ' + at.kabupaten);
+                    if (at.provinsi) parts.push('Provinsi ' + at.provinsi);
+                    return parts.join(', ');
+                }
+                return at;
+            })();
+            pindahData['Anggota Pindah'] = data.dataPindah.anggotaPindah?.length > 0 ? data.dataPindah.anggotaPindah.join(', ') : 'Tidak ada';
+            pindahData['NIK Kepala Keluarga Baru'] = data.dataPindah.nikKepalaKeluargaBaru || 'Tidak ada';
+            pindahData['NIK Kepala Keluarga Tujuan'] = data.dataPindah.nikKepalaKeluargaTujuan || 'Tidak ada';
             return {
                 jenis: 'Pindah',
                 jenisPindah: jenisPindahLabels[metadata.jenisPindah] || 'Tidak diketahui',
-                data: {
-                    'Alasan Pindah': data.dataPindah.alasanPindah,
-                    'Alamat Tujuan': `${data.dataPindah.alamatTujuan.alamat}, ${data.dataPindah.alamatTujuan.kalurahan}, ${data.dataPindah.alamatTujuan.kecamatan}, ${data.dataPindah.alamatTujuan.kabupaten}, ${data.dataPindah.alamatTujuan.provinsi}`,
-                    'Anggota Pindah': data.dataPindah.anggotaPindah?.length > 0 ? data.dataPindah.anggotaPindah.join(', ') : 'Tidak ada',
-                    'NIK Kepala Keluarga Baru': data.dataPindah.nikKepalaKeluargaBaru || 'Tidak ada',
-                    'NIK Kepala Keluarga Tujuan': data.dataPindah.nikKepalaKeluargaTujuan || 'Tidak ada'
-                }
+                data: pindahData
             };
 
         default:

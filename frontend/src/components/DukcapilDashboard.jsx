@@ -655,29 +655,35 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     <div className="info-row">
                       <span className="info-label">Data Detail:</span>
                       <span className="info-value">
-                        {permohonanDetailData.jenis}
-                        {permohonanDetailData.jenisPindah && ` - ${permohonanDetailData.jenisPindah}`}
+                        {permohonanDetailData.metadata?.jenisPermohonan}
                       </span>
                     </div>
                     {(() => {
-                      let dataEntries = [];
-                      if (permohonanDetailData) {
-                        if (permohonanDetailData.dataPindah) {
-                          dataEntries = Object.entries(permohonanDetailData.dataPindah);
-                        } else if (permohonanDetailData.data) {
-                          dataEntries = Object.entries(permohonanDetailData.data);
+                      let detailData = null;
+                      if (permohonanDetailData && permohonanDetailData.metadata) {
+                        switch (permohonanDetailData.metadata.jenisPermohonan) {
+                          case "Kelahiran":
+                            detailData = permohonanDetailData.dataKelahiran;
+                            break;
+                          case "Kematian":
+                            detailData = permohonanDetailData.dataKematian;
+                            break;
+                          case "Pindah Gabung KK":
+                            detailData = permohonanDetailData.dataPindah;
+                            break;
+                          // Tambahkan case lain sesuai kebutuhan
+                          default:
+                            detailData = null;
                         }
                       }
-                      // Helper untuk format label
+                      if (!detailData) return null;
                       const formatLabel = (label) => label
                         .replace(/([A-Z])/g, ' $1')
                         .replace(/^./, str => str.toUpperCase())
                         .replace(/Nik/g, 'NIK')
                         .replace(/Kk/g, 'KK');
-                      return dataEntries.map(([key, value]) => {
-                        // Sembunyikan alasanPindahLainnya & nikKepalaKeluargaBaru jika kosong
+                      return Object.entries(detailData).map(([key, value]) => {
                         if ((key === 'alasanPindahLainnya' || key === 'nikKepalaKeluargaBaru') && (!value || value === '')) return null;
-                        // Tampilkan anggotaPindah sebagai list jika array
                         if (key === 'anggotaPindah' && Array.isArray(value)) {
                           return (
                             <div key={key} className="info-row" style={{marginBottom: 8}}>
