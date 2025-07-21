@@ -655,57 +655,15 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     <div className="info-row">
                       <span className="info-label">Data Detail:</span>
                       <span className="info-value">
-                        {permohonanDetailData.metadata?.jenisPermohonan}
+                        {permohonanDetailData.jenis}
                       </span>
                     </div>
-                    {(() => {
-                      let detailData = null;
-                      if (permohonanDetailData && permohonanDetailData.metadata) {
-                        switch (permohonanDetailData.metadata.jenisPermohonan) {
-                          case "Kelahiran":
-                            detailData = permohonanDetailData.dataKelahiran;
-                            break;
-                          case "Kematian":
-                            detailData = permohonanDetailData.dataKematian;
-                            break;
-                          case "Pindah Gabung KK":
-                            detailData = permohonanDetailData.dataPindah;
-                            break;
-                          // Tambahkan case lain sesuai kebutuhan
-                          default:
-                            detailData = null;
-                        }
-                      }
-                      if (!detailData) return null;
-                      const formatLabel = (label) => label
-                        .replace(/([A-Z])/g, ' $1')
-                        .replace(/^./, str => str.toUpperCase())
-                        .replace(/Nik/g, 'NIK')
-                        .replace(/Kk/g, 'KK');
-                      return Object.entries(detailData).map(([key, value]) => {
-                        if ((key === 'alasanPindahLainnya' || key === 'nikKepalaKeluargaBaru') && (!value || value === '')) return null;
-                        if (key === 'anggotaPindah' && Array.isArray(value)) {
-                          return (
-                            <div key={key} className="info-row" style={{marginBottom: 8}}>
-                              <span className="info-label">{formatLabel(key)}:</span>
-                              <span className="info-value">
-                                <ul style={{margin: 0, paddingLeft: 18}}>
-                                  {value.length > 0 ? value.map((nik, idx) => (
-                                    <li key={idx}>{nik}</li>
-                                  )) : <li>-</li>}
-                                </ul>
-                              </span>
-                            </div>
-                          );
-                        }
-                        return (
-                          <div key={key} className="info-row" style={{marginBottom: 8}}>
-                            <span className="info-label">{formatLabel(key)}:</span>
-                            <span className="info-value">{value && value !== '' ? value : '-'}</span>
-                          </div>
-                        );
-                      });
-                    })()}
+                    {permohonanDetailData.data && Object.entries(permohonanDetailData.data).map(([key, value]) => (
+                      <div key={key} className="info-row" style={{marginBottom: 8}}>
+                        <span className="info-label">{key}:</span>
+                        <span className="info-value">{value && value !== '' ? value : '-'}</span>
+                      </div>
+                    ))}
                   </>
                 )}
                 {!permohonanDetailData && !loadingDetailData && selectedPermohonan.cidIPFS && selectedPermohonan.cidIPFS !== 'dummy-cid' && (

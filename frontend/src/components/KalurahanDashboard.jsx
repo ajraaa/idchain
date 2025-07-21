@@ -29,6 +29,8 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
   const [permohonanDetailData, setPermohonanDetailData] = useState(null);
   const [loadingDetailData, setLoadingDetailData] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  // Tambahkan state baru untuk data mentah
+  const [permohonanDetailRaw, setPermohonanDetailRaw] = useState(null);
 
   // State untuk input alasan penolakan (global di komponen)
   const [showAlasanInput, setShowAlasanInput] = useState(false);
@@ -180,16 +182,19 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       if (permohonan.cidIPFS && permohonan.cidIPFS !== 'dummy-cid') {
         setLoadingDetailData(true);
         try {
-          // Gunakan utilitas format agar hasilnya konsisten (ada key 'data' dan 'jenis')
+          const rawData = await decryptPermohonanData(permohonan.cidIPFS);
+          setPermohonanDetailRaw(rawData);
           const detailData = await loadPermohonanDataForDisplay(permohonan.cidIPFS);
           setPermohonanDetailData(detailData);
         } catch (error) {
           console.error('Failed to load IPFS data:', error);
+          setPermohonanDetailRaw(null);
           setPermohonanDetailData(null);
         } finally {
           setLoadingDetailData(false);
         }
       } else {
+        setPermohonanDetailRaw(null);
         setPermohonanDetailData(null);
       }
     } catch (error) {
@@ -326,15 +331,17 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     const startTime = Date.now();
     try {
       console.log(`🔄 [Kalurahan-VerifikasiTujuan] Memulai verifikasi permohonan ${selectedPermohonan.id}...`);
+      // Tambahkan log debug dataPindah
+      console.log('[DEBUG] permohonanDetailRaw.dataPindah:', permohonanDetailRaw?.dataPindah);
       // Ambil nikKepalaKeluargaTujuan langsung dari dataPindah
       let nikKepalaKeluargaTujuan = '';
       if (
-        permohonanDetailData &&
-        permohonanDetailData.dataPindah &&
-        permohonanDetailData.dataPindah.nikKepalaKeluargaTujuan
+        permohonanDetailRaw &&
+        permohonanDetailRaw.dataPindah &&
+        permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan
       ) {
-        console.log('[VerifikasiKalurahanTujuan] dataPindah:', permohonanDetailData.dataPindah);
-        nikKepalaKeluargaTujuan = permohonanDetailData.dataPindah.nikKepalaKeluargaTujuan;
+        console.log('[VerifikasiKalurahanTujuan] dataPindah:', permohonanDetailRaw.dataPindah);
+        nikKepalaKeluargaTujuan = permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan;
       }
       console.log('[VerifikasiKalurahanTujuan] NIK Kepala Keluarga Tujuan yang dikirim ke contract:', nikKepalaKeluargaTujuan);
       if (!nikKepalaKeluargaTujuan) {

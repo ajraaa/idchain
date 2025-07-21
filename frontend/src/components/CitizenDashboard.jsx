@@ -247,6 +247,16 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           return;
         }
 
+        // Tambahkan validasi dan log untuk nikKepalaKeluargaTujuan pada pindah gabung KK
+        if (jenisPindah === '2') {
+          console.log('[DEBUG] nikKepalaKeluargaTujuan sebelum submit:', nikKepalaKeluargaTujuan);
+          if (!nikKepalaKeluargaTujuan || nikKepalaKeluargaTujuan.trim() === '') {
+            onPermohonanError('NIK Kepala Keluarga Tujuan wajib diisi untuk permohonan gabung KK');
+            setIsLoading(false);
+            return;
+          }
+        }
+
         // Get kalurahan tujuan ID for pindah
         let idKalurahanTujuanLocal = '';
         if (jenisPindah === '2') {
