@@ -149,10 +149,27 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         
         // Extract citizen name from KK data for header
         if (parsedKKData.anggota && parsedKKData.anggota.length > 0) {
-          const kepalaKeluarga = parsedKKData.anggota.find(member => 
-            member.statusHubunganKeluarga === 'KEPALA KELUARGA'
-          ) || parsedKKData.anggota[0];
-          onCitizenNameLoaded?.(kepalaKeluarga.nama);
+          console.log('🔍 [CitizenDashboard] Looking for user with NIK:', data.nik);
+          console.log('📋 [CitizenDashboard] Available anggota:', parsedKKData.anggota.map(a => ({ nik: a.nik, nama: a.nama, status: a.statusHubunganKeluarga })));
+          
+          // Cari anggota yang sesuai dengan NIK user yang sedang login
+          const currentUser = parsedKKData.anggota.find(member => 
+            member.nik === data.nik
+          );
+          
+          if (currentUser) {
+            // Tampilkan nama user yang sedang login
+            console.log('✅ [CitizenDashboard] Found current user:', currentUser.nama);
+            onCitizenNameLoaded?.(currentUser.nama);
+          } else {
+            // Fallback ke kepala keluarga jika tidak ditemukan
+            console.log('⚠️ [CitizenDashboard] Current user not found, falling back to kepala keluarga');
+            const kepalaKeluarga = parsedKKData.anggota.find(member => 
+              member.statusHubunganKeluarga === 'KEPALA KELUARGA'
+            ) || parsedKKData.anggota[0];
+            console.log('👨‍👩‍👧‍👦 [CitizenDashboard] Using kepala keluarga:', kepalaKeluarga.nama);
+            onCitizenNameLoaded?.(kepalaKeluarga.nama);
+          }
         }
       } else {
         console.log('⚠️ [CitizenDashboard] No CID found for NIK:', data.nik);
@@ -517,11 +534,18 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     let cancelled = false;
     async function fetchParents() {
       if (!anggota) {
+        console.log('⚠️ [CitizenDashboard] No anggota data available for parent lookup');
         setParentNames({ ayah: '-', ibu: '-' });
         return;
       }
+      
+      console.log('🔍 [CitizenDashboard] Looking up parents for:', anggota.nama);
+      console.log('📋 [CitizenDashboard] NIK Ayah:', anggota.nikAyah);
+      console.log('📋 [CitizenDashboard] NIK Ibu:', anggota.nikIbu);
+      
       setParentLoading(true);
       const mapping = await loadNIKMapping(contractService);
+      console.log('📋 [CitizenDashboard] NIK mapping loaded, available NIKs:', Object.keys(mapping).length);
       async function lookupParentName(nik) {
         if (!nik) return '-';
         const cid = mapping[nik];
@@ -529,10 +553,23 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         try {
           const encrypted = await fetchFromIPFS(cid);
           const data = await decryptAes256CbcNodeStyle(encrypted, CRYPTO_CONFIG.SECRET_KEY);
-          const arr = Array.isArray(data?.anggota) ? data.anggota : [];
+          
+          // Parse JSON jika masih berupa string
+          let parsedData = data;
+          if (typeof data === 'string') {
+            try {
+              parsedData = JSON.parse(data);
+            } catch (error) {
+              console.error('❌ [CitizenDashboard] Failed to parse parent data JSON:', error);
+              return '-';
+            }
+          }
+          
+          const arr = Array.isArray(parsedData?.anggota) ? parsedData.anggota : [];
           const found = arr.find(m => m.nik === nik);
           return found?.nama || '-';
-        } catch {
+        } catch (error) {
+          console.error('❌ [CitizenDashboard] Error looking up parent name for NIK:', nik, error);
           return '-';
         }
       }
@@ -540,6 +577,11 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         lookupParentName(anggota.nikAyah),
         lookupParentName(anggota.nikIbu)
       ]);
+      
+      console.log('✅ [CitizenDashboard] Parent lookup results:');
+      console.log('👨 Ayah:', ayah);
+      console.log('👩 Ibu:', ibu);
+      
       if (!cancelled) setParentNames({ ayah, ibu });
       setParentLoading(false);
     }
