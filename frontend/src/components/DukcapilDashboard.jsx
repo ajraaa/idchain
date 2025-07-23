@@ -72,6 +72,9 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   // State untuk modal tambah kalurahan
   const [showAddKalurahanModal, setShowAddKalurahanModal] = useState(false);
 
+  // State untuk pencarian kalurahan
+  const [searchKalurahan, setSearchKalurahan] = useState('');
+
   // Helper function untuk generate UUID (sama seperti di IdentityForm)
   const generateUUID = () => {
     if (crypto.randomUUID) {
@@ -339,6 +342,16 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
     setShowAddKalurahanModal(false);
   };
 
+  // Filter kalurahan berdasarkan pencarian
+  const filteredKalurahan = kalurahanMapping.filter(kalurahan => {
+    const searchTerm = searchKalurahan.toLowerCase();
+    return (
+      kalurahan.id.toString().includes(searchTerm) ||
+      kalurahan.nama.toLowerCase().includes(searchTerm) ||
+      kalurahan.address.toLowerCase().includes(searchTerm)
+    );
+  });
+
   const formatAddress = (address) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -557,23 +570,76 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
               {activeTab === 'kalurahan' && (
                 <div className="kalurahan-section">
                   <div className="management-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                      <h3>Daftar Kalurahan</h3>
-                      <button
-                        className="add-button"
-                        onClick={() => setShowAddKalurahanModal(true)}
-                        disabled={isLoadingLocal}
-                      >
-                        + Tambah Kalurahan
-                      </button>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                      <input
+                        type="text"
+                        placeholder="Cari kalurahan berdasarkan ID, nama, atau alamat wallet..."
+                        value={searchKalurahan}
+                        onChange={(e) => setSearchKalurahan(e.target.value)}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #d1d5db',
+                          fontSize: '14px',
+                          minWidth: '300px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s',
+                          backgroundColor: 'white',
+                          color: 'black'
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
                     </div>
+                    <button
+                      className="add-button"
+                      onClick={() => setShowAddKalurahanModal(true)}
+                      disabled={isLoadingLocal}
+                    >
+                      + Tambah Kalurahan
+                    </button>
+                  </div>
                     
                     {kalurahanMapping.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
                         Belum ada kalurahan terdaftar
                       </div>
+                    ) : filteredKalurahan.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                        Tidak ada kalurahan yang cocok dengan pencarian
+                      </div>
                     ) : (
-                      <table className="data-table">
+                      <>
+                        {searchKalurahan && (
+                          <div style={{ 
+                            marginBottom: '12px', 
+                            fontSize: '14px', 
+                            color: '#666',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <span>
+                              Menampilkan {filteredKalurahan.length} dari {kalurahanMapping.length} kalurahan
+                              {searchKalurahan && ` untuk pencarian "${searchKalurahan}"`}
+                            </span>
+                            <button
+                              onClick={() => setSearchKalurahan('')}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#3b82f6',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                textDecoration: 'underline'
+                              }}
+                            >
+                              Bersihkan pencarian
+                            </button>
+                          </div>
+                        )}
+                        <table className="data-table">
                         <thead>
                           <tr>
                             <th>ID</th>
@@ -583,7 +649,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                           </tr>
                         </thead>
                         <tbody>
-                          {kalurahanMapping.map(kalurahan => (
+                          {filteredKalurahan.map(kalurahan => (
                             <tr key={kalurahan.id}>
                               <td>{kalurahan.id}</td>
                               <td>{kalurahan.nama}</td>
@@ -605,6 +671,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                           ))}
                         </tbody>
                       </table>
+                        </>
                     )}
                   </div>
                 </div>
