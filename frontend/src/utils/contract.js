@@ -71,6 +71,64 @@ export class ContractService {
         }
     }
 
+    async registerWargaAndUpdateMapping(nik, mappingCID) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized. Please connect wallet first.');
+        }
+
+        try {
+            console.log('🔧 [ContractService] Registering warga and updating mapping...');
+            console.log('📋 [ContractService] NIK:', nik);
+            console.log('📋 [ContractService] Mapping CID:', mappingCID);
+
+            const tx = await this.contract.registerWargaAndUpdateMapping(nik, mappingCID);
+            const receipt = await tx.wait();
+
+            // Find the WargaTerdaftar event
+            const wargaEvent = receipt.logs.find(log => {
+                try {
+                    const parsed = this.contract.interface.parseLog(log);
+                    return parsed.name === 'WargaTerdaftar';
+                } catch {
+                    return false;
+                }
+            });
+
+            // Find the NikMappingCIDUpdated event
+            const mappingEvent = receipt.logs.find(log => {
+                try {
+                    const parsed = this.contract.interface.parseLog(log);
+                    return parsed.name === 'NikMappingCIDUpdated';
+                } catch {
+                    return false;
+                }
+            });
+
+            const result = {
+                success: true,
+                transactionHash: receipt.hash
+            };
+
+            if (wargaEvent) {
+                const parsed = this.contract.interface.parseLog(wargaEvent);
+                result.wallet = parsed.args[0];
+                result.nik = parsed.args[1];
+            }
+
+            if (mappingEvent) {
+                const parsed = this.contract.interface.parseLog(mappingEvent);
+                result.mappingCID = parsed.args[0];
+            }
+
+            console.log('✅ [ContractService] Registration and mapping update successful');
+            return result;
+        } catch (error) {
+            console.error('❌ [ContractService] Registration and mapping update failed:', error);
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
+        }
+    }
+
     async checkIfNIKRegistered(nik) {
         if (!this.contract) {
             throw new Error('Contract not initialized');
@@ -562,6 +620,23 @@ export class ContractService {
         } catch (error) {
             console.error('Failed to get permohonan detail:', error);
             throw new Error('Failed to get permohonan detail');
+        }
+    }
+
+
+
+    async getNikMappingCID() {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            console.log('🔍 [ContractService] Getting NIK mapping CID from contract...');
+            const cid = await this.contract.getNikMappingCID();
+            console.log('📋 [ContractService] NIK mapping CID from contract:', cid);
+            return cid;
+        } catch (error) {
+            console.error('❌ [ContractService] Failed to get NIK mapping CID:', error);
+            return '';
         }
     }
 } 

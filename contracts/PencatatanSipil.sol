@@ -5,6 +5,12 @@ import "./PermohonanManager.sol";
 import "./DokumenResmiManager.sol";
 
 contract PencatatanSipil is PermohonanManager, DokumenResmiManager {
+    constructor(
+        string memory _initialNikMappingCID
+    ) KontrolAkses(_initialNikMappingCID) {
+        // Constructor parameters diteruskan ke KontrolAkses
+    }
+
     function unggahDokumenResmi(
         uint256 _id,
         string calldata _cidDokumen

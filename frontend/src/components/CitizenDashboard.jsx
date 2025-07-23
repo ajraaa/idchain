@@ -121,21 +121,37 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       console.log('✅ [CitizenDashboard] Citizen data loaded:', data);
       setCitizenData(data);
       
-      // Load KK data from IPFS
-      const mapping = await loadNIKMapping();
+      // Load KK data from IPFS via smart contract
+      const mapping = await loadNIKMapping(contractService);
       const cid = mapping[data.nik];
+      console.log('🔍 [CitizenDashboard] Mapping lookup:', { nik: data.nik, cid, mappingKeys: Object.keys(mapping) });
+      
       if (cid) {
         console.log('📁 [CitizenDashboard] Loading KK data from IPFS CID:', cid);
         const encryptedData = await fetchFromIPFS(cid);
         const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
         console.log('✅ [CitizenDashboard] KK data decrypted successfully');
-        setCitizenData(prev => ({ ...prev, kkData: decryptedData }));
+        console.log('📋 [CitizenDashboard] Decrypted KK data:', decryptedData);
+        
+        // Parse JSON jika masih berupa string
+        let parsedKKData = decryptedData;
+        if (typeof decryptedData === 'string') {
+          try {
+            parsedKKData = JSON.parse(decryptedData);
+            console.log('✅ [CitizenDashboard] KK data parsed from JSON string');
+          } catch (error) {
+            console.error('❌ [CitizenDashboard] Failed to parse KK data JSON:', error);
+            parsedKKData = decryptedData;
+          }
+        }
+        
+        setCitizenData(prev => ({ ...prev, kkData: parsedKKData }));
         
         // Extract citizen name from KK data for header
-        if (decryptedData.anggota && decryptedData.anggota.length > 0) {
-          const kepalaKeluarga = decryptedData.anggota.find(member => 
-            member.statusHubunganKeluarga === 'Kepala Keluarga'
-          ) || decryptedData.anggota[0];
+        if (parsedKKData.anggota && parsedKKData.anggota.length > 0) {
+          const kepalaKeluarga = parsedKKData.anggota.find(member => 
+            member.statusHubunganKeluarga === 'KEPALA KELUARGA'
+          ) || parsedKKData.anggota[0];
           onCitizenNameLoaded?.(kepalaKeluarga.nama);
         }
       } else {
@@ -262,7 +278,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         if (jenisPindah === '2') {
           // Gabung KK: ambil nama kalurahan dari KK tujuan berdasarkan NIK
           try {
-            const mapping = await loadNIKMapping();
+            const mapping = await loadNIKMapping(contractService);
             const cidKKTujuan = mapping[nikKepalaKeluargaTujuan];
             if (!cidKKTujuan) {
               onPermohonanError('NIK Kepala Keluarga Tujuan tidak ditemukan di sistem');
@@ -486,6 +502,16 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const nikUser = citizenData?.nik;
   const anggotaArr = Array.isArray(kkData?.anggota) ? kkData.anggota : [];
   const anggota = anggotaArr.find(member => member.nik === nikUser) || null;
+  
+  // Debug logging
+  console.log('🔍 [CitizenDashboard] Debug data:', {
+    citizenData,
+    nikUser,
+    kkData,
+    anggotaArr: anggotaArr.length,
+    anggota,
+    anggotaNIKs: anggotaArr.map(a => a.nik)
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -495,7 +521,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         return;
       }
       setParentLoading(true);
-      const mapping = await loadNIKMapping();
+      const mapping = await loadNIKMapping(contractService);
       async function lookupParentName(nik) {
         if (!nik) return '-';
         const cid = mapping[nik];
@@ -1628,7 +1654,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         onChange={async (e) => {
                           setNikKepalaKeluargaTujuan(e.target.value);
                           // Ambil alamat & kalurahan tujuan dari data KK tujuan (IPFS)
-                          const mapping = await loadNIKMapping();
+                          const mapping = await loadNIKMapping(contractService);
                           const cidKKTujuan = mapping[e.target.value];
                           if (cidKKTujuan) {
                             const encryptedData = await fetchFromIPFS(cidKKTujuan);

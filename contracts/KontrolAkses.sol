@@ -25,10 +25,15 @@ contract KontrolAkses {
     event KalurahanMappingCIDUpdated(string newCID);
     event KalurahanRemoved(uint8 indexed id, address indexed akun, string nama);
 
+    // ====== CID Mapping NIK-CID di IPFS ======
+    string public nikMappingCID;
+    event NikMappingCIDUpdated(string newCID);
+
     event WargaTerdaftar(address indexed wallet, string nik); // Event warga terdaftar
 
-    constructor() {
+    constructor(string memory _initialNikMappingCID) {
         dukcapil = msg.sender; // Deployer adalah dukcapil
+        nikMappingCID = _initialNikMappingCID; // Set mapping awal
     }
 
     modifier onlyDukcapil() {
@@ -88,6 +93,27 @@ contract KontrolAkses {
         emit WargaTerdaftar(msg.sender, _nik);
     }
 
+    function registerWargaAndUpdateMapping(
+        string memory _nik,
+        string calldata _mappingCID
+    ) external {
+        require(walletByNik[_nik] == address(0), NikSudahDiklaim());
+        require(
+            bytes(nikByWallet[msg.sender]).length == 0,
+            WalletSudahDigunakan()
+        );
+
+        // Register warga
+        walletByNik[_nik] = msg.sender;
+        nikByWallet[msg.sender] = _nik;
+
+        // Update mapping CID
+        nikMappingCID = _mappingCID;
+
+        emit WargaTerdaftar(msg.sender, _nik);
+        emit NikMappingCIDUpdated(_mappingCID);
+    }
+
     function setKalurahanMappingCID(
         string calldata _cid
     ) external onlyDukcapil {
@@ -97,5 +123,9 @@ contract KontrolAkses {
 
     function getKalurahanMappingCID() external view returns (string memory) {
         return kalurahanMappingCID;
+    }
+
+    function getNikMappingCID() external view returns (string memory) {
+        return nikMappingCID;
     }
 }

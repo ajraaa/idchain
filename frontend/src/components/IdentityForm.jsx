@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { validateNIK, validateDateOfBirth, decryptAes256CbcNodeStyle, encryptAes256CbcNodeStyle } from '../utils/crypto.js';
-import { loadNIKMapping, fetchFromIPFS } from '../utils/ipfs.js';
+import { loadNIKMapping, fetchFromIPFS, uploadNIKMappingToIPFSOnly } from '../utils/ipfs.js';
 import { uploadToPinata } from '../utils/pinata.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 import { handleContractError } from '../utils/errorHandler.js';
@@ -14,7 +14,6 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [nikToCidMapping, setNikToCidMapping] = useState(null);
-  const [downloadUrl, setDownloadUrl] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -72,11 +71,11 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
         setIsLoading(false);
         return;
       }
-      // 2. Lanjutkan proses: load mapping, fetch IPFS, dekripsi, verifikasi, update wallet, enkripsi ulang, upload, update mapping, dst.
+      // 2. Lanjutkan proses: load mapping dari smart contract/IPFS, fetch IPFS, dekripsi, verifikasi, update wallet, enkripsi ulang, upload, update mapping, dst.
       let mapping = nikToCidMapping;
       if (!mapping) {
-        mapping = await loadNIKMapping();
-        console.log('[Step 3] Mapping loaded:', mapping);
+        mapping = await loadNIKMapping(contractService);
+        console.log('[Step 3] Mapping loaded from smart contract/IPFS:', mapping);
       } else {
         console.log('[Step 3] Mapping from state:', mapping);
       }
@@ -100,45 +99,81 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       }
       const userWallet = await contractService.signer.getAddress();
       console.log('[Step 8] User wallet address:', userWallet);
+      
+      // Update KK dengan wallet address untuk anggota yang verifikasi
       let updatedKK;
       if (Array.isArray(decryptedData)) {
-        updatedKK = decryptedData.map(member => ({ ...member, wallet: userWallet }));
+        updatedKK = decryptedData.map(member => 
+          member.nik === formData.nik 
+            ? { ...member, wallet: userWallet }
+            : member
+        );
       } else if (Array.isArray(decryptedData.anggota)) {
         updatedKK = {
           ...decryptedData,
-          anggota: decryptedData.anggota.map(member => ({
-            ...member,
-            wallet: userWallet
-          }))
+          anggota: decryptedData.anggota.map(member => 
+            member.nik === formData.nik 
+              ? { ...member, wallet: userWallet }
+              : member
+          )
         };
       } else {
         updatedKK = decryptedData;
       }
-      console.log('[Step 9] Updated KK with wallet:', updatedKK);
-      const encryptedNew = await encryptAes256CbcNodeStyle(updatedKK, CRYPTO_CONFIG.SECRET_KEY);
-      console.log('[Step 10] Re-encrypted KK:', encryptedNew);
-      const fakeName = `${crypto.randomUUID()}.enc`;
-      const newCid = await uploadToPinata(encryptedNew, fakeName);
-      console.log('[Step 11] New CID from Pinata:', newCid);
+      console.log('[Step 9] Updated KK with wallet for NIK', formData.nik, ':', updatedKK);
+      
+      // Enkripsi ulang file KK yang sudah diupdate
+      console.log('[Step 10] Encrypting updated KK file...');
+      const encryptedUpdatedKK = await encryptAes256CbcNodeStyle(JSON.stringify(updatedKK), CRYPTO_CONFIG.SECRET_KEY);
+      console.log('[Step 11] Encrypted updated KK:', encryptedUpdatedKK);
+      
+      // Upload file KK yang sudah diupdate ke IPFS dengan nama random UUID
+      console.log('[Step 12] Uploading updated KK file to IPFS...');
+      const generateUUID = () => {
+        if (crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        // Fallback untuk browser lama
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+      const fileName = `${generateUUID()}.json`;
+      const kkUploadResult = await uploadToPinata(encryptedUpdatedKK, fileName);
+      console.log('[Step 13] Updated KK file uploaded successfully:', kkUploadResult);
+      console.log('[Step 13] New KK CID:', kkUploadResult);
+      
+      // Update mapping untuk mengarahkan semua NIK dalam file KK ke CID yang baru
       const newMapping = { ...mapping };
       if (Array.isArray(updatedKK)) {
         updatedKK.forEach(member => {
-          if (member.nik) newMapping[member.nik] = newCid;
+          if (member.nik) newMapping[member.nik] = kkUploadResult;
         });
       } else if (Array.isArray(updatedKK.anggota)) {
         updatedKK.anggota.forEach(member => {
-          if (member.nik) newMapping[member.nik] = newCid;
+          if (member.nik) newMapping[member.nik] = kkUploadResult;
         });
       }
+      console.log('[Step 14] Updated mapping with new KK CID:', newMapping);
+      
+      // Upload mapping yang diupdate ke IPFS (tanpa update smart contract)
+      console.log('[Step 15] Uploading updated mapping to IPFS...');
+      const mappingUploadResult = await uploadNIKMappingToIPFSOnly(newMapping);
+      console.log('[Step 16] Mapping uploaded successfully:', mappingUploadResult);
+      console.log('[Step 16] Mapping CID:', mappingUploadResult.cid);
+      
+      // Update state dengan mapping baru
       setNikToCidMapping(newMapping);
-      console.log('[Step 12] Updated mapping:', newMapping);
-      const blob = new Blob([JSON.stringify(newMapping, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      setDownloadUrl(url);
-      console.log('[Step 13] Download URL for new mapping:', url);
-      // Hanya error dari smart contract yang dilempar ke handler blockchain
-      const result = await contractService.registerWarga(formData.nik);
-      console.log('[Step 14] Smart contract register result:', result);
+      console.log('[Step 17] Updated mapping in state:', newMapping);
+      
+      // Register warga dan update mapping CID dalam satu transaksi
+      console.log('[Step 18] Registering warga and updating mapping CID...');
+      const result = await contractService.registerWargaAndUpdateMapping(formData.nik, mappingUploadResult.cid);
+      console.log('[Step 19] Combined transaction result:', result);
+      console.log('[Step 19] Transaction Hash:', result.transactionHash);
+      console.log('[Step 19] Mapping CID:', result.mappingCID);
       onSuccess?.(result);
     } catch (error) {
       console.error('Identity verification failed:', error);
@@ -203,16 +238,7 @@ const IdentityForm = ({ contractService, onSuccess, onError }) => {
       >
         {isLoading ? 'Memverifikasi...' : 'Verifikasi Identitas'}
       </button>
-      {downloadUrl && (
-        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-          <a href={downloadUrl} download="nikToCidKK.json" className="connect-button">
-            Download Mapping nikToCidKK.json Terbaru
-          </a>
-          <div style={{ fontSize: '0.95rem', color: '#555', marginTop: '0.5rem' }}>
-            Setelah download, replace file mapping di server/public untuk update permanen.
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
