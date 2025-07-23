@@ -182,9 +182,40 @@
           "internalType": "string",
           "name": "nama",
           "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "newMappingCID",
+          "type": "string"
         }
       ],
       "name": "KalurahanRemoved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint8",
+          "name": "id",
+          "type": "uint8"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "akun",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "newMappingCID",
+          "type": "string"
+        }
+      ],
+      "name": "KalurahanAdded",
       "type": "event"
     },
     {
@@ -904,6 +935,11 @@
           "internalType": "address",
           "name": "_akun",
           "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "_newMappingCID",
+          "type": "string"
         }
       ],
       "name": "hapusKalurahan",
@@ -1085,19 +1121,7 @@
       "stateMutability": "nonpayable",
       "type": "function"
     },
-    {
-      "inputs": [
-        {
-          "internalType": "string",
-          "name": "_cid",
-          "type": "string"
-        }
-      ],
-      "name": "setKalurahanMappingCID",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
+
     {
       "inputs": [
         {
@@ -1142,6 +1166,11 @@
           "internalType": "address",
           "name": "_akun",
           "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "_newMappingCID",
+          "type": "string"
         }
       ],
       "name": "tambahKalurahanById",

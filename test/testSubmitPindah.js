@@ -13,8 +13,8 @@ describe("Test Submit Permohonan Pindah", function () {
         await contract.waitForDeployment();
 
         // Setup kalurahan
-        await contract.tambahKalurahanById(1, kalurahan1.address);
-        await contract.tambahKalurahanById(2, kalurahan2.address);
+        await contract.tambahKalurahanById(1, kalurahan1.address, "QmTestMappingCID");
+        await contract.tambahKalurahanById(2, kalurahan2.address, "QmTestMappingCID");
 
         // Register warga
         await contract.connect(warga1).registerWarga("1635142482592647");

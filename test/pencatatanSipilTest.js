@@ -15,7 +15,7 @@ describe("PencatatanSipil", function () {
         // Tambahkan role dan mapping id kalurahan
         await pencatatan.tambahKalurahan(kalurahan.address);
         await pencatatan.tambahDukcapil(dukcapil.address);
-        await pencatatan.tambahKalurahanById(1, kalurahan.address);
+        await pencatatan.tambahKalurahanById(1, kalurahan.address, "QmTestMappingCID");
         // Register warga for all tests unless the test is specifically for unregistered
         await pencatatan.connect(warga).registerWarga("NIK123");
     });
@@ -235,8 +235,8 @@ describe("Fitur Permohonan Pindah", function () {
         await pencatatan.tambahKalurahan(kalurahanAsal.address);
         await pencatatan.tambahKalurahan(kalurahanTujuan.address);
         await pencatatan.tambahDukcapil(dukcapil.address);
-        await pencatatan.tambahKalurahanById(1, kalurahanAsal.address);
-        await pencatatan.tambahKalurahanById(2, kalurahanTujuan.address);
+        await pencatatan.tambahKalurahanById(1, kalurahanAsal.address, "QmTestMappingCID");
+        await pencatatan.tambahKalurahanById(2, kalurahanTujuan.address, "QmTestMappingCID");
         // Register warga for all tests unless the test is specifically for unregistered
         await pencatatan.connect(warga).registerWarga("NIK123");
     });
@@ -398,7 +398,7 @@ describe("Fitur Permohonan Pindah", function () {
         await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
         // Kalurahan lain (bukan asal/bukan tujuan)
         await pencatatan.tambahKalurahan(lain.address);
-        await pencatatan.tambahKalurahanById(3, lain.address);
+        await pencatatan.tambahKalurahanById(3, lain.address, "QmTestMappingCID");
 
         const asal = await pencatatan.connect(lain).getPermohonanByKalurahanAsal();
         expect(asal.length).to.equal(0);
@@ -462,7 +462,7 @@ describe("PencatatanSipil - onlyWargaTerdaftar", function () {
 
         // Setup role
         await pencatatan.tambahKalurahan(kalurahan.address);
-        await pencatatan.tambahKalurahanById(1, kalurahan.address);
+        await pencatatan.tambahKalurahanById(1, kalurahan.address, "QmTestMappingCID");
         // Register warga for all tests unless the test is specifically for unregistered
         await pencatatan.connect(warga).registerWarga("NIK123");
     });

@@ -623,7 +623,17 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
         }
         
-        const data = await resp.json();
+        // Ambil data terenkripsi dari IPFS
+        const encryptedData = await resp.text();
+        console.log(`🔐 [Kalurahan-Mapping] Encrypted data fetched from IPFS`);
+        
+        // Dekripsi data
+        console.log(`🔓 [Kalurahan-Mapping] Decrypting kalurahan mapping...`);
+        const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+        console.log(`✅ [Kalurahan-Mapping] Mapping decrypted successfully`);
+        
+        // Parse JSON dari data yang sudah didekripsi
+        const data = JSON.parse(decryptedData);
         console.log(`✅ [Kalurahan-Mapping] Successfully loaded ${data.length} kalurahan mappings:`, data);
         setKalurahanMapping(data);
       } catch (e) {

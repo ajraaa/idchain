@@ -203,12 +203,12 @@ export class ContractService {
         }
     }
 
-    async tambahKalurahanById(id, address) {
+    async tambahKalurahanById(id, address, mappingCID) {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
         try {
-            const tx = await this.contract.tambahKalurahanById(id, address);
+            const tx = await this.contract.tambahKalurahanById(id, address, mappingCID);
             const receipt = await tx.wait();
             return {
                 success: true,
@@ -257,12 +257,12 @@ export class ContractService {
         }
     }
 
-    async hapusKalurahan(address) {
+    async hapusKalurahan(address, mappingCID) {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
         try {
-            const tx = await this.contract.hapusKalurahan(address);
+            const tx = await this.contract.hapusKalurahan(address, mappingCID);
             const receipt = await tx.wait();
             return {
                 success: true,

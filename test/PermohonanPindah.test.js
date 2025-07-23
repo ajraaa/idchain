@@ -12,8 +12,8 @@ describe("Permohonan Pindah Enhanced", function () {
         await kontrak.waitForDeployment();
 
         // Setup Dukcapil & Kalurahan
-        await kontrak.tambahKalurahanById(1, kal1.address);
-        await kontrak.tambahKalurahanById(2, kal2.address);
+        await kontrak.tambahKalurahanById(1, kal1.address, "QmTestMappingCID");
+        await kontrak.tambahKalurahanById(2, kal2.address, "QmTestMappingCID");
         // Register warga
         await kontrak.connect(w1).registerWarga("NIK1");
         await kontrak.connect(w2).registerWarga("NIK2");

@@ -23,13 +23,23 @@ async function main() {
 
     console.log("\n🔧 Setup Kalurahan...");
 
-    // Setup kalurahan dengan ID
+    // Buat mapping kalurahan awal
+    const initialMapping = [
+        { id: 1, nama: "Kalurahan 1", address: kalurahan1.address },
+        { id: 2, nama: "Kalurahan 2", address: kalurahan2.address }
+    ];
+
+    // Note: Untuk setup script, kita menggunakan placeholder CID
+    // Dalam implementasi nyata, mapping akan dienkripsi dan diupload ke IPFS
+    const mappingCID = "QmInitialMappingCID"; // Placeholder CID untuk setup
+
+    // Setup kalurahan dengan ID dan mapping CID
     console.log("➕ Menambahkan Kalurahan 1 (ID: 1)...");
-    await contract.tambahKalurahanById(1, kalurahan1.address);
+    await contract.tambahKalurahanById(1, kalurahan1.address, mappingCID);
     console.log("✅ Kalurahan 1 berhasil ditambahkan");
 
     console.log("➕ Menambahkan Kalurahan 2 (ID: 2)...");
-    await contract.tambahKalurahanById(2, kalurahan2.address);
+    await contract.tambahKalurahanById(2, kalurahan2.address, mappingCID);
     console.log("✅ Kalurahan 2 berhasil ditambahkan");
 
     console.log("\n👥 Setup Warga...");

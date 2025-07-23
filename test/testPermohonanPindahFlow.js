@@ -13,8 +13,8 @@ describe("Test Permohonan Pindah Flow", function () {
         await contract.waitForDeployment();
 
         // Setup kalurahan
-        await contract.tambahKalurahanById(1, kalurahan1.address); // Kalurahan Asal
-        await contract.tambahKalurahanById(2, kalurahan2.address); // Kalurahan Tujuan
+        await contract.tambahKalurahanById(1, kalurahan1.address, "QmTestMappingCID"); // Kalurahan Asal
+        await contract.tambahKalurahanById(2, kalurahan2.address, "QmTestMappingCID"); // Kalurahan Tujuan
 
         // Register warga
         await contract.connect(warga1).registerWarga("1635142482592647");

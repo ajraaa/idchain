@@ -767,13 +767,6 @@ html, body {
   margin-bottom: 1rem;
 }
 
-.dukcapil-section,
-.kalurahan-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-
 .management-card {
   background: #f8fafc;
   border-radius: 12px;

@@ -6,6 +6,8 @@ import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import KalurahanAppHeader from './KalurahanAppHeader';
 import { loadPermohonanDataForDisplay } from '../utils/permohonanDataUtils.js';
 import { decryptPermohonanData } from '../utils/permohonanDataUtils.js';
+import { decryptAes256CbcNodeStyle } from '../utils/crypto.js';
+import { CRYPTO_CONFIG } from '../config/crypto.js';
 
 const sidebarMenus = [
   { key: 'masuk', label: 'Permohonan Masuk', icon: <FaInbox /> },
@@ -74,12 +76,31 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       try {
         const cid = await contractService.contract.getKalurahanMappingCID();
         if (!cid) return;
+        
+        console.log('[Kalurahan-Fetch] Fetching kalurahan mapping from IPFS:', cid);
         const url = `https://ipfs.io/ipfs/${cid}`;
         const resp = await fetch(url);
-        if (!resp.ok) return;
-        const data = await resp.json();
+        if (!resp.ok) {
+          console.error('[Kalurahan-Fetch] Failed to fetch from IPFS:', resp.status);
+          return;
+        }
+        
+        // Ambil data terenkripsi dari IPFS
+        const encryptedData = await resp.text();
+        console.log('[Kalurahan-Fetch] Encrypted data fetched from IPFS');
+        
+        // Dekripsi data
+        console.log('[Kalurahan-Fetch] Decrypting kalurahan mapping...');
+        const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+        console.log('[Kalurahan-Fetch] Mapping decrypted successfully');
+        
+        // Parse JSON dari data yang sudah didekripsi
+        const data = JSON.parse(decryptedData);
+        console.log('[Kalurahan-Fetch] Parsed mapping data:', data);
         setKalurahanMapping(data);
-      } catch (e) {}
+      } catch (e) {
+        console.error('[Kalurahan-Fetch] Error fetching kalurahan mapping:', e);
+      }
     }
     fetchKalurahanMapping();
   }, [contractService]);

@@ -5,7 +5,7 @@ import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import { uploadToPinata } from '../utils/pinata';
 import { loadPermohonanDataForDisplay } from '../utils/permohonanDataUtils.js';
-import { encryptAes256CbcNodeStyle } from '../utils/crypto.js';
+import { encryptAes256CbcNodeStyle, decryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 
 const sidebarMenus = [
@@ -69,18 +69,52 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   // Tambahkan state di atas komponen
   const [showUploadInput, setShowUploadInput] = useState(false);
 
+  // State untuk modal tambah kalurahan
+  const [showAddKalurahanModal, setShowAddKalurahanModal] = useState(false);
+
+  // Helper function untuk generate UUID (sama seperti di IdentityForm)
+  const generateUUID = () => {
+    if (crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback untuk browser lama
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   useEffect(() => {
     async function fetchKalurahanMapping() {
       if (!contractService || !contractService.contract) return;
       try {
         const cid = await contractService.contract.getKalurahanMappingCID();
         if (!cid) return;
+        
+        console.log('[Dukcapil-Fetch] Fetching kalurahan mapping from IPFS:', cid);
         const url = `https://ipfs.io/ipfs/${cid}`;
         const resp = await fetch(url);
-        if (!resp.ok) return;
-        const data = await resp.json();
+        if (!resp.ok) {
+          console.error('[Dukcapil-Fetch] Failed to fetch from IPFS:', resp.status);
+          return;
+        }
+        
+        // Ambil data terenkripsi dari IPFS
+        const encryptedData = await resp.text();
+        console.log('[Dukcapil-Fetch] Encrypted data fetched from IPFS');
+        
+        // Dekripsi data
+        console.log('[Dukcapil-Fetch] Decrypting kalurahan mapping...');
+        const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+        console.log('[Dukcapil-Fetch] Mapping decrypted successfully');
+        
+        // Parse JSON dari data yang sudah didekripsi
+        const data = JSON.parse(decryptedData);
+        console.log('[Dukcapil-Fetch] Parsed mapping data:', data);
         setKalurahanMapping(data);
       } catch (e) {
+        console.error('[Dukcapil-Fetch] Error fetching kalurahan mapping:', e);
         // Biarkan mapping lokal tetap jika fetch gagal
       }
     }
@@ -199,21 +233,31 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
     }
     setIsLoading(true);
     try {
-      // 1. Tambah ke smart contract
-      const result = await contractService.tambahKalurahanById(parseInt(kalurahanId), kalurahanAddress.trim());
-      onSuccess(`Kalurahan berhasil ditambahkan! Transaction: ${result.transactionHash}`);
-      // 2. Update mapping lokal
+      // 1. Update mapping lokal terlebih dahulu
       const newMapping = [...kalurahanMapping, { id: Number(kalurahanId), nama: kalurahanName, address: kalurahanAddress.trim() }];
-      setKalurahanMapping(newMapping);
-      // 3. Upload ke IPFS
+      
+      // 2. Enkripsi mapping dengan AES-256-CBC
+      console.log('[Dukcapil-Add] Encrypting kalurahan mapping...');
       const jsonString = JSON.stringify(newMapping, null, 2);
-      const cid = await uploadToPinata(jsonString, 'kalurahan.json');
-      // 4. Update CID di smart contract
-      await contractService.contract.setKalurahanMappingCID(cid);
-      onSuccess('Mapping kalurahan berhasil diupload ke IPFS dan CID diupdate di smart contract!');
-      setKalurahanName('');
-      setKalurahanId('');
-      setKalurahanAddress('');
+      const encryptedMapping = await encryptAes256CbcNodeStyle(jsonString, CRYPTO_CONFIG.SECRET_KEY);
+      console.log('[Dukcapil-Add] Mapping encrypted successfully');
+      
+      // 3. Upload mapping terenkripsi ke IPFS dengan nama random UUID
+      console.log('[Dukcapil-Add] Uploading encrypted mapping to IPFS...');
+      const fileName = `${generateUUID()}.json.enc`;
+      const cid = await uploadToPinata(encryptedMapping, fileName);
+      console.log('[Dukcapil-Add] Encrypted mapping uploaded to IPFS:', cid);
+      
+      // 4. Tambah ke smart contract dengan CID baru dalam satu transaksi
+      const result = await contractService.contract.tambahKalurahanById(
+        parseInt(kalurahanId), 
+        kalurahanAddress.trim(),
+        cid
+      );
+      
+      onSuccess(`Kalurahan berhasil ditambahkan! Transaction: ${result.transactionHash}`);
+      setKalurahanMapping(newMapping);
+      resetAddKalurahanForm();
     } catch (error) {
       const errorMessage = handleContractError(error);
       onError(errorMessage);
@@ -235,18 +279,29 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
     }
     setIsLoading(true);
     try {
-      // 1. Hapus dari smart contract
-      const result = await contractService.contract.hapusKalurahan(addressToRemove.trim());
-      onSuccess(`Kalurahan berhasil dihapus! Transaction: ${result.hash || result.transactionHash}`);
-      // 2. Update mapping lokal
+      // 1. Update mapping lokal terlebih dahulu
       const newMapping = kalurahanMapping.filter(k => k.address.toLowerCase() !== addressToRemove.trim().toLowerCase());
-      setKalurahanMapping(newMapping);
-      // 3. Upload ke IPFS
+      
+      // 2. Enkripsi mapping dengan AES-256-CBC
+      console.log('[Dukcapil-Remove] Encrypting kalurahan mapping...');
       const jsonString = JSON.stringify(newMapping, null, 2);
-      const cid = await uploadToPinata(jsonString, 'kalurahan.json');
-      // 4. Update CID di smart contract
-      await contractService.contract.setKalurahanMappingCID(cid);
-      onSuccess('Mapping kalurahan berhasil diupdate di IPFS dan CID di smart contract!');
+      const encryptedMapping = await encryptAes256CbcNodeStyle(jsonString, CRYPTO_CONFIG.SECRET_KEY);
+      console.log('[Dukcapil-Remove] Mapping encrypted successfully');
+      
+      // 3. Upload mapping terenkripsi ke IPFS dengan nama random UUID
+      console.log('[Dukcapil-Remove] Uploading encrypted mapping to IPFS...');
+      const fileName = `${generateUUID()}.json.enc`;
+      const cid = await uploadToPinata(encryptedMapping, fileName);
+      console.log('[Dukcapil-Remove] Encrypted mapping uploaded to IPFS:', cid);
+      
+      // 4. Hapus dari smart contract dengan CID baru dalam satu transaksi
+      const result = await contractService.contract.hapusKalurahan(
+        addressToRemove.trim(),
+        cid
+      );
+      
+      onSuccess(`Kalurahan berhasil dihapus! Transaction: ${result.hash || result.transactionHash}`);
+      setKalurahanMapping(newMapping);
       setRemoveKalurahanAddress('');
       setPendingRemoveAddress('');
       setShowConfirmModal(false);
@@ -275,6 +330,13 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   const cancelRemove = () => {
     setShowConfirmModal(false);
     setPendingRemoveAddress('');
+  };
+
+  const resetAddKalurahanForm = () => {
+    setKalurahanName('');
+    setKalurahanId('');
+    setKalurahanAddress('');
+    setShowAddKalurahanModal(false);
   };
 
   const formatAddress = (address) => {
@@ -495,77 +557,55 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
               {activeTab === 'kalurahan' && (
                 <div className="kalurahan-section">
                   <div className="management-card">
-                    <h3>Tambah Kalurahan</h3>
-                    <form onSubmit={handleAddKalurahan} className="management-form">
-                      <div className="form-group">
-                        <label htmlFor="kalurahanName">Nama Kalurahan:</label>
-                        <input
-                          type="text"
-                          id="kalurahanName"
-                          value={kalurahanName}
-                          onChange={(e) => setKalurahanName(e.target.value)}
-                          placeholder="Nama Kalurahan"
-                          className="form-input"
-                          disabled={isLoadingLocal}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="kalurahanId">ID Kalurahan:</label>
-                        <input
-                          type="number"
-                          id="kalurahanId"
-                          value={kalurahanId}
-                          onChange={(e) => setKalurahanId(e.target.value)}
-                          placeholder="1, 2, 3, ..."
-                          className="form-input"
-                          disabled={isLoadingLocal}
-                          min="1"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="kalurahanAddress">Alamat Wallet Kalurahan:</label>
-                        <input
-                          type="text"
-                          id="kalurahanAddress"
-                          value={kalurahanAddress}
-                          onChange={(e) => setKalurahanAddress(e.target.value)}
-                          placeholder="0x..."
-                          className="form-input"
-                          disabled={isLoadingLocal}
-                        />
-                      </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <h3>Daftar Kalurahan</h3>
                       <button
-                        type="submit"
                         className="add-button"
-                        disabled={isLoadingLocal || !kalurahanName.trim() || !kalurahanId.trim() || !kalurahanAddress.trim()}
+                        onClick={() => setShowAddKalurahanModal(true)}
+                        disabled={isLoadingLocal}
                       >
-                        {isLoadingLocal ? 'Menambahkan...' : 'Tambah Kalurahan'}
+                        + Tambah Kalurahan
                       </button>
-                    </form>
-                  </div>
-                  <div className="management-card">
-                    <h3>Hapus Kalurahan</h3>
-                    <form onSubmit={onRemoveSubmit} className="management-form">
-                      <div className="form-group">
-                        <label htmlFor="removeKalurahanAddress">Alamat Wallet Kalurahan:</label>
-                        <input
-                          type="text"
-                          id="removeKalurahanAddress"
-                          value={removeKalurahanAddress}
-                          onChange={(e) => setRemoveKalurahanAddress(e.target.value)}
-                          placeholder="0x..."
-                          className="form-input"
-                          disabled={isLoadingLocal}
-                        />
+                    </div>
+                    
+                    {kalurahanMapping.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                        Belum ada kalurahan terdaftar
                       </div>
-                      <button
-                        type="submit"
-                        className="remove-button"
-                        disabled={isLoadingLocal || !removeKalurahanAddress.trim()}
-                      >
-                        {isLoadingLocal ? 'Menghapus...' : 'Hapus Kalurahan'}
-                      </button>
-                    </form>
+                    ) : (
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Nama Kalurahan</th>
+                            <th>Alamat Wallet</th>
+                            <th>Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {kalurahanMapping.map(kalurahan => (
+                            <tr key={kalurahan.id}>
+                              <td>{kalurahan.id}</td>
+                              <td>{kalurahan.nama}</td>
+                              <td>{formatAddress(kalurahan.address)}</td>
+                              <td>
+                                <button
+                                  className="remove-button"
+                                  onClick={() => {
+                                    setPendingRemoveAddress(kalurahan.address);
+                                    setShowConfirmModal(true);
+                                  }}
+                                  disabled={isLoadingLocal}
+                                  style={{ padding: '6px 12px', fontSize: '0.9em' }}
+                                >
+                                  Hapus
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
               )}
@@ -578,16 +618,33 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
       {showConfirmModal && (
         <div className="modal-overlay" onClick={cancelRemove}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Konfirmasi Hapus Kalurahan</h3>
-            <p>Apakah Anda yakin ingin menghapus kalurahan berikut?</p>
-            <ul style={{margin:'12px 0 20px 0', paddingLeft:20}}>
-              <li><b>Nama:</b> {kalurahanMapping.find(k => k.address.toLowerCase() === pendingRemoveAddress.toLowerCase())?.nama || '-'}</li>
-              <li><b>ID:</b> {kalurahanMapping.find(k => k.address.toLowerCase() === pendingRemoveAddress.toLowerCase())?.id || '-'}</li>
-              <li><b>Address:</b> {kalurahanMapping.find(k => k.address.toLowerCase() === pendingRemoveAddress.toLowerCase())?.address || pendingRemoveAddress}</li>
-            </ul>
-            <div style={{display:'flex', gap:16, marginTop:24}}>
-              <button className="remove-button" onClick={confirmRemove} disabled={isLoading}>Ya, Hapus</button>
-              <button className="cancel-button" onClick={cancelRemove} disabled={isLoading}>Batal</button>
+            <div className="modal-header">
+              <h3>Konfirmasi Hapus Kalurahan</h3>
+              <button className="modal-close" onClick={cancelRemove}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Apakah Anda yakin ingin menghapus kalurahan berikut?</p>
+              <div style={{ 
+                background: '#f8f9fa', 
+                padding: '16px', 
+                borderRadius: '8px', 
+                margin: '16px 0',
+                border: '1px solid #e9ecef'
+              }}>
+                <div style={{ marginBottom: '8px' }}>
+                  <strong>Nama:</strong> {kalurahanMapping.find(k => k.address.toLowerCase() === pendingRemoveAddress.toLowerCase())?.nama || '-'}
+                </div>
+                <div style={{ marginBottom: '8px' }}>
+                  <strong>ID:</strong> {kalurahanMapping.find(k => k.address.toLowerCase() === pendingRemoveAddress.toLowerCase())?.id || '-'}
+                </div>
+                <div>
+                  <strong>Alamat Wallet:</strong> {formatAddress(pendingRemoveAddress)}
+                </div>
+              </div>
+              <div style={{display:'flex', gap:16, justifyContent: 'flex-end', marginTop:24}}>
+                <button className="cancel-button" onClick={cancelRemove} disabled={isLoading}>Batal</button>
+                <button className="remove-button" onClick={confirmRemove} disabled={isLoading}>Ya, Hapus</button>
+              </div>
             </div>
           </div>
         </div>
@@ -760,6 +817,76 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tambah Kalurahan */}
+      {showAddKalurahanModal && (
+        <div className="modal-overlay" onClick={resetAddKalurahanForm}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Tambah Kalurahan Baru</h3>
+              <button className="modal-close" onClick={resetAddKalurahanForm}>×</button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleAddKalurahan} className="management-form">
+                <div className="form-group">
+                  <label htmlFor="modalKalurahanName">Nama Kalurahan:</label>
+                  <input
+                    type="text"
+                    id="modalKalurahanName"
+                    value={kalurahanName}
+                    onChange={(e) => setKalurahanName(e.target.value)}
+                    placeholder="Nama Kalurahan"
+                    className="form-input"
+                    disabled={isLoadingLocal}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="modalKalurahanId">ID Kalurahan:</label>
+                  <input
+                    type="number"
+                    id="modalKalurahanId"
+                    value={kalurahanId}
+                    onChange={(e) => setKalurahanId(e.target.value)}
+                    placeholder="1, 2, 3, ..."
+                    className="form-input"
+                    disabled={isLoadingLocal}
+                    min="1"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="modalKalurahanAddress">Alamat Wallet Kalurahan:</label>
+                  <input
+                    type="text"
+                    id="modalKalurahanAddress"
+                    value={kalurahanAddress}
+                    onChange={(e) => setKalurahanAddress(e.target.value)}
+                    placeholder="0x..."
+                    className="form-input"
+                    disabled={isLoadingLocal}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 20 }}>
+                  <button
+                    type="button"
+                    className="cancel-button"
+                    onClick={resetAddKalurahanForm}
+                    disabled={isLoadingLocal}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="add-button"
+                    disabled={isLoadingLocal || !kalurahanName.trim() || !kalurahanId.trim() || !kalurahanAddress.trim()}
+                  >
+                    {isLoadingLocal ? 'Menambahkan...' : 'Tambah Kalurahan'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

@@ -23,7 +23,17 @@ contract KontrolAkses {
     // ====== CID Mapping Kalurahan di IPFS ======
     string public kalurahanMappingCID;
     event KalurahanMappingCIDUpdated(string newCID);
-    event KalurahanRemoved(uint8 indexed id, address indexed akun, string nama);
+    event KalurahanRemoved(
+        uint8 indexed id,
+        address indexed akun,
+        string nama,
+        string newMappingCID
+    );
+    event KalurahanAdded(
+        uint8 indexed id,
+        address indexed akun,
+        string newMappingCID
+    );
 
     // ====== CID Mapping NIK-CID di IPFS ======
     string public nikMappingCID;
@@ -56,7 +66,8 @@ contract KontrolAkses {
 
     function tambahKalurahanById(
         uint8 _id,
-        address _akun
+        address _akun,
+        string calldata _newMappingCID
     ) external onlyDukcapil {
         require(_akun != address(0), AddressZero());
         require(addressKalurahanById[_id] == address(0), IdSudahDipakai());
@@ -68,16 +79,30 @@ contract KontrolAkses {
         addressKalurahanById[_id] = _akun;
         idKalurahanByAddress[_akun] = _id;
         kalurahan[_akun] = true;
+
+        // Update mapping CID dalam transaksi yang sama
+        kalurahanMappingCID = _newMappingCID;
+
+        emit KalurahanAdded(_id, _akun, _newMappingCID);
+        emit KalurahanMappingCIDUpdated(_newMappingCID);
     }
 
-    function hapusKalurahan(address _akun) external onlyDukcapil {
+    function hapusKalurahan(
+        address _akun,
+        string calldata _newMappingCID
+    ) external onlyDukcapil {
         kalurahan[_akun] = false;
         uint8 id = idKalurahanByAddress[_akun];
         if (id != 0) {
             delete addressKalurahanById[id];
             delete idKalurahanByAddress[_akun];
         }
-        emit KalurahanRemoved(id, _akun, ""); // Nama bisa diisi dari off-chain mapping
+
+        // Update mapping CID dalam transaksi yang sama
+        kalurahanMappingCID = _newMappingCID;
+
+        emit KalurahanRemoved(id, _akun, "", _newMappingCID); // Nama bisa diisi dari off-chain mapping
+        emit KalurahanMappingCIDUpdated(_newMappingCID);
     }
 
     function registerWarga(string memory _nik) external {
@@ -112,13 +137,6 @@ contract KontrolAkses {
 
         emit WargaTerdaftar(msg.sender, _nik);
         emit NikMappingCIDUpdated(_mappingCID);
-    }
-
-    function setKalurahanMappingCID(
-        string calldata _cid
-    ) external onlyDukcapil {
-        kalurahanMappingCID = _cid;
-        emit KalurahanMappingCIDUpdated(_cid);
     }
 
     function getKalurahanMappingCID() external view returns (string memory) {
