@@ -14,7 +14,8 @@ import {
   validatePermohonanData,
   loadPermohonanDataForDisplay,
   decryptFileData,
-  downloadEncryptedFile
+  downloadEncryptedFile,
+  viewEncryptedFile
 } from '../utils/permohonanDataUtils.js';
 import CitizenAppHeader from './CitizenAppHeader';
 
@@ -106,6 +107,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   
   // File upload states
   const [uploadingFiles, setUploadingFiles] = useState({});
+
+  // File viewer modal states
+  const [showFileViewer, setShowFileViewer] = useState(false);
+  const [fileViewerUrl, setFileViewerUrl] = useState('');
+  const [fileViewerTitle, setFileViewerTitle] = useState('');
+  const [fileViewerLoading, setFileViewerLoading] = useState(false);
+  const [fileViewerMimeType, setFileViewerMimeType] = useState('');
+  const [fileViewerIsViewable, setFileViewerIsViewable] = useState(false);
 
   // Load citizen data on component mount
   useEffect(() => {
@@ -473,6 +482,34 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     setLoadingDetailData(false);
   };
 
+  const handleViewFile = async (cid, filename) => {
+    try {
+      setFileViewerLoading(true);
+      setFileViewerTitle(filename);
+      const result = await viewEncryptedFile(cid, filename);
+      setFileViewerUrl(result.url);
+      setFileViewerMimeType(result.mimeType);
+      setFileViewerIsViewable(result.isViewable);
+      setShowFileViewer(true);
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      onPermohonanError('Gagal memuat file untuk ditampilkan');
+    } finally {
+      setFileViewerLoading(false);
+    }
+  };
+
+  const closeFileViewer = () => {
+    setShowFileViewer(false);
+    if (fileViewerUrl) {
+      window.URL.revokeObjectURL(fileViewerUrl);
+      setFileViewerUrl('');
+    }
+    setFileViewerTitle('');
+    setFileViewerMimeType('');
+    setFileViewerIsViewable(false);
+  };
+
   const formatAddress = (address) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -685,6 +722,13 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   // Helper: collect form data based on jenis permohonan
   const collectFormData = (jenisPermohonan) => {
+    // Helper function to extract CID from file info
+    const getCID = (fileInfo) => {
+      if (!fileInfo) return null;
+      if (typeof fileInfo === 'string') return fileInfo; // Backward compatibility
+      return fileInfo.cid;
+    };
+
     switch(jenisPermohonan) {
       case '0': return {
         namaAnak: formDataKelahiran.namaAnak,
@@ -695,7 +739,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         nikIbu: formDataKelahiran.nikIbu,
         nikSaksi1: formDataKelahiran.nikSaksi1,
         nikSaksi2: formDataKelahiran.nikSaksi2,
-        suratKeteranganLahir: formDataKelahiran.suratKeteranganLahir
+        suratKeteranganLahir: getCID(formDataKelahiran.suratKeteranganLahir)
       };
       case '1': return {
         nikAlmarhum: formDataKematian.nikAlmarhum,
@@ -706,7 +750,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         tempatKematian: formDataKematian.tempatKematian,
         tanggalKematian: formDataKematian.tanggalKematian,
         penyebabKematian: formDataKematian.penyebabKematian,
-        suratKeteranganKematian: formDataKematian.suratKeteranganKematian
+        suratKeteranganKematian: getCID(formDataKematian.suratKeteranganKematian)
       };
       case '2': return {
         nikPria: formDataPerkawinan.nikPria,
@@ -715,14 +759,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         nikSaksi2: formDataPerkawinan.nikSaksi2,
         tempatPernikahan: formDataPerkawinan.tempatPernikahan,
         tanggalPernikahan: formDataPerkawinan.tanggalPernikahan,
-        suratKeteranganPernikahan: formDataPerkawinan.suratKeteranganPernikahan,
-        fotoPria: formDataPerkawinan.fotoPria,
-        fotoWanita: formDataPerkawinan.fotoWanita
+        suratKeteranganPernikahan: getCID(formDataPerkawinan.suratKeteranganPernikahan),
+        fotoPria: getCID(formDataPerkawinan.fotoPria),
+        fotoWanita: getCID(formDataPerkawinan.fotoWanita)
       };
       case '3': return {
         nikSuami: formDataPerceraian.nikSuami,
         nikIstri: formDataPerceraian.nikIstri,
-        suratPutusanPengadilan: formDataPerceraian.suratPutusanPengadilan
+        suratPutusanPengadilan: getCID(formDataPerceraian.suratPutusanPengadilan)
       };
       case '4':
         // Untuk pindah seluruh keluarga, mandiri, atau gabung KK, kirim alamatTujuan sebagai objek lengkap
@@ -865,20 +909,27 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       console.log(`🔗 [File-Upload] IPFS CID: ${cidIPFS}`);
       console.log(`🔗 [File-Upload] IPFS URL: https://ipfs.io/ipfs/${cidIPFS}`);
       
-      // Save CID to form state
+      // Save CID to form state with file extension info
       console.log(`💾 [File-Upload] Saving CID to form state...`);
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const fileInfo = {
+        cid: cidIPFS,
+        originalName: file.name,
+        extension: fileExtension
+      };
+      
       switch(jenisPermohonan) {
         case '0':
-          setFormDataKelahiran(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          setFormDataKelahiran(prev => ({ ...prev, [fieldName]: fileInfo }));
           break;
         case '1':
-          setFormDataKematian(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          setFormDataKematian(prev => ({ ...prev, [fieldName]: fileInfo }));
           break;
         case '2':
-          setFormDataPerkawinan(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          setFormDataPerkawinan(prev => ({ ...prev, [fieldName]: fileInfo }));
           break;
         case '3':
-          setFormDataPerceraian(prev => ({ ...prev, [fieldName]: cidIPFS }));
+          setFormDataPerceraian(prev => ({ ...prev, [fieldName]: fileInfo }));
           break;
       }
       
@@ -2229,21 +2280,38 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         <span className="info-value">
                           {value && value !== '' ? (
                             typeof value === 'object' && value.type === 'encrypted_file' ? (
-                              <button 
-                                className="download-button"
-                                onClick={() => downloadEncryptedFile(value.cid, `${key.replace(/\s+/g, '_')}.file`)}
-                                style={{
-                                  background: '#3b82f6',
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.875rem'
-                                }}
-                              >
-                                {value.label}
-                              </button>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button 
+                                  className="view-button"
+                                  onClick={() => handleViewFile(value.cid, `${key.replace(/\s+/g, '_')}.${value.originalExtension || 'pdf'}`)}
+                                  style={{
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  {value.viewLabel}
+                                </button>
+                                <button 
+                                  className="download-button"
+                                  onClick={() => downloadEncryptedFile(value.cid, `${key.replace(/\s+/g, '_')}.${value.originalExtension || 'pdf'}`)}
+                                  style={{
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  {value.downloadLabel}
+                                </button>
+                              </div>
                             ) : (
                               value
                             )
@@ -2289,6 +2357,86 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                 <button className="add-button" disabled={isLoading} onClick={() => handleKonfirmasiGabungKK(permohonanUntukKonfirmasi.id, true)}>Setujui</button>
                 <button className="remove-button" disabled={isLoading} onClick={() => handleKonfirmasiGabungKK(permohonanUntukKonfirmasi.id, false)}>Tolak</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal File Viewer */}
+      {showFileViewer && (
+        <div className="modal-overlay" onClick={closeFileViewer}>
+          <div className="modal-content file-viewer-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', width: 'auto', height: 'auto' }}>
+            <div className="modal-header">
+              <h3>{fileViewerTitle}</h3>
+              <button className="modal-close" onClick={closeFileViewer}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: 0, overflow: 'hidden' }}>
+              {fileViewerLoading ? (
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                  <div>Memuat dokumen...</div>
+                </div>
+              ) : fileViewerIsViewable ? (
+                fileViewerMimeType.startsWith('image/') ? (
+                  <img
+                    src={fileViewerUrl}
+                    alt={fileViewerTitle}
+                    style={{
+                      width: '100%',
+                      height: '70vh',
+                      objectFit: 'contain',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                  />
+                ) : fileViewerMimeType === 'application/pdf' ? (
+                  <object
+                    data={fileViewerUrl}
+                    type="application/pdf"
+                    style={{
+                      width: '100%',
+                      height: '70vh',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    <embed
+                      src={fileViewerUrl}
+                      type="application/pdf"
+                      style={{
+                        width: '100%',
+                        height: '70vh',
+                        border: 'none',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <p style={{ padding: '20px', textAlign: 'center' }}>
+                      Browser Anda tidak mendukung tampilan PDF. 
+                      <a href={fileViewerUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', marginLeft: '8px' }}>
+                        Klik di sini untuk membuka di tab baru
+                      </a>
+                    </p>
+                  </object>
+                ) : (
+                  <iframe
+                    src={fileViewerUrl}
+                    style={{
+                      width: '100%',
+                      height: '70vh',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                    title={fileViewerTitle}
+                  />
+                )
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                  <p>File ini tidak dapat ditampilkan langsung di browser.</p>
+                  <p>MIME Type: {fileViewerMimeType}</p>
+                  <a href={fileViewerUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>
+                    Klik di sini untuk membuka di tab baru
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>

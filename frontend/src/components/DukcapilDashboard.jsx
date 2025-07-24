@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import { uploadToPinata } from '../utils/pinata';
-import { loadPermohonanDataForDisplay } from '../utils/permohonanDataUtils.js';
+import { loadPermohonanDataForDisplay, downloadEncryptedFile, viewEncryptedFile } from '../utils/permohonanDataUtils.js';
 import { encryptAes256CbcNodeStyle, decryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 
@@ -65,6 +65,14 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
   const [showAlasanInput, setShowAlasanInput] = useState(false);
   const [alasanPenolakan, setAlasanPenolakan] = useState('');
   const [alasanError, setAlasanError] = useState('');
+
+  // File viewer modal states
+  const [showFileViewer, setShowFileViewer] = useState(false);
+  const [fileViewerUrl, setFileViewerUrl] = useState('');
+  const [fileViewerTitle, setFileViewerTitle] = useState('');
+  const [fileViewerLoading, setFileViewerLoading] = useState(false);
+  const [fileViewerMimeType, setFileViewerMimeType] = useState('');
+  const [fileViewerIsViewable, setFileViewerIsViewable] = useState(false);
 
   // Tambahkan state di atas komponen
   const [showUploadInput, setShowUploadInput] = useState(false);
@@ -380,6 +388,34 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
     setPermohonanDetailData(null);
     setLoadingDetailData(false);
     setIsVerifying(false);
+  };
+
+  const handleViewFile = async (cid, filename) => {
+    try {
+      setFileViewerLoading(true);
+      setFileViewerTitle(filename);
+      const result = await viewEncryptedFile(cid, filename);
+      setFileViewerUrl(result.url);
+      setFileViewerMimeType(result.mimeType);
+      setFileViewerIsViewable(result.isViewable);
+      setShowFileViewer(true);
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      onError('Gagal memuat file untuk ditampilkan');
+    } finally {
+      setFileViewerLoading(false);
+    }
+  };
+
+  const closeFileViewer = () => {
+    setShowFileViewer(false);
+    if (fileViewerUrl) {
+      window.URL.revokeObjectURL(fileViewerUrl);
+      setFileViewerUrl('');
+    }
+    setFileViewerTitle('');
+    setFileViewerMimeType('');
+    setFileViewerIsViewable(false);
   };
 
   // Handler verifikasi Dukcapil
@@ -785,7 +821,48 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     {permohonanDetailData.data && Object.entries(permohonanDetailData.data).map(([key, value]) => (
                       <div key={key} className="info-row" style={{marginBottom: 8}}>
                         <span className="info-label">{key}:</span>
-                        <span className="info-value">{value && value !== '' ? value : '-'}</span>
+                        <span className="info-value">
+                          {value && value !== '' ? (
+                            typeof value === 'object' && value.type === 'encrypted_file' ? (
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button 
+                                  className="view-button"
+                                  onClick={() => handleViewFile(value.cid, `${key.replace(/\s+/g, '_')}.${value.originalExtension || 'pdf'}`)}
+                                  style={{
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  {value.viewLabel}
+                                </button>
+                                <button 
+                                  className="download-button"
+                                  onClick={() => downloadEncryptedFile(value.cid, `${key.replace(/\s+/g, '_')}.${value.originalExtension || 'pdf'}`)}
+                                  style={{
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  {value.downloadLabel}
+                                </button>
+                              </div>
+                            ) : (
+                              value
+                            )
+                          ) : (
+                            '-'
+                          )}
+                        </span>
                       </div>
                     ))}
                   </>
@@ -953,6 +1030,86 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal File Viewer */}
+      {showFileViewer && (
+        <div className="modal-overlay" onClick={closeFileViewer}>
+          <div className="modal-content file-viewer-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', width: 'auto', height: 'auto' }}>
+            <div className="modal-header">
+              <h3>{fileViewerTitle}</h3>
+              <button className="modal-close" onClick={closeFileViewer}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: 0, overflow: 'hidden' }}>
+              {fileViewerLoading ? (
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                  <div>Memuat dokumen...</div>
+                </div>
+              ) : fileViewerIsViewable ? (
+                fileViewerMimeType.startsWith('image/') ? (
+                  <img
+                    src={fileViewerUrl}
+                    alt={fileViewerTitle}
+                    style={{
+                      width: '100%',
+                      height: '70vh',
+                      objectFit: 'contain',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                  />
+                ) : fileViewerMimeType === 'application/pdf' ? (
+                  <object
+                    data={fileViewerUrl}
+                    type="application/pdf"
+                    style={{
+                      width: '100%',
+                      height: '70vh',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    <embed
+                      src={fileViewerUrl}
+                      type="application/pdf"
+                      style={{
+                        width: '100%',
+                        height: '70vh',
+                        border: 'none',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <p style={{ padding: '20px', textAlign: 'center' }}>
+                      Browser Anda tidak mendukung tampilan PDF. 
+                      <a href={fileViewerUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', marginLeft: '8px' }}>
+                        Klik di sini untuk membuka di tab baru
+                      </a>
+                    </p>
+                  </object>
+                ) : (
+                  <iframe
+                    src={fileViewerUrl}
+                    style={{
+                      width: '100%',
+                      height: '70vh',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                    title={fileViewerTitle}
+                  />
+                )
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                  <p>File ini tidak dapat ditampilkan langsung di browser.</p>
+                  <p>MIME Type: {fileViewerMimeType}</p>
+                  <a href={fileViewerUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>
+                    Klik di sini untuk membuka di tab baru
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>

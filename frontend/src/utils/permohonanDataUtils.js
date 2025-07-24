@@ -503,7 +503,10 @@ export const getFormattedPermohonanData = (permohonanData) => {
                 type: 'encrypted_file',
                 cid: val,
                 url: `https://ipfs.io/ipfs/${val}`,
-                label: '📄 File Terenkripsi (Klik untuk download)'
+                label: '📄 File Terenkripsi',
+                viewLabel: '👁️ Lihat Dokumen',
+                downloadLabel: '📥 Download',
+                originalExtension: 'pdf' // Default to PDF for now
             };
         }
         if (val) return '✓ Terupload';
@@ -610,6 +613,134 @@ export const getFormattedPermohonanData = (permohonanData) => {
                 jenis: 'Tidak diketahui',
                 data: {}
             };
+    }
+};
+
+/**
+ * Detect MIME type from file content (magic bytes)
+ * @param {Uint8Array} bytes - File bytes
+ * @returns {string} - MIME type
+ */
+const detectMimeTypeFromContent = (bytes) => {
+    if (bytes.length < 4) return 'application/octet-stream';
+
+    // PDF: starts with %PDF
+    if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
+        return 'application/pdf';
+    }
+
+    // JPEG: starts with FF D8 FF
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+        return 'image/jpeg';
+    }
+
+    // PNG: starts with 89 50 4E 47
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+        return 'image/png';
+    }
+
+    // GIF: starts with GIF87a or GIF89a
+    if ((bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 && bytes[4] === 0x37 && bytes[5] === 0x61) ||
+        (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 && bytes[4] === 0x39 && bytes[5] === 0x61)) {
+        return 'image/gif';
+    }
+
+    // DOC: starts with D0 CF 11 E0
+    if (bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0) {
+        return 'application/msword';
+    }
+
+    // DOCX: starts with 50 4B 03 04 (ZIP format)
+    if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) {
+        // Check if it's a DOCX by looking for specific files in the ZIP
+        const header = new TextDecoder().decode(bytes.slice(0, Math.min(1000, bytes.length)));
+        if (header.includes('[Content_Types].xml') || header.includes('word/')) {
+            return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        }
+        if (header.includes('xl/') || header.includes('worksheets/')) {
+            return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        }
+        return 'application/zip';
+    }
+
+    // XLS: starts with D0 CF 11 E0 (same as DOC, but we'll check content)
+    if (bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0) {
+        const header = new TextDecoder().decode(bytes.slice(0, Math.min(1000, bytes.length)));
+        if (header.includes('Workbook') || header.includes('Worksheet')) {
+            return 'application/vnd.ms-excel';
+        }
+        return 'application/msword';
+    }
+
+    return 'application/octet-stream';
+};
+
+/**
+ * View encrypted file in browser
+ * @param {string} cidIPFS - IPFS CID
+ * @param {string} originalFilename - Original filename for display
+ * @returns {Promise<{url: string, mimeType: string, isViewable: boolean}>} - Returns object with URL, MIME type, and viewability flag
+ */
+export const viewEncryptedFile = async (cidIPFS, originalFilename = 'file') => {
+    try {
+        console.log(`👁️ [File-View] Memulai view file dari IPFS...`);
+        console.log(`🔗 [File-View] CID: ${cidIPFS}`);
+        console.log(`📁 [File-View] Original filename: ${originalFilename}`);
+
+        // Decrypt file data
+        const decryptedBase64 = await decryptFileData(cidIPFS);
+
+        // Convert base64 to blob
+        const byteCharacters = atob(decryptedBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        // Try to detect MIME type from content first, then fallback to extension
+        let mimeType = detectMimeTypeFromContent(byteArray);
+
+        // If content detection failed, try extension-based detection
+        if (mimeType === 'application/octet-stream') {
+            const getMimeTypeFromExtension = (filename) => {
+                const ext = filename.toLowerCase().split('.').pop();
+                switch (ext) {
+                    case 'pdf': return 'application/pdf';
+                    case 'jpg':
+                    case 'jpeg': return 'image/jpeg';
+                    case 'png': return 'image/png';
+                    case 'gif': return 'image/gif';
+                    case 'doc': return 'application/msword';
+                    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                    case 'xls': return 'application/vnd.ms-excel';
+                    case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                    default: return 'application/octet-stream';
+                }
+            };
+            mimeType = getMimeTypeFromExtension(originalFilename);
+        }
+
+        const blob = new Blob([byteArray], { type: mimeType });
+
+        // Create blob URL for viewing
+        const url = window.URL.createObjectURL(blob);
+
+        // Determine if file is viewable in browser
+        const isViewable = mimeType.startsWith('image/') ||
+            mimeType === 'application/pdf' ||
+            mimeType === 'text/plain' ||
+            mimeType === 'text/html';
+
+        console.log(`✅ [File-View] File berhasil diprepare untuk viewing: ${originalFilename}`);
+        console.log(`📄 [File-View] MIME Type: ${mimeType}`);
+        console.log(`🔍 [File-View] Detection method: ${mimeType === 'application/octet-stream' ? 'extension' : 'content'}`);
+        console.log(`👁️ [File-View] Viewable in browser: ${isViewable}`);
+
+        return { url, mimeType, isViewable };
+    } catch (error) {
+        console.error(`❌ [File-View] Error viewing file:`, error);
+        throw new Error('Gagal memuat file untuk ditampilkan');
     }
 };
 
