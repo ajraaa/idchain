@@ -376,7 +376,21 @@ export const processAndUploadPermohonanData = async (jenisPermohonan, formData, 
         // 4. Upload to IPFS
         console.log(`☁️ [IPFS-Upload] Step 4: Upload ke IPFS...`);
         const uploadStartTime = Date.now();
-        const filename = `permohonan_${jenisPermohonan}_${Date.now()}.enc`;
+
+        // Generate random UUID filename
+        const generateUUID = () => {
+            if (crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            // Fallback untuk browser lama
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+
+        const filename = `${generateUUID()}.enc`;
         console.log(`📁 [IPFS-Upload] Filename: ${filename}`);
 
         const cidIPFS = await uploadToPinata(encryptedData, filename);
@@ -395,6 +409,43 @@ export const processAndUploadPermohonanData = async (jenisPermohonan, formData, 
         console.error(`❌ [IPFS-Upload] Error dalam ${totalTime}ms:`, error);
         console.error(`❌ [IPFS-Upload] Error stack:`, error.stack);
         throw error;
+    }
+};
+
+/**
+ * Decrypt file data from IPFS
+ * @param {string} cidIPFS - IPFS CID
+ * @returns {Promise<string>} - Decrypted file data (base64)
+ */
+export const decryptFileData = async (cidIPFS) => {
+    const startTime = Date.now();
+    console.log(`🔓 [File-Decrypt] Memulai decrypt file dari IPFS...`);
+    console.log(`🔗 [File-Decrypt] CID: ${cidIPFS}`);
+
+    try {
+        // Fetch encrypted data from IPFS
+        console.log(`📥 [File-Decrypt] Fetching encrypted file from IPFS...`);
+        const fetchStartTime = Date.now();
+        const encryptedData = await fetchFromIPFS(cidIPFS);
+        const fetchEndTime = Date.now();
+        console.log(`✅ [File-Decrypt] File fetched dalam ${fetchEndTime - fetchStartTime}ms (${encryptedData.length} characters)`);
+
+        // Decrypt data
+        console.log(`🔐 [File-Decrypt] Decrypting file...`);
+        const decryptStartTime = Date.now();
+        const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+        const decryptEndTime = Date.now();
+        console.log(`✅ [File-Decrypt] File decryption berhasil dalam ${decryptEndTime - decryptStartTime}ms`);
+
+        const totalTime = Date.now() - startTime;
+        console.log(`🎉 [File-Decrypt] File decrypt process berhasil dalam ${totalTime}ms`);
+
+        return decryptedData; // Returns base64 string
+    } catch (error) {
+        const totalTime = Date.now() - startTime;
+        console.error(`❌ [File-Decrypt] Error dalam ${totalTime}ms:`, error);
+        console.error(`❌ [File-Decrypt] Error stack:`, error.stack);
+        throw new Error('Gagal memuat file dari IPFS');
     }
 };
 
@@ -448,7 +499,12 @@ export const getFormattedPermohonanData = (permohonanData) => {
     const isCID = (val) => typeof val === 'string' && val.length >= 46 && val.startsWith('Qm');
     const makeDocField = (val) => {
         if (isCID(val)) {
-            return `https://ipfs.io/ipfs/${val}`;
+            return {
+                type: 'encrypted_file',
+                cid: val,
+                url: `https://ipfs.io/ipfs/${val}`,
+                label: '📄 File Terenkripsi (Klik untuk download)'
+            };
         }
         if (val) return '✓ Terupload';
         return '✗ Belum upload';
@@ -554,6 +610,47 @@ export const getFormattedPermohonanData = (permohonanData) => {
                 jenis: 'Tidak diketahui',
                 data: {}
             };
+    }
+};
+
+/**
+ * Download encrypted file from IPFS
+ * @param {string} cidIPFS - IPFS CID
+ * @param {string} originalFilename - Original filename for download
+ * @returns {Promise<void>} - Downloads the file
+ */
+export const downloadEncryptedFile = async (cidIPFS, originalFilename = 'file') => {
+    try {
+        console.log(`📥 [File-Download] Memulai download file dari IPFS...`);
+        console.log(`🔗 [File-Download] CID: ${cidIPFS}`);
+        console.log(`📁 [File-Download] Original filename: ${originalFilename}`);
+
+        // Decrypt file data
+        const decryptedBase64 = await decryptFileData(cidIPFS);
+
+        // Convert base64 to blob
+        const byteCharacters = atob(decryptedBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray]);
+
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = originalFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        console.log(`✅ [File-Download] File berhasil didownload: ${originalFilename}`);
+    } catch (error) {
+        console.error(`❌ [File-Download] Error downloading file:`, error);
+        throw new Error('Gagal mendownload file');
     }
 };
 

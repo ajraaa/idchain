@@ -5,14 +5,16 @@ import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
 import { fetchFromIPFS, loadNIKMapping } from '../utils/ipfs.js';
 import { uploadToPinata } from '../utils/pinata.js';
-import { decryptAes256CbcNodeStyle } from '../utils/crypto.js';
+import { decryptAes256CbcNodeStyle, encryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 import { ethers } from 'ethers';
 import { 
   processAndUploadPermohonanData, 
   convertFileToBase64,
   validatePermohonanData,
-  loadPermohonanDataForDisplay
+  loadPermohonanDataForDisplay,
+  decryptFileData,
+  downloadEncryptedFile
 } from '../utils/permohonanDataUtils.js';
 import CitizenAppHeader from './CitizenAppHeader';
 
@@ -828,11 +830,35 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       const base64 = await convertFileToBase64(file);
       console.log(`✅ [File-Upload] Base64 conversion berhasil (${base64.length} characters)`);
       
-      // Upload to IPFS to get CID
-      console.log(`☁️ [File-Upload] Uploading to IPFS...`);
+      // Encrypt the base64 data
+      console.log(`🔐 [File-Upload] Encrypting file data...`);
+      const encryptStartTime = Date.now();
+      const encryptedData = await encryptAes256CbcNodeStyle(base64, CRYPTO_CONFIG.SECRET_KEY);
+      const encryptEndTime = Date.now();
+      console.log(`✅ [File-Upload] Encryption berhasil dalam ${encryptEndTime - encryptStartTime}ms`);
+      console.log(`📊 [File-Upload] Encrypted data size: ${encryptedData.length} characters`);
+      
+      // Generate random UUID filename
+      console.log(`🆔 [File-Upload] Generating random UUID filename...`);
+      const generateUUID = () => {
+        if (crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        // Fallback untuk browser lama
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+      
+      const filename = `${generateUUID()}.enc`;
+      console.log(`📁 [File-Upload] Generated filename: ${filename}`);
+      
+      // Upload encrypted data to IPFS
+      console.log(`☁️ [File-Upload] Uploading encrypted data to IPFS...`);
       const uploadStartTime = Date.now();
-      const filename = `${fieldName}_${Date.now()}_${file.name}`;
-      const cidIPFS = await uploadToPinata(base64, filename);
+      const cidIPFS = await uploadToPinata(encryptedData, filename);
       const uploadEndTime = Date.now();
       
       console.log(`✅ [File-Upload] IPFS upload berhasil dalam ${uploadEndTime - uploadStartTime}ms`);
@@ -858,7 +884,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       
       const totalTime = Date.now() - startTime;
       console.log(`✅ [File-Upload] File upload berhasil dalam ${totalTime}ms`);
-      onPermohonanSuccess(`File ${file.name} berhasil diupload ke IPFS!`);
+      onPermohonanSuccess(`File ${file.name} berhasil dienkripsi dan diupload ke IPFS!`);
       
     } catch (error) {
       const totalTime = Date.now() - startTime;
@@ -2200,7 +2226,31 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     {permohonanDetailData.data && Object.entries(permohonanDetailData.data).map(([key, value]) => (
                       <div key={key} className="info-row" style={{marginBottom: 8}}>
                         <span className="info-label">{key}:</span>
-                        <span className="info-value">{value && value !== '' ? value : '-'}</span>
+                        <span className="info-value">
+                          {value && value !== '' ? (
+                            typeof value === 'object' && value.type === 'encrypted_file' ? (
+                              <button 
+                                className="download-button"
+                                onClick={() => downloadEncryptedFile(value.cid, `${key.replace(/\s+/g, '_')}.file`)}
+                                style={{
+                                  background: '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                {value.label}
+                              </button>
+                            ) : (
+                              value
+                            )
+                          ) : (
+                            '-'
+                          )}
+                        </span>
                       </div>
                     ))}
                   </>
