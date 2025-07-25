@@ -153,17 +153,12 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         const list = [];
         for (let id of allIds) {
           const detail = await contractService.getPermohonanDetail(Number(id));
-          console.log(`[Dukcapil] Permohonan ${id} detail:`, detail);
-          console.log(`[Dukcapil] Permohonan ${id} status: "${detail.status}"`);
           if (
             detail.status === 'Disetujui Kalurahan Tujuan' ||
             detail.status === 'Disetujui Kalurahan' ||
             detail.status === 'Dikonfirmasi KK Tujuan'
           ) {
-            console.log(`[Dukcapil] Permohonan ${id} ditambahkan ke list`);
             list.push(detail);
-          } else {
-            console.log(`[Dukcapil] Permohonan ${id} TIDAK ditambahkan ke list karena status: "${detail.status}"`);
           }
         }
         setPermohonanMasuk(list);
@@ -187,13 +182,12 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         const statusList = [
           'Disetujui Dukcapil',
           'Ditolak Dukcapil',
-          'Disetujui Kalurahan Tujuan',
-          'Disetujui Kalurahan',
           'Ditolak Kalurahan',
           'Ditolak Kalurahan Tujuan',
           'Diajukan',
-          'Selesai',
-          'Dikonfirmasi KK Tujuan'
+          'Selesai'
+          // Hapus status yang masih menunggu verifikasi Dukcapil:
+          // 'Disetujui Kalurahan Tujuan', 'Disetujui Kalurahan', 'Dikonfirmasi KK Tujuan'
         ];
         let allIds = [];
         for (const status of statusList) {
@@ -535,21 +529,11 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
 
   // Render daftar permohonan masuk
   const renderPermohonanMasuk = () => {
-    const semuaPermohonan = [...permohonanMasuk, ...riwayatPermohonan];
-    console.log(`[Dukcapil-Render] Semua permohonan:`, semuaPermohonan);
-    console.log(`[Dukcapil-Render] permohonanMasuk:`, permohonanMasuk);
-    console.log(`[Dukcapil-Render] riwayatPermohonan:`, riwayatPermohonan);
-    
-    const permohonanUntukDukcapil = semuaPermohonan.filter(p => {
-      const isMatch = p.status === 'Menunggu Verifikasi Dukcapil' ||
-        p.status === 'Menunggu Verifikasi' ||
-        p.status === 'Disetujui Kalurahan Tujuan' ||
+    const permohonanUntukDukcapil = permohonanMasuk.filter(p => {
+      return p.status === 'Disetujui Kalurahan Tujuan' ||
         p.status === 'Disetujui Kalurahan' ||
         p.status === 'Dikonfirmasi KK Tujuan';
-      console.log(`[Dukcapil-Render] Permohonan ${p.id} status "${p.status}" match: ${isMatch}`);
-      return isMatch;
     });
-    console.log(`[Dukcapil-Render] Permohonan untuk Dukcapil setelah filter:`, permohonanUntukDukcapil);
     return (
       <div className="management-card">
         {permohonanUntukDukcapil.length === 0 ? <div>Tidak ada permohonan masuk.</div> : (
