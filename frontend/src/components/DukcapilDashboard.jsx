@@ -1059,58 +1059,16 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                     }}
                   />
                 ) : fileViewerMimeType === 'application/pdf' ? (
-                  <div style={{ width: '100%', height: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-                      <p style={{ fontSize: '16px', marginBottom: '10px' }}>PDF berhasil dimuat!</p>
-                      <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
-                        File: {fileViewerTitle}
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                      <button
-                        onClick={() => window.open(fileViewerUrl, '_blank')}
-                        style={{
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          padding: '10px 20px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '500'
-                        }}
-                      >
-                        📄 Buka di Tab Baru
-                      </button>
-                      <button
-                        onClick={() => {
-                          const link = document.createElement('a');
-                          link.href = fileViewerUrl;
-                          link.download = fileViewerTitle;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                        style={{
-                          background: '#10b981',
-                          color: 'white',
-                          border: 'none',
-                          padding: '10px 20px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '500'
-                        }}
-                      >
-                        📥 Download PDF
-                      </button>
-                    </div>
-                    <div style={{ marginTop: '20px', padding: '15px', background: '#f3f4f6', borderRadius: '6px', maxWidth: '400px' }}>
-                      <p style={{ fontSize: '12px', color: '#666', margin: 0, textAlign: 'center' }}>
-                        💡 <strong>Tips:</strong> Untuk tampilan PDF yang lebih baik, gunakan browser modern seperti Chrome, Firefox, atau Edge.
-                      </p>
-                    </div>
-                  </div>
+                  <iframe
+                    src={fileViewerUrl}
+                    style={{
+                      width: '100%',
+                      height: '70vh',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                    title={fileViewerTitle}
+                  />
                 ) : (
                   <iframe
                     src={fileViewerUrl}
@@ -1124,12 +1082,60 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                   />
                 )
               ) : (
-                <div style={{ padding: '20px', textAlign: 'center' }}>
-                  <p>File ini tidak dapat ditampilkan langsung di browser.</p>
-                  <p>MIME Type: {fileViewerMimeType}</p>
-                  <a href={fileViewerUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>
-                    Klik di sini untuk membuka di tab baru
-                  </a>
+                <div style={{ width: '100%', height: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '16px', marginBottom: '10px' }}>File berhasil dimuat!</p>
+                    <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+                      File: {fileViewerTitle}
+                    </p>
+                    <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+                      MIME Type: {fileViewerMimeType}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button
+                      onClick={() => window.open(fileViewerUrl, '_blank')}
+                      style={{
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      📄 Buka di Tab Baru
+                    </button>
+                    <button
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = fileViewerUrl;
+                        link.download = fileViewerTitle;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      style={{
+                        background: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      📥 Download File
+                    </button>
+                  </div>
+                  <div style={{ marginTop: '20px', padding: '15px', background: '#f3f4f6', borderRadius: '6px', maxWidth: '400px' }}>
+                    <p style={{ fontSize: '12px', color: '#666', margin: 0, textAlign: 'center' }}>
+                      💡 <strong>Tips:</strong> File ini tidak dapat ditampilkan langsung di browser. Gunakan tombol di atas untuk membuka atau download file.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
