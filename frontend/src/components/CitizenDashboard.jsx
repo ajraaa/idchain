@@ -865,6 +865,31 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     console.log(`📋 [File-Upload] Jenis Permohonan: ${jenisPermohonanLabels[jenisPermohonan]}`);
     console.log(`📋 [File-Upload] Field: ${fieldName}`);
     
+    // Validasi ukuran file (maksimal 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      onPermohonanError(`File terlalu besar. Maksimal ukuran file adalah 10MB. File Anda: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      return;
+    }
+    
+    // Validasi tipe file
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'image/gif',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      onPermohonanError(`Tipe file tidak didukung. Tipe file yang diizinkan: PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX. File Anda: ${file.type}`);
+      return;
+    }
+    
     // Set uploading state
     setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
     
@@ -876,6 +901,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       
       // Encrypt the base64 data
       console.log(`🔐 [File-Upload] Encrypting file data...`);
+      console.log(`🔐 [File-Upload] Base64 length: ${base64.length} characters`);
+      console.log(`🔐 [File-Upload] Secret key length: ${CRYPTO_CONFIG.SECRET_KEY.length} characters`);
+      
       const encryptStartTime = Date.now();
       const encryptedData = await encryptAes256CbcNodeStyle(base64, CRYPTO_CONFIG.SECRET_KEY);
       const encryptEndTime = Date.now();

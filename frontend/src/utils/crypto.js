@@ -76,7 +76,14 @@ export async function encryptAes256CbcNodeStyle(jsonData, passphrase) {
     const result = new Uint8Array(iv.length + encryptedBuffer.byteLength);
     result.set(iv, 0);
     result.set(new Uint8Array(encryptedBuffer), iv.length);
-    return btoa(String.fromCharCode(...result));
+
+    // Convert to base64 using a more efficient method for large arrays
+    let binary = '';
+    const len = result.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(result[i]);
+    }
+    return btoa(binary);
 }
 
 export const validateNIK = (nik) => {
