@@ -388,37 +388,61 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     const startTime = Date.now();
     try {
       console.log(`🔄 [Kalurahan-VerifikasiTujuan] Memulai verifikasi permohonan ${selectedPermohonan.id}...`);
-      // Tambahkan log debug dataPindah
       console.log('[DEBUG] permohonanDetailRaw.dataPindah:', permohonanDetailRaw?.dataPindah);
-      // Ambil nikKepalaKeluargaTujuan langsung dari dataPindah
-      let nikKepalaKeluargaTujuan = '';
-      if (
-        permohonanDetailRaw &&
-        permohonanDetailRaw.dataPindah &&
-        permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan
-      ) {
-        console.log('[VerifikasiKalurahanTujuan] dataPindah:', permohonanDetailRaw.dataPindah);
-        nikKepalaKeluargaTujuan = permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan;
+      
+      // Cek jenis pindah dari smart contract
+      const jenisPindah = selectedPermohonan.jenisPindah;
+      console.log(`📋 [Kalurahan-VerifikasiTujuan] Jenis Pindah: ${jenisPindah}`);
+      
+      let result;
+      
+      if (jenisPindah === '2') {
+        // Pindah Gabung KK - memerlukan NIK kepala keluarga tujuan
+        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Gabung KK - memerlukan NIK kepala keluarga tujuan`);
+        
+        let nikKepalaKeluargaTujuan = '';
+        if (
+          permohonanDetailRaw &&
+          permohonanDetailRaw.dataPindah &&
+          permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan
+        ) {
+          nikKepalaKeluargaTujuan = permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan;
+        }
+        
+        console.log('[VerifikasiKalurahanTujuan] NIK Kepala Keluarga Tujuan:', nikKepalaKeluargaTujuan);
+        
+        if (!nikKepalaKeluargaTujuan) {
+          console.error('[VerifikasiKalurahanTujuan] ERROR: NIK Kepala Keluarga Tujuan tidak ditemukan untuk Pindah Gabung KK!');
+          setIsVerifying(false);
+          onError('NIK Kepala Keluarga Tujuan tidak ditemukan di data permohonan untuk Pindah Gabung KK.');
+          return;
+        }
+        
+        result = await contractService.contract.verifikasiKalurahanTujuanPindah(
+          selectedPermohonan.id,
+          isSetuju,
+          alasanPenolakan || '',
+          nikKepalaKeluargaTujuan
+        );
+      } else {
+        // Pindah Seluruh Keluarga (0) atau Pindah Mandiri (1) - tidak memerlukan NIK kepala keluarga tujuan
+        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: ${jenisPindah === '0' ? 'Seluruh Keluarga' : 'Mandiri'} - tidak memerlukan NIK kepala keluarga tujuan`);
+        
+        result = await contractService.contract.verifikasiKalurahanTujuanPindah(
+          selectedPermohonan.id,
+          isSetuju,
+          alasanPenolakan || '',
+          '' // NIK kepala keluarga tujuan kosong untuk pindah seluruh keluarga dan mandiri
+        );
       }
-      console.log('[VerifikasiKalurahanTujuan] NIK Kepala Keluarga Tujuan yang dikirim ke contract:', nikKepalaKeluargaTujuan);
-      if (!nikKepalaKeluargaTujuan) {
-        console.error('[VerifikasiKalurahanTujuan] ERROR: NIK Kepala Keluarga Tujuan tidak ditemukan di dataPindah!');
-        setIsVerifying(false);
-        onError('NIK Kepala Keluarga Tujuan tidak ditemukan di data permohonan.');
-        return;
-      }
-      const result = await contractService.contract.verifikasiKalurahanTujuanPindah(
-        selectedPermohonan.id,
-        isSetuju,
-        alasanPenolakan || '',
-        nikKepalaKeluargaTujuan
-      );
+      
       console.log('[VerifikasiKalurahanTujuan] TX result:', result);
       await result.wait();
       const updatedPermohonan = await contractService.getPermohonanDetail(selectedPermohonan.id);
       console.log('[VerifikasiKalurahanTujuan] Status permohonan setelah verifikasi:', updatedPermohonan.status);
       console.log(`✅ [Kalurahan-VerifikasiTujuan] Verifikasi tujuan ${isSetuju ? 'setuju' : 'tolak'} berhasil dalam ${Date.now() - startTime}ms`);
       onSuccess(`Permohonan ${selectedPermohonan.id} ${isSetuju ? 'disetujui' : 'ditolak'} oleh kalurahan tujuan!`);
+      
       // Reload data
       const ids = await contractService.contract.getPermohonanByKalurahanTujuan();
       const list = [];
