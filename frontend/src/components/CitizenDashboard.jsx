@@ -116,6 +116,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const [fileViewerMimeType, setFileViewerMimeType] = useState('');
   const [fileViewerIsViewable, setFileViewerIsViewable] = useState(false);
 
+  // Loading state untuk NIK lookup
+  const [isLookingUpNIK, setIsLookingUpNIK] = useState(false);
+
   // Load citizen data on component mount
   useEffect(() => {
     if (contractService && walletAddress) {
@@ -314,9 +317,27 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               return;
             }
             const encryptedData = await fetchFromIPFS(cidKKTujuan);
-            const kkTujuan = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+            const kkTujuanRaw = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+            
+            // Parse JSON jika masih string
+            let kkTujuan;
+            try {
+              if (typeof kkTujuanRaw === 'string') {
+                kkTujuan = JSON.parse(kkTujuanRaw);
+              } else {
+                kkTujuan = kkTujuanRaw;
+              }
+            } catch (parseError) {
+              console.error(`❌ [Submit-Permohonan] Error parsing KK data:`, parseError);
+              onPermohonanError('Gagal memproses data KK tujuan');
+              setIsLoading(false);
+              return;
+            }
+            
             const namaKalurahanTujuan = kkTujuan?.alamatLengkap?.kelurahan;
+            console.log(`📋 [Submit-Permohonan] Nama Kalurahan Tujuan dari KK: ${namaKalurahanTujuan}`);
             if (!namaKalurahanTujuan) {
+              console.error(`❌ [Submit-Permohonan] Data kalurahan tidak ditemukan di KK:`, kkTujuan);
               onPermohonanError('Data kalurahan tujuan tidak ditemukan di KK tujuan');
               setIsLoading(false);
               return;
@@ -769,8 +790,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         suratPutusanPengadilan: getCID(formDataPerceraian.suratPutusanPengadilan)
       };
       case '4':
-        // Untuk pindah seluruh keluarga, mandiri, atau gabung KK, kirim alamatTujuan sebagai objek lengkap
-        if (jenisPindah === '0' || jenisPindah === '1' || jenisPindah === '2') {
+        // Untuk pindah seluruh keluarga dan mandiri, kirim alamatTujuan sebagai objek lengkap
+        if (jenisPindah === '0' || jenisPindah === '1') {
           return {
             alamatTujuan: {
               alamat: alamatBaru,
@@ -780,6 +801,20 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               provinsi: provinsiBaru
             },
             kalurahanTujuan: kalurahanBaru,
+            alasanPindah,
+            alasanPindahLainnya,
+            anggotaPindah,
+            nikKepalaKeluargaBaru,
+            nikKepalaKeluargaTujuan
+          };
+        }
+        // Untuk pindah gabung KK, alamatTujuan sudah berisi string lengkap
+        if (jenisPindah === '2') {
+          // Untuk gabung KK, kalurahanTujuan akan diambil dari KK tujuan saat submit
+          // jadi kita tidak perlu mengirimnya di sini
+          return {
+            alamatTujuan: alamatBaru, // String lengkap dari pemeriksaan NIK
+            kalurahanTujuan: '', // Akan diisi dari KK tujuan saat submit
             alasanPindah,
             alasanPindahLainnya,
             anggotaPindah,
@@ -1811,41 +1846,166 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   </>
                 )}
 
-                {/* Alur C: Gabung KK */}
+                                {/* Alur C: Gabung KK */}
                 {jenisPindah === '2' && (
                   <>
                     <div className="form-group">
                       <label htmlFor="nikKepalaKeluargaTujuan">NIK Kepala Keluarga Tujuan</label>
-                      <input
-                        type="text"
-                        id="nikKepalaKeluargaTujuan"
-                        value={nikKepalaKeluargaTujuan}
-                        onChange={async (e) => {
-                          setNikKepalaKeluargaTujuan(e.target.value);
-                          // Ambil alamat & kalurahan tujuan dari data KK tujuan (IPFS)
-                          const mapping = await loadNIKMapping(contractService);
-                          const cidKKTujuan = mapping[e.target.value];
-                          if (cidKKTujuan) {
-                            const encryptedData = await fetchFromIPFS(cidKKTujuan);
-                            const kkTujuan = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
-                            setAlamatBaru(kkTujuan?.alamatLengkap?.alamat || '');
-                            setKalurahanBaru(kkTujuan?.alamatLengkap?.kelurahan || '');
-                            // Tambahan: simpan kecamatan, kabupaten, provinsi ke state
-                            setKecamatanBaru(kkTujuan?.alamatLengkap?.kecamatan || '');
-                            setKabupatenBaru(kkTujuan?.alamatLengkap?.kabupaten || '');
-                            setProvinsiBaru(kkTujuan?.alamatLengkap?.provinsi || '');
-                          } else {
-                            setAlamatBaru('');
-                            setKalurahanBaru('');
-                            setKecamatanBaru('');
-                            setKabupatenBaru('');
-                            setProvinsiBaru('');
-                          }
-                        }}
-                        className="form-input"
-                        placeholder="Masukkan NIK kepala keluarga tujuan"
-                        required
-                      />
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                        <input
+                          type="text"
+                          id="nikKepalaKeluargaTujuan"
+                          value={nikKepalaKeluargaTujuan}
+                          onChange={(e) => setNikKepalaKeluargaTujuan(e.target.value)}
+                          className="form-input"
+                          placeholder="Masukkan NIK kepala keluarga tujuan"
+                          required
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const nikValue = nikKepalaKeluargaTujuan;
+                            
+                            // Validasi NIK (16 digit dan hanya angka)
+                            if (nikValue.length !== 16 || !/^\d+$/.test(nikValue)) {
+                              onPermohonanError('NIK harus 16 digit angka');
+                              return;
+                            }
+                            
+                            console.log(`🔄 [NIK-Check] Memeriksa NIK: ${nikValue}`);
+                            setIsLookingUpNIK(true);
+                            
+                            try {
+                              // Ambil mapping NIK
+                              const mapping = await loadNIKMapping(contractService);
+                              console.log(`📋 [NIK-Check] NIK mapping loaded, searching for NIK: ${nikValue}`);
+                              
+                              const cidKKTujuan = mapping[nikValue];
+                              console.log(`📋 [NIK-Check] CID KK Tujuan: ${cidKKTujuan || 'Tidak ditemukan'}`);
+                              
+                              if (!cidKKTujuan) {
+                                onPermohonanError('NIK tidak ditemukan di sistem');
+                                setAlamatBaru('');
+                                return;
+                              }
+                              
+                              // Ambil data KK dari IPFS
+                              console.log(`🔄 [NIK-Check] Fetching KK data from IPFS: ${cidKKTujuan}`);
+                              const encryptedData = await fetchFromIPFS(cidKKTujuan);
+                              console.log(`✅ [NIK-Check] KK data fetched from IPFS`);
+                              
+                              const kkTujuanRaw = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+                              console.log(`✅ [NIK-Check] KK data decrypted successfully`);
+                              console.log(`📋 [NIK-Check] KK Tujuan raw data:`, kkTujuanRaw);
+                              
+                              // Parse JSON jika masih string
+                              let kkTujuan;
+                              try {
+                                if (typeof kkTujuanRaw === 'string') {
+                                  kkTujuan = JSON.parse(kkTujuanRaw);
+                                  console.log(`📋 [NIK-Check] KK Tujuan parsed data:`, kkTujuan);
+                                } else {
+                                  kkTujuan = kkTujuanRaw;
+                                }
+                              } catch (parseError) {
+                                console.error(`❌ [NIK-Check] Error parsing KK data:`, parseError);
+                                onPermohonanError('Gagal memproses data KK');
+                                setAlamatBaru('');
+                                return;
+                              }
+                              
+                              // Cek apakah NIK adalah kepala keluarga
+                              console.log(`📋 [NIK-Check] KK Tujuan structure:`, {
+                                hasAnggota: !!kkTujuan?.anggota,
+                                anggotaType: typeof kkTujuan?.anggota,
+                                anggotaLength: kkTujuan?.anggota?.length,
+                                anggotaKeys: kkTujuan ? Object.keys(kkTujuan) : []
+                              });
+                              
+                              const anggotaKK = kkTujuan?.anggota || [];
+                              console.log(`📋 [NIK-Check] Anggota KK:`, anggotaKK);
+                              console.log(`📋 [NIK-Check] Mencari NIK: ${nikValue} (type: ${typeof nikValue})`);
+                              
+                              const kepalaKeluarga = anggotaKK.find(anggota => {
+                                console.log(`📋 [NIK-Check] Comparing with anggota NIK: ${anggota.nik} (type: ${typeof anggota.nik})`);
+                                return anggota.nik === nikValue;
+                              });
+                              
+                              console.log(`📋 [NIK-Check] Hasil pencarian kepala keluarga:`, kepalaKeluarga);
+                              
+                              if (!kepalaKeluarga) {
+                                console.log(`❌ [NIK-Check] NIK ${nikValue} tidak ditemukan sebagai kepala keluarga`);
+                                console.log(`📋 [NIK-Check] Available NIKs:`, anggotaKK.map(a => a.nik));
+                                onPermohonanError('NIK tidak ditemukan sebagai kepala keluarga');
+                                setAlamatBaru('');
+                                return;
+                              }
+                              
+                              console.log(`✅ [NIK-Check] NIK ${nikValue} ditemukan sebagai kepala keluarga:`, kepalaKeluarga);
+                              
+                              // Validasi bahwa NIK adalah kepala keluarga
+                              if (kepalaKeluarga.statusHubunganKeluarga !== 'KEPALA KELUARGA') {
+                                console.log(`❌ [NIK-Check] NIK ${nikValue} bukan kepala keluarga, status: ${kepalaKeluarga.statusHubunganKeluarga}`);
+                                onPermohonanError(`NIK bukan kepala keluarga. Status: ${kepalaKeluarga.statusHubunganKeluarga}`);
+                                setAlamatBaru('');
+                                return;
+                              }
+                              
+                              console.log(`✅ [NIK-Check] NIK ${nikValue} adalah kepala keluarga yang valid`);
+                              
+                              // Ambil alamat lengkap
+                              const alamatLengkap = kkTujuan?.alamatLengkap;
+                              if (!alamatLengkap) {
+                                onPermohonanError('Data alamat tidak ditemukan');
+                                setAlamatBaru('');
+                                return;
+                              }
+                              
+                              // Gabungkan alamat lengkap menjadi satu string
+                              const alamatParts = [];
+                              if (alamatLengkap.alamat) alamatParts.push(alamatLengkap.alamat);
+                              if (alamatLengkap.kelurahan) alamatParts.push(`Kalurahan ${alamatLengkap.kelurahan}`);
+                              if (alamatLengkap.kecamatan) alamatParts.push(`Kecamatan ${alamatLengkap.kecamatan}`);
+                              if (alamatLengkap.kabupaten) alamatParts.push(`Kabupaten ${alamatLengkap.kabupaten}`);
+                              if (alamatLengkap.provinsi) alamatParts.push(`Provinsi ${alamatLengkap.provinsi}`);
+                              
+                              const alamatLengkapString = alamatParts.join(', ');
+                              console.log(`📋 [NIK-Check] Alamat lengkap: ${alamatLengkapString}`);
+                              
+                              // Set alamat dan data lainnya
+                              setAlamatBaru(alamatLengkapString);
+                              setKalurahanBaru(alamatLengkap.kelurahan || '');
+                              setKecamatanBaru(alamatLengkap.kecamatan || 'Gamping');
+                              setKabupatenBaru(alamatLengkap.kabupaten || 'Sleman');
+                              setProvinsiBaru(alamatLengkap.provinsi || 'Daerah Istimewa Yogyakarta');
+                              
+                              console.log(`✅ [NIK-Check] Address data set successfully`);
+                              onPermohonanSuccess('Data alamat berhasil ditemukan!');
+                              
+                            } catch (error) {
+                              console.error(`❌ [NIK-Check] Error checking NIK ${nikValue}:`, error);
+                              onPermohonanError('Gagal memeriksa data NIK');
+                              setAlamatBaru('');
+                            } finally {
+                              setIsLookingUpNIK(false);
+                            }
+                          }}
+                          disabled={isLookingUpNIK || !nikKepalaKeluargaTujuan}
+                          style={{
+                            padding: '10px 16px',
+                            backgroundColor: isLookingUpNIK || !nikKepalaKeluargaTujuan ? '#d1d5db' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: isLookingUpNIK || !nikKepalaKeluargaTujuan ? 'not-allowed' : 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {isLookingUpNIK ? 'Memeriksa...' : 'Periksa'}
+                        </button>
+                      </div>
                     </div>
                     <div className="form-group">
                       <label htmlFor="alamatBaru">Alamat Tujuan</label>
@@ -1854,22 +2014,19 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                         id="alamatBaru"
                         value={alamatBaru}
                         className="form-input"
-                        placeholder="Alamat tujuan akan terisi otomatis"
+                        placeholder={isLookingUpNIK ? "Memeriksa data..." : "Alamat tujuan akan terisi setelah pemeriksaan NIK"}
                         readOnly
                         required
+                        style={{
+                          backgroundColor: isLookingUpNIK ? '#f3f4f6' : 'white',
+                          color: isLookingUpNIK ? '#6b7280' : '#000'
+                        }}
                       />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="kalurahanBaru">Kalurahan Tujuan</label>
-                      <input
-                        type="text"
-                        id="kalurahanBaru"
-                        value={kalurahanBaru}
-                        className="form-input"
-                        placeholder="Kalurahan tujuan akan terisi otomatis"
-                        readOnly
-                        required
-                      />
+                      {isLookingUpNIK && (
+                        <div style={{ fontSize: '0.875rem', color: '#3b82f6', marginTop: '4px' }}>
+                          🔍 Memeriksa data NIK...
+                        </div>
+                      )}
                     </div>
                     <div className="form-group">
                       <label htmlFor="alasanPindah">Alasan Pindah</label>

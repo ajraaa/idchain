@@ -147,12 +147,22 @@ export const validatePindahData = (formData, jenisPindah) => {
         if (!formData.alamatTujuan.kalurahan?.trim()) errors.kalurahanBaru = 'Kalurahan tujuan wajib dipilih';
     } else {
         if (!formData.alamatTujuan?.trim()) errors.alamatBaru = 'Alamat tujuan wajib diisi';
-        if (!formData.kalurahanTujuan?.trim()) errors.kalurahanBaru = 'Kalurahan tujuan wajib dipilih';
+
+        // Untuk Pindah Gabung KK (jenisPindah === '2'), kalurahanTujuan akan diisi dari KK tujuan saat submit
+        // jadi tidak perlu validasi di sini
+        if (jenisPindah !== '2' && !formData.kalurahanTujuan?.trim()) {
+            errors.kalurahanBaru = 'Kalurahan tujuan wajib dipilih';
+        }
     }
 
     if (!formData.alasanPindah?.trim()) errors.alasanPindah = 'Alasan pindah wajib dipilih';
     if (formData.alasanPindah === 'Lainnya' && !formData.alasanPindahLainnya?.trim()) {
         errors.alasanPindahLainnya = 'Alasan pindah lainnya wajib diisi';
+    }
+
+    // Validasi NIK kepala keluarga tujuan untuk Pindah Gabung KK
+    if (jenisPindah === '2' && !formData.nikKepalaKeluargaTujuan?.trim()) {
+        errors.nikKepalaKeluargaTujuan = 'NIK kepala keluarga tujuan wajib diisi';
     }
 
     return {
