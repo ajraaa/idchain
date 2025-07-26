@@ -98,9 +98,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   // Tambahkan state untuk kalurahan
   const [kalurahanBaru, setKalurahanBaru] = useState('');
-  const [kecamatanBaru, setKecamatanBaru] = useState('');
-  const [kabupatenBaru, setKabupatenBaru] = useState('');
-  const [provinsiBaru, setProvinsiBaru] = useState('');
+  const [kecamatanBaru, setKecamatanBaru] = useState('Gamping');
+  const [kabupatenBaru, setKabupatenBaru] = useState('Sleman');
+  const [provinsiBaru, setProvinsiBaru] = useState('Daerah Istimewa Yogyakarta');
 
   // Form validation errors
   const [formErrors, setFormErrors] = useState({});
@@ -832,9 +832,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       case '4':
         setAlamatBaru('');
         setKalurahanBaru('');
-        setKecamatanBaru('');
-        setKabupatenBaru('');
-        setProvinsiBaru('');
+        setKecamatanBaru('Gamping');
+        setKabupatenBaru('Sleman');
+        setProvinsiBaru('Daerah Istimewa Yogyakarta');
         setAlasanPindah('');
         setAlasanPindahLainnya('');
         setAnggotaPindah([]);
@@ -1534,9 +1534,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       setNikKepalaKeluargaTujuan('');
                       setAlamatBaru('');
                       setKalurahanBaru('');
-                      setKecamatanBaru('');
-                      setKabupatenBaru('');
-                      setProvinsiBaru('');
+                      setKecamatanBaru('Gamping');
+                      setKabupatenBaru('Sleman');
+                      setProvinsiBaru('Daerah Istimewa Yogyakarta');
                       setAlasanPindah('');
                       setAlasanPindahLainnya('');
                     }}
@@ -1584,6 +1584,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <label htmlFor="kecamatanBaru">Kecamatan Tujuan</label>
                       <select
                         id="kecamatanBaru"
+                        value={kecamatanBaru}
+                        onChange={e => setKecamatanBaru(e.target.value)}
                         className="form-input"
                         disabled
                       >
@@ -1594,6 +1596,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <label htmlFor="kabupatenBaru">Kabupaten Tujuan</label>
                       <select
                         id="kabupatenBaru"
+                        value={kabupatenBaru}
+                        onChange={e => setKabupatenBaru(e.target.value)}
                         className="form-input"
                         disabled
                       >
@@ -1604,6 +1608,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <label htmlFor="provinsiBaru">Provinsi Tujuan</label>
                       <select
                         id="provinsiBaru"
+                        value={provinsiBaru}
+                        onChange={e => setProvinsiBaru(e.target.value)}
                         className="form-input"
                         disabled
                       >
@@ -1738,6 +1744,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <label htmlFor="kecamatanBaru">Kecamatan Tujuan</label>
                       <select
                         id="kecamatanBaru"
+                        value={kecamatanBaru}
+                        onChange={e => setKecamatanBaru(e.target.value)}
                         className="form-input"
                         disabled
                       >
@@ -1748,6 +1756,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <label htmlFor="kabupatenBaru">Kabupaten Tujuan</label>
                       <select
                         id="kabupatenBaru"
+                        value={kabupatenBaru}
+                        onChange={e => setKabupatenBaru(e.target.value)}
                         className="form-input"
                         disabled
                       >
@@ -1758,6 +1768,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       <label htmlFor="provinsiBaru">Provinsi Tujuan</label>
                       <select
                         id="provinsiBaru"
+                        value={provinsiBaru}
+                        onChange={e => setProvinsiBaru(e.target.value)}
                         className="form-input"
                         disabled
                       >
