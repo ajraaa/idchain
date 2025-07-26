@@ -396,9 +396,14 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       
       let result;
       
-      if (jenisPindah === '2') {
+      // Convert jenisPindah to string for comparison (handle both string and number types)
+      const jenisPindahStr = String(jenisPindah);
+      console.log(`🔍 [Kalurahan-VerifikasiTujuan] Jenis Pindah (original): ${jenisPindah} (type: ${typeof jenisPindah})`);
+      console.log(`🔍 [Kalurahan-VerifikasiTujuan] Jenis Pindah (converted): ${jenisPindahStr} (type: ${typeof jenisPindahStr})`);
+      
+      if (jenisPindahStr === '2') {
         // Pindah Gabung KK - memerlukan NIK kepala keluarga tujuan
-        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Gabung KK - memerlukan NIK kepala keluarga tujuan`);
+        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Gabung KK (${jenisPindahStr}) - memerlukan NIK kepala keluarga tujuan`);
         
         let nikKepalaKeluargaTujuan = '';
         if (
@@ -424,16 +429,32 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
           alasanPenolakan || '',
           nikKepalaKeluargaTujuan
         );
-      } else {
-        // Pindah Seluruh Keluarga (0) atau Pindah Mandiri (1) - tidak memerlukan NIK kepala keluarga tujuan
-        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: ${jenisPindah === '0' ? 'Seluruh Keluarga' : 'Mandiri'} - tidak memerlukan NIK kepala keluarga tujuan`);
+      } else if (jenisPindahStr === '0') {
+        // Pindah Seluruh Keluarga - tidak memerlukan NIK kepala keluarga tujuan
+        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Seluruh Keluarga (${jenisPindahStr}) - tidak memerlukan NIK kepala keluarga tujuan`);
         
         result = await contractService.contract.verifikasiKalurahanTujuanPindah(
           selectedPermohonan.id,
           isSetuju,
           alasanPenolakan || '',
-          '' // NIK kepala keluarga tujuan kosong untuk pindah seluruh keluarga dan mandiri
+          '' // NIK kepala keluarga tujuan kosong untuk pindah seluruh keluarga
         );
+      } else if (jenisPindahStr === '1') {
+        // Pindah Mandiri - tidak memerlukan NIK kepala keluarga tujuan
+        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Mandiri (${jenisPindahStr}) - tidak memerlukan NIK kepala keluarga tujuan`);
+        
+        result = await contractService.contract.verifikasiKalurahanTujuanPindah(
+          selectedPermohonan.id,
+          isSetuju,
+          alasanPenolakan || '',
+          '' // NIK kepala keluarga tujuan kosong untuk pindah mandiri
+        );
+      } else {
+        // Fallback untuk jenis pindah yang tidak dikenal
+        console.error(`❌ [Kalurahan-VerifikasiTujuan] Jenis Pindah tidak dikenal: ${jenisPindah} (type: ${typeof jenisPindah})`);
+        setIsVerifying(false);
+        onError(`Jenis pindah tidak dikenal: ${jenisPindah}`);
+        return;
       }
       
       console.log('[VerifikasiKalurahanTujuan] TX result:', result);
@@ -693,6 +714,8 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                         {permohonanDetailData.jenis || permohonanDetailData.metadata?.jenisPermohonan}
                       </span>
                     </div>
+
+
                     {permohonanDetailData.data && Object.entries(permohonanDetailData.data).map(([key, value]) => (
                       <div key={key} className="info-row" style={{marginBottom: 8}}>
                         <span className="info-label">{key}:</span>

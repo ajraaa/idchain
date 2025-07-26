@@ -609,9 +609,24 @@ export const getFormattedPermohonanData = (permohonanData) => {
                 }
                 return at;
             })();
-            pindahData['Anggota Pindah'] = data.dataPindah.anggotaPindah?.length > 0 ? data.dataPindah.anggotaPindah.join(', ') : 'Tidak ada';
-            pindahData['NIK Kepala Keluarga Baru'] = data.dataPindah.nikKepalaKeluargaBaru || 'Tidak ada';
-            pindahData['NIK Kepala Keluarga Tujuan'] = data.dataPindah.nikKepalaKeluargaTujuan || 'Tidak ada';
+            pindahData['Anggota Pindah'] = (() => {
+                const ap = data.dataPindah.anggotaPindah;
+                if (!ap || ap.length === 0) return 'Tidak ada';
+                return ap.join(', ');
+            })();
+
+            pindahData['NIK Kepala Keluarga Baru'] = (() => {
+                const nkkb = data.dataPindah.nikKepalaKeluargaBaru;
+                if (!nkkb || nkkb.trim() === '') return 'Tidak ada';
+                return nkkb;
+            })();
+
+            pindahData['NIK Kepala Keluarga Tujuan'] = (() => {
+                const nkkt = data.dataPindah.nikKepalaKeluargaTujuan;
+                if (!nkkt || nkkt.trim() === '') return 'Tidak ada';
+                return nkkt;
+            })();
+
             return {
                 jenis: 'Pindah',
                 jenisPindah: jenisPindahLabels[metadata.jenisPindah] || 'Tidak diketahui',

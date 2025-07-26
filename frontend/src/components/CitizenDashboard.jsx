@@ -808,13 +808,41 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
             nikKepalaKeluargaTujuan
           };
         }
-        // Untuk pindah gabung KK, alamatTujuan sudah berisi string lengkap
+        // Untuk pindah gabung KK, kirim alamatTujuan dalam format object untuk konsistensi
         if (jenisPindah === '2') {
-          // Untuk gabung KK, kalurahanTujuan akan diambil dari KK tujuan saat submit
-          // jadi kita tidak perlu mengirimnya di sini
+          // Parse alamat lengkap menjadi komponen-komponen
+          const alamatParts = alamatBaru.split(', ');
+          let alamat = '';
+          let kalurahan = '';
+          let kecamatan = '';
+          let kabupaten = '';
+          let provinsi = '';
+          
+          alamatParts.forEach(part => {
+            if (part.startsWith('Kalurahan ')) {
+              kalurahan = part.replace('Kalurahan ', '');
+            } else if (part.startsWith('Kecamatan ')) {
+              kecamatan = part.replace('Kecamatan ', '');
+            } else if (part.startsWith('Kabupaten ')) {
+              kabupaten = part.replace('Kabupaten ', '');
+            } else if (part.startsWith('Provinsi ')) {
+              provinsi = part.replace('Provinsi ', '');
+            } else {
+              // Jika bukan prefixed, anggap sebagai alamat
+              if (alamat) alamat += ', ' + part;
+              else alamat = part;
+            }
+          });
+          
           return {
-            alamatTujuan: alamatBaru, // String lengkap dari pemeriksaan NIK
-            kalurahanTujuan: '', // Akan diisi dari KK tujuan saat submit
+            alamatTujuan: {
+              alamat: alamat,
+              kalurahan: kalurahan,
+              kecamatan: kecamatan,
+              kabupaten: kabupaten,
+              provinsi: provinsi
+            },
+            kalurahanTujuan: kalurahan, // Ambil dari parsing alamat
             alasanPindah,
             alasanPindahLainnya,
             anggotaPindah,
