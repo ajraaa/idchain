@@ -115,6 +115,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const [fileViewerLoading, setFileViewerLoading] = useState(false);
   const [fileViewerMimeType, setFileViewerMimeType] = useState('');
   const [fileViewerIsViewable, setFileViewerIsViewable] = useState(false);
+  const [viewingDokumenResmi, setViewingDokumenResmi] = useState(false);
 
   // Loading state untuk NIK lookup
   const [isLookingUpNIK, setIsLookingUpNIK] = useState(false);
@@ -542,6 +543,61 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     setFileViewerTitle('');
     setFileViewerMimeType('');
     setFileViewerIsViewable(false);
+    setFileViewerLoading(false);
+    setViewingDokumenResmi(false);
+  };
+
+  // Fungsi untuk melihat dokumen resmi dalam modal
+  const handleViewDokumenResmi = async (cid) => {
+    try {
+      setViewingDokumenResmi(true);
+      console.log('👁️ [View] Membuka dokumen resmi untuk dilihat...');
+      
+      // 1. Download file terenkripsi dari IPFS
+      const url = `https://ipfs.io/ipfs/${cid}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch from IPFS: ${response.status}`);
+      }
+      
+      const encryptedData = await response.text();
+      
+      // 2. Dekripsi file
+      console.log('🔓 [View] Mendekripsi file...');
+      const decryptedBase64 = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+      
+      // 3. Convert base64 ke Blob dengan MIME type PDF
+      console.log('🔄 [View] Converting ke PDF...');
+      const binaryData = atob(decryptedBase64);
+      const bytes = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) {
+        bytes[i] = binaryData.charCodeAt(i);
+      }
+      
+      // 4. Buat Blob dengan MIME type PDF
+      const blob = new Blob([bytes], { 
+        type: 'application/pdf' 
+      });
+      
+      // 5. Buat URL untuk ditampilkan di modal
+      const fileUrl = URL.createObjectURL(blob);
+      
+      // 6. Set state untuk modal file viewer
+      setFileViewerUrl(fileUrl);
+      setFileViewerTitle('Dokumen Resmi (PDF)');
+      setFileViewerMimeType('application/pdf');
+      setFileViewerIsViewable(true);
+      setShowFileViewer(true);
+      
+      console.log('✅ [View] Dokumen resmi siap ditampilkan di modal!');
+      
+    } catch (error) {
+      console.error('❌ [View] Error:', error);
+      onPermohonanError('Gagal membuka dokumen resmi untuk dilihat');
+    } finally {
+      setViewingDokumenResmi(false);
+    }
   };
 
   // Fungsi untuk download dokumen resmi dengan restore ekstensi .pdf
@@ -2303,22 +2359,41 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="download-button"
-                        onClick={() => downloadDokumenResmi(dokumen.cidDokumen)}
-                        style={{
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '500'
-                        }}
-                      >
-                        📥 Download PDF
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          className="view-button"
+                          onClick={() => handleViewDokumenResmi(dokumen.cidDokumen)}
+                          disabled={viewingDokumenResmi}
+                          style={{
+                            background: viewingDokumenResmi ? '#9ca3af' : '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            cursor: viewingDokumenResmi ? 'not-allowed' : 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {viewingDokumenResmi ? '⏳ Memuat...' : '👁️ Lihat Dokumen'}
+                        </button>
+                        <button
+                          className="download-button"
+                          onClick={() => downloadDokumenResmi(dokumen.cidDokumen)}
+                          style={{
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          📥 Download PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
