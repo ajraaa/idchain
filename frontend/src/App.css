@@ -1346,6 +1346,22 @@ input[type="date"]::-webkit-outer-spin-button {
   background: #059669;
 }
 
+.cancel-button {
+  background: #dc2626;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button:hover {
+  background: #b91c1c;
+}
+
 .empty-state {
   text-align: center;
   padding: 3rem 1rem;
@@ -1423,6 +1439,11 @@ input[type="date"]::-webkit-outer-spin-button {
 .modal-close:hover {
   background: #f3f4f6;
   color: #374151;
+}
+
+.modal-close:disabled {
+  color: #d1d5db;
+  cursor: not-allowed;
 }
 
 .modal-body {

@@ -623,7 +623,28 @@ export class ContractService {
         }
     }
 
+    async batalkanPermohonan(id) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            console.log('🔍 [ContractService] Cancelling permohonan with ID:', id);
 
+            const idNum = typeof id === 'bigint' ? Number(id) : Number(id);
+            const tx = await this.contract.batalkanPermohonan(idNum);
+            const receipt = await tx.wait();
+
+            console.log('✅ [ContractService] Permohonan cancelled successfully');
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to cancel permohonan:', error);
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
+        }
+    }
 
     async getNikMappingCID() {
         if (!this.contract) {

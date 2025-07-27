@@ -36,6 +36,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   const [showPermohonanDetail, setShowPermohonanDetail] = useState(false);
   const [permohonanDetailData, setPermohonanDetailData] = useState(null);
   const [loadingDetailData, setLoadingDetailData] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [permohonanToCancel, setPermohonanToCancel] = useState(null);
   
   // Form states for Ajukan Permohonan
   const [jenisPermohonan, setJenisPermohonan] = useState('');
@@ -515,6 +517,44 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     setSelectedPermohonan(null);
     setPermohonanDetailData(null);
     setLoadingDetailData(false);
+  };
+
+  const handleBatalkanPermohonan = (id) => {
+    setPermohonanToCancel(id);
+    setShowCancelModal(true);
+  };
+
+  const confirmBatalkanPermohonan = async () => {
+    if (!permohonanToCancel) return;
+
+    try {
+      setIsLoading(true);
+      console.log(`🔄 [Batalkan] Membatalkan permohonan ${permohonanToCancel}...`);
+      
+      const result = await contractService.batalkanPermohonan(permohonanToCancel);
+      console.log(`✅ [Batalkan] Permohonan ${permohonanToCancel} berhasil dibatalkan`);
+      
+      onPermohonanSuccess(`Permohonan ${permohonanToCancel} berhasil dibatalkan! Transaction: ${result.transactionHash}`);
+      
+      // Reload daftar permohonan
+      loadDaftarPermohonan();
+      
+      // Close modal
+      setShowCancelModal(false);
+      setPermohonanToCancel(null);
+      
+    } catch (error) {
+      console.error(`❌ [Batalkan] Error membatalkan permohonan ${permohonanToCancel}:`, error);
+      const errorMessage = error.message || 'Gagal membatalkan permohonan';
+      onPermohonanError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setPermohonanToCancel(null);
   };
 
   const handleViewFile = async (cid, filename) => {
@@ -2298,12 +2338,22 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                       </td>
                     <td>{formatDate(permohonan.waktuPengajuan)}</td>
                     <td>
-                      <button
-                        className="detail-button"
-                        onClick={() => handlePermohonanClick(permohonan.id)}
-                      >
-                        Detail
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          className="detail-button"
+                          onClick={() => handlePermohonanClick(permohonan.id)}
+                        >
+                          Detail
+                        </button>
+                        {permohonan.status === 'Diajukan' && (
+                          <button
+                            className="cancel-button"
+                            onClick={() => handleBatalkanPermohonan(permohonan.id)}
+                          >
+                            Batalkan
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2846,6 +2896,100 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Pembatalan */}
+      {showCancelModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h3>Konfirmasi Pembatalan</h3>
+              <button 
+                className="modal-close" 
+                onClick={closeCancelModal}
+                disabled={isLoading}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  borderRadius: '50%', 
+                  background: '#fef2f2', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  margin: '0 auto 20px',
+                  border: '2px solid #fecaca'
+                }}>
+                  <span style={{ fontSize: '24px', color: '#dc2626' }}>⚠️</span>
+                </div>
+                <h4 style={{ margin: '0 0 10px 0', color: '#1f2937' }}>
+                  Batalkan Permohonan?
+                </h4>
+                <p style={{ 
+                  margin: '0 0 20px 0', 
+                  color: '#6b7280', 
+                  lineHeight: '1.5',
+                  fontSize: '14px'
+                }}>
+                  Anda yakin ingin membatalkan permohonan <strong>#{permohonanToCancel}</strong>? 
+                  Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'flex-end',
+                paddingTop: '20px',
+                borderTop: '1px solid #e5e7eb'
+              }}>
+                <button
+                  onClick={closeCancelModal}
+                  disabled={isLoading}
+                  style={{
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    minWidth: '80px'
+                  }}
+                  onMouseOver={(e) => !isLoading && (e.target.style.background = '#e5e7eb')}
+                  onMouseOut={(e) => !isLoading && (e.target.style.background = '#f3f4f6')}
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={confirmBatalkanPermohonan}
+                  disabled={isLoading}
+                  style={{
+                    background: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    minWidth: '80px',
+                    opacity: isLoading ? 0.6 : 1
+                  }}
+                  onMouseOver={(e) => !isLoading && (e.target.style.background = '#b91c1c')}
+                  onMouseOut={(e) => !isLoading && (e.target.style.background = '#dc2626')}
+                >
+                  {isLoading ? 'Membatalkan...' : 'Ya, Batalkan'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
