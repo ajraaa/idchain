@@ -25,7 +25,6 @@ const STATUS_ENUM = {
   'Ditolak Kalurahan Asal': 6,
   'Disetujui Kalurahan Tujuan': 7,
   'Ditolak Kalurahan Tujuan': 8,
-  'Selesai': 9,
   'Dibatalkan oleh Pemohon': 9,
   'Menunggu Konfirmasi KK Tujuan': 10,
   'Dikonfirmasi KK Tujuan': 11,
@@ -138,12 +137,36 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
       if (!contractService || !contractService.contract) return;
       try {
         console.log('[Dukcapil] Fetching permohonan masuk (pindah & non-pindah)...');
+        console.log('[Dukcapil] Wallet address:', walletAddress);
+        console.log('[Dukcapil] Contract address:', contractService.contract.target);
+        
         const statusIntPindah = STATUS_ENUM['Disetujui Kalurahan Tujuan'];
         const statusIntNonPindah = STATUS_ENUM['Disetujui Kalurahan'];
         const statusIntGabungKK = STATUS_ENUM['Dikonfirmasi KK Tujuan'];
+        
+        console.log('[Dukcapil] Status enum values:', {
+          'Disetujui Kalurahan Tujuan': statusIntPindah,
+          'Disetujui Kalurahan': statusIntNonPindah,
+          'Dikonfirmasi KK Tujuan': statusIntGabungKK
+        });
+        
+        console.log('[Dukcapil] Calling getPermohonanForDukcapil for status Disetujui Kalurahan Tujuan...');
         const idsPindah = await contractService.contract.getPermohonanForDukcapil(statusIntPindah);
+        console.log('[Dukcapil] Result for Disetujui Kalurahan Tujuan:', idsPindah);
+        
+        console.log('[Dukcapil] Calling getPermohonanForDukcapil for status Disetujui Kalurahan...');
         const idsNonPindah = await contractService.contract.getPermohonanForDukcapil(statusIntNonPindah);
+        console.log('[Dukcapil] Result for Disetujui Kalurahan:', idsNonPindah);
+        
+        console.log('[Dukcapil] Calling getPermohonanForDukcapil for status Dikonfirmasi KK Tujuan...');
         const idsGabungKK = await contractService.contract.getPermohonanForDukcapil(statusIntGabungKK);
+        console.log('[Dukcapil] Result for Dikonfirmasi KK Tujuan:', idsGabungKK);
+        
+        // Cek juga status Diajukan untuk debugging
+        console.log('[Dukcapil] Calling getPermohonanForDukcapil for status Diajukan...');
+        const idsDiajukan = await contractService.contract.getPermohonanForDukcapil(STATUS_ENUM['Diajukan']);
+        console.log('[Dukcapil] Result for Diajukan:', idsDiajukan);
+        
         const allIds = Array.from(new Set([
           ...idsPindah.map(id => Number(id)),
           ...idsNonPindah.map(id => Number(id)),
@@ -185,7 +208,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
           'Ditolak Kalurahan',
           'Ditolak Kalurahan Tujuan',
           'Diajukan',
-          'Selesai'
+          'Dibatalkan oleh Pemohon'
           // Hapus status yang masih menunggu verifikasi Dukcapil:
           // 'Disetujui Kalurahan Tujuan', 'Disetujui Kalurahan', 'Dikonfirmasi KK Tujuan'
         ];
@@ -428,19 +451,9 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
       console.log(`📋 [Dukcapil-Verifikasi] Status: ${isSetuju ? 'Setuju' : 'Tolak'}`);
       console.log(`📋 [Dukcapil-Verifikasi] Alasan: ${alasanPenolakan}`);
       
-      // Verifikasi permohonan di smart contract terlebih dahulu
-      console.log(`📜 [Dukcapil-Verifikasi] Verifikasi di smart contract...`);
-      const verifyStartTime = Date.now();
-      const result = await contractService.contract.verifikasiDukcapil(
-        selectedPermohonan.id,
-        isSetuju,
-        alasanPenolakan || ''
-      );
-      await result.wait();
-      const verifyEndTime = Date.now();
-      console.log(`✅ [Dukcapil-Verifikasi] Smart contract verifikasi berhasil dalam ${verifyEndTime - verifyStartTime}ms`);
+      let cidDokumen = ""; // Default kosong untuk penolakan
       
-      // Jika setuju, upload dokumen resmi setelah verifikasi
+      // Jika setuju, upload dokumen resmi terlebih dahulu
       if (isSetuju) {
         const fileInput = document.getElementById('dokumen-resmi-file');
         if (!fileInput.files || fileInput.files.length === 0) {
@@ -502,20 +515,23 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         // 3. Upload ke IPFS dengan nama random UUID.enc
         const fileName = `${generateUUID()}.enc`;
         console.log(`📁 [Dukcapil-Verifikasi] Upload dengan nama file: ${fileName}`);
-        const cid = await uploadToPinata(encrypted, fileName);
+        cidDokumen = await uploadToPinata(encrypted, fileName);
         const uploadEndTime = Date.now();
         console.log(`✅ [Dukcapil-Verifikasi] Dokumen resmi uploaded ke IPFS dalam ${uploadEndTime - uploadStartTime}ms`);
-        console.log(`🔗 [Dukcapil-Verifikasi] IPFS CID: ${cid}`);
-        
-        // 4. Simpan CID ke smart contract
-        console.log(`📜 [Dukcapil-Verifikasi] Menyimpan CID ke smart contract...`);
-        const saveStartTime = Date.now();
-        await contractService.unggahDokumenResmi(selectedPermohonan.id, cid);
-        const saveEndTime = Date.now();
-        console.log(`✅ [Dukcapil-Verifikasi] CID disimpan ke smart contract dalam ${saveEndTime - saveStartTime}ms`);
+        console.log(`🔗 [Dukcapil-Verifikasi] IPFS CID: ${cidDokumen}`);
       }
       
-
+      // Satu transaksi untuk verifikasi + upload dokumen
+      console.log(`📜 [Dukcapil-Verifikasi] Verifikasi di smart contract dengan CID dokumen...`);
+      const verifyStartTime = Date.now();
+      const result = await contractService.verifikasiDukcapil(
+        selectedPermohonan.id,
+        isSetuju,
+        alasanPenolakan || '',
+        cidDokumen
+      );
+      const verifyEndTime = Date.now();
+      console.log(`✅ [Dukcapil-Verifikasi] Smart contract verifikasi berhasil dalam ${verifyEndTime - verifyStartTime}ms`);
       
       const totalTime = Date.now() - startTime;
       console.log(`🎉 [Dukcapil-Verifikasi] Verifikasi berhasil dalam ${totalTime}ms`);

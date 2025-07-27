@@ -9,12 +9,10 @@ describe("PencatatanSipil", function () {
         [owner, kalurahan, dukcapil, warga] = await ethers.getSigners();
 
         const Pencatatan = await ethers.getContractFactory("PencatatanSipil");
-        pencatatan = await Pencatatan.deploy();
+        pencatatan = await Pencatatan.connect(dukcapil).deploy("QmInitialNikMappingCID");
         await pencatatan.waitForDeployment();
 
         // Tambahkan role dan mapping id kalurahan
-        await pencatatan.tambahKalurahan(kalurahan.address);
-        await pencatatan.tambahDukcapil(dukcapil.address);
         await pencatatan.tambahKalurahanById(1, kalurahan.address, "QmTestMappingCID");
         // Register warga for all tests unless the test is specifically for unregistered
         await pencatatan.connect(warga).registerWarga("NIK123");
@@ -57,7 +55,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0);
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
-        const tx = await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], false, "Data tidak lengkap");
+        const tx = await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], false, "Data tidak lengkap", "");
         await tx.wait();
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(4); // DitolakDukcapil
@@ -119,7 +117,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0);
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "");
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(3); // DisetujuiDukcapil
     });
@@ -131,7 +129,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
 
         await expect(
-            pencatatan.connect(warga).verifikasiDukcapil(ids[0], true, "")
+            pencatatan.connect(warga).verifikasiDukcapil(ids[0], true, "", "")
         ).to.be.revertedWithCustomError(pencatatan, "OnlyDukcapil");
     });
 
@@ -153,7 +151,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
 
         await expect(
-            pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "")
+            pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "")
         )
             .to.emit(pencatatan, "VerifikasiDukcapil")
             .withArgs(ids[0], dukcapil.address, true, "", anyValue);
@@ -200,16 +198,50 @@ describe("PencatatanSipil", function () {
     it("dukcapil dapat mengunggah dan warga dapat mengambil dokumen resmi", async () => {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres", 1, 0);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "");
-        await pencatatan.connect(dukcapil).unggahDokumenResmi(0, "cid_dokres");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "cid_dokres");
         const dok = await pencatatan.connect(warga).getDokumenResmi(0);
         expect(dok).to.equal("cid_dokres");
     });
 
-    it("tidak bisa mengambil dokumen resmi jika belum diunggah", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres2", 1, 0);
+    it("dukcapil dapat verifikasi dengan dokumen resmi dalam satu transaksi", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres_combined", 1, 0, 0);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "");
+
+        // Verifikasi dengan dokumen resmi dalam satu transaksi
+        await expect(
+            pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "cid_dokres_combined")
+        )
+            .to.emit(pencatatan, "VerifikasiDukcapil")
+            .and.to.emit(pencatatan, "DokumenResmiDiunggah");
+
+        const updated = await pencatatan.getPermohonan(0);
+        expect(updated.status).to.equal(3); // DisetujuiDukcapil
+
+        const dok = await pencatatan.connect(warga).getDokumenResmi(0);
+        expect(dok).to.equal("cid_dokres_combined");
+    });
+
+    it("gagal upload dokumen resmi jika sudah ada", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres_duplicate", 1, 0, 0);
+        await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
+
+        // Verifikasi dengan dokumen resmi
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "cid_dokres_first");
+
+        // Coba upload dokumen lagi (harus gagal)
+        await expect(
+            pencatatan.connect(dukcapil).unggahDokumenResmi(0, "cid_dokres_second")
+        ).to.be.revertedWithCustomError(pencatatan, "DokumenResmiSudahAda");
+
+        // Dokumen pertama tetap ada
+        const dok = await pencatatan.connect(warga).getDokumenResmi(0);
+        expect(dok).to.equal("cid_dokres_first");
+    });
+
+    it("tidak bisa mengambil dokumen resmi jika belum diunggah", async () => {
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres2", 1, 0, 0);
+        await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "");
         await expect(
             pencatatan.connect(warga).getDokumenResmi(0)
         ).to.be.revertedWithCustomError(pencatatan, "BelumAdaDokumenResmi");
@@ -217,8 +249,8 @@ describe("PencatatanSipil", function () {
 
     it("jumlahPermohonan bertambah setiap submit", async () => {
         const awal = await pencatatan.jumlahPermohonan();
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_jumlah1", 1, 0);
-        await pencatatan.connect(warga).submitPermohonan(1, "cid_jumlah2", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_jumlah1", 1, 0, 0);
+        await pencatatan.connect(warga).submitPermohonan(1, "cid_jumlah2", 1, 0, 0);
         const akhir = await pencatatan.jumlahPermohonan();
         expect(akhir - awal).to.equal(2);
     });
@@ -230,11 +262,8 @@ describe("Fitur Permohonan Pindah", function () {
     beforeEach(async () => {
         [owner, kalurahanAsal, kalurahanTujuan, dukcapil, warga, lain] = await ethers.getSigners();
         const Pencatatan = await ethers.getContractFactory("PencatatanSipil");
-        pencatatan = await Pencatatan.deploy();
+        pencatatan = await Pencatatan.deploy("QmInitialNikMappingCID");
         await pencatatan.waitForDeployment();
-        await pencatatan.tambahKalurahan(kalurahanAsal.address);
-        await pencatatan.tambahKalurahan(kalurahanTujuan.address);
-        await pencatatan.tambahDukcapil(dukcapil.address);
         await pencatatan.tambahKalurahanById(1, kalurahanAsal.address, "QmTestMappingCID");
         await pencatatan.tambahKalurahanById(2, kalurahanTujuan.address, "QmTestMappingCID");
         // Register warga for all tests unless the test is specifically for unregistered
@@ -411,7 +440,7 @@ describe("Fitur Permohonan Pindah", function () {
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
         await pencatatan.connect(kalurahanTujuan).verifikasiKalurahanTujuanPindah(ids[0], true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "");
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(3); // DisetujuiDukcapil
     });
@@ -423,7 +452,7 @@ describe("KontrolAkses - registerWarga", function () {
     beforeEach(async () => {
         [owner, warga1, warga2] = await ethers.getSigners();
         const KontrolAkses = await ethers.getContractFactory("KontrolAkses");
-        kontrol = await KontrolAkses.deploy();
+        kontrol = await KontrolAkses.deploy("QmInitialNikMappingCID");
         await kontrol.waitForDeployment();
     });
 
@@ -457,11 +486,10 @@ describe("PencatatanSipil - onlyWargaTerdaftar", function () {
     beforeEach(async () => {
         [owner, kalurahan, , warga] = await ethers.getSigners();
         const Pencatatan = await ethers.getContractFactory("PencatatanSipil");
-        pencatatan = await Pencatatan.deploy();
+        pencatatan = await Pencatatan.deploy("QmInitialNikMappingCID");
         await pencatatan.waitForDeployment();
 
         // Setup role
-        await pencatatan.tambahKalurahan(kalurahan.address);
         await pencatatan.tambahKalurahanById(1, kalurahan.address, "QmTestMappingCID");
         // Register warga for all tests unless the test is specifically for unregistered
         await pencatatan.connect(warga).registerWarga("NIK123");

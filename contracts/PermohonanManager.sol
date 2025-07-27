@@ -19,6 +19,9 @@ error PermohonanBelumDisetujuiKalurahan();
 error CidKosong();
 error BelumAdaDokumenResmi();
 error AksesDitolak();
+error BelumDisetujuiDukcapil();
+error StatusTidakValidUntukUploadDokumen();
+error DokumenResmiSudahAda();
 
 abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     using PermohonanUtils for uint256[];
@@ -33,6 +36,9 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     mapping(uint8 => uint256[]) daftarPermohonanKalurahanTujuan;
     mapping(PencatatanTypes.Status => uint256[])
         public daftarPermohonanPerStatus;
+
+    // Dokumen resmi mapping
+    mapping(uint256 => string) public cidDokumenResmi;
 
     modifier onlyKalurahanAsal(uint256 _id) {
         require(
@@ -313,7 +319,8 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     function verifikasiDukcapil(
         uint256 _id,
         bool _disetujui,
-        string calldata _alasan
+        string calldata _alasan,
+        string calldata _cidDokumen
     ) external onlyDukcapil {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
 
@@ -348,6 +355,12 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
             p.status = PencatatanTypes.Status.DisetujuiDukcapil;
             daftarPermohonanPerStatus[PencatatanTypes.Status.DisetujuiDukcapil]
                 .push(_id);
+
+            // Jika ada CID dokumen, simpan langsung
+            if (bytes(_cidDokumen).length > 0) {
+                cidDokumenResmi[_id] = _cidDokumen;
+                emit DokumenResmiDiunggah(_id, _cidDokumen, block.timestamp);
+            }
         } else {
             p.status = PencatatanTypes.Status.DitolakDukcapil;
             p.alasanPenolakan = _alasan;
@@ -514,5 +527,39 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     // Get jenis pindah sebagai string
     function getJenisPindah(uint256 _id) external view returns (string memory) {
         return permohonans[_id].jenisPindah.jenisPindahToString();
+    }
+
+    // ===== FUNGSI DOKUMEN RESMI =====
+
+    function _unggahDokumenResmi(
+        uint256 _id,
+        string calldata _cidDokumen,
+        PencatatanTypes.Status statusPermohonan
+    ) internal {
+        // Izinkan upload dokumen untuk status yang sudah siap diverifikasi dukcapil
+        require(
+            statusPermohonan == PencatatanTypes.Status.DisetujuiDukcapil ||
+                statusPermohonan ==
+                PencatatanTypes.Status.DisetujuiKalurahanTujuan ||
+                statusPermohonan == PencatatanTypes.Status.DisetujuiKalurahan ||
+                statusPermohonan == PencatatanTypes.Status.DikonfirmasiKKTujuan,
+            StatusTidakValidUntukUploadDokumen()
+        );
+        require(bytes(_cidDokumen).length > 0, CidKosong());
+        require(
+            bytes(cidDokumenResmi[_id]).length == 0,
+            DokumenResmiSudahAda()
+        );
+        cidDokumenResmi[_id] = _cidDokumen;
+    }
+
+    function _getDokumenResmi(
+        uint256 _id,
+        address pemohon,
+        bool isDukcapil
+    ) internal view returns (string memory) {
+        require(bytes(cidDokumenResmi[_id]).length > 0, BelumAdaDokumenResmi());
+        require(msg.sender == pemohon || isDukcapil, AksesDitolak());
+        return cidDokumenResmi[_id];
     }
 }

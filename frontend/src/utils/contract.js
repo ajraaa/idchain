@@ -313,12 +313,12 @@ export class ContractService {
     }
 
     // Tambahkan method verifikasiDukcapil
-    async verifikasiDukcapil(id, disetujui, alasan = '') {
+    async verifikasiDukcapil(id, disetujui, alasan = '', cidDokumen = '') {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
         try {
-            const tx = await this.contract.verifikasiDukcapil(id, disetujui, alasan);
+            const tx = await this.contract.verifikasiDukcapil(id, disetujui, alasan, cidDokumen);
             const receipt = await tx.wait();
             return {
                 success: true,

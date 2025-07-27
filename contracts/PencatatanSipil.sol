@@ -2,9 +2,8 @@
 pragma solidity ^0.8.28;
 
 import "./PermohonanManager.sol";
-import "./DokumenResmiManager.sol";
 
-contract PencatatanSipil is PermohonanManager, DokumenResmiManager {
+contract PencatatanSipil is PermohonanManager {
     constructor(
         string memory _initialNikMappingCID
     ) KontrolAkses(_initialNikMappingCID) {
