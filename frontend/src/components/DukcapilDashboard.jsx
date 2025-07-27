@@ -468,8 +468,10 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
         console.log(`✅ [Dukcapil-Verifikasi] File encrypted (${encrypted.length} chars)`);
         
-        // 3. Upload ke IPFS
-        const cid = await uploadToPinata(encrypted, file.name + '.enc');
+        // 3. Upload ke IPFS dengan nama random UUID
+        const fileName = `${generateUUID()}.enc`;
+        console.log(`📁 [Dukcapil-Verifikasi] Upload dengan nama file: ${fileName}`);
+        const cid = await uploadToPinata(encrypted, fileName);
         const uploadEndTime = Date.now();
         console.log(`✅ [Dukcapil-Verifikasi] Dokumen resmi uploaded ke IPFS dalam ${uploadEndTime - uploadStartTime}ms`);
         console.log(`🔗 [Dukcapil-Verifikasi] IPFS CID: ${cid}`);
