@@ -119,6 +119,19 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   // Loading state untuk NIK lookup
   const [isLookingUpNIK, setIsLookingUpNIK] = useState(false);
 
+  // Helper function untuk generate UUID
+  const generateUUID = () => {
+    if (crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback untuk browser lama
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   // Load citizen data on component mount
   useEffect(() => {
     if (contractService && walletAddress) {
@@ -529,6 +542,60 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     setFileViewerTitle('');
     setFileViewerMimeType('');
     setFileViewerIsViewable(false);
+  };
+
+  // Fungsi untuk download dokumen resmi dengan restore ekstensi .pdf
+  const downloadDokumenResmi = async (cid) => {
+    try {
+      console.log(' [Download] Mengunduh dokumen resmi...');
+      
+      // 1. Download file terenkripsi dari IPFS
+      const url = `https://ipfs.io/ipfs/${cid}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch from IPFS: ${response.status}`);
+      }
+      
+      const encryptedData = await response.text();
+      
+      // 2. Dekripsi file
+      console.log('🔓 [Download] Mendekripsi file...');
+      const decryptedBase64 = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+      
+      // 3. Convert base64 ke Blob dengan MIME type PDF
+      console.log('🔄 [Download] Converting ke PDF...');
+      const binaryData = atob(decryptedBase64);
+      const bytes = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) {
+        bytes[i] = binaryData.charCodeAt(i);
+      }
+      
+      // 4. Buat Blob dengan MIME type PDF
+      const blob = new Blob([bytes], { 
+        type: 'application/pdf' 
+      });
+      
+      // 5. Download dengan nama UUID.pdf
+      const fileName = `dokumen_resmi_${generateUUID()}.pdf`;
+      console.log(' [Download] Memulai download:', fileName);
+      
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+      
+      console.log('✅ [Download] Download selesai!');
+      onPermohonanSuccess('Dokumen resmi berhasil diunduh!');
+      
+    } catch (error) {
+      console.error('❌ [Download] Error:', error);
+      onPermohonanError('Gagal mengunduh dokumen resmi');
+    }
   };
 
   const formatAddress = (address) => {
@@ -975,18 +1042,6 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       
       // Generate random UUID filename
       console.log(`🆔 [File-Upload] Generating random UUID filename...`);
-      const generateUUID = () => {
-        if (crypto.randomUUID) {
-          return crypto.randomUUID();
-        }
-        // Fallback untuk browser lama
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-          const r = Math.random() * 16 | 0;
-          const v = c == 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
-      };
-      
       const filename = `${generateUUID()}.enc`;
       console.log(`📁 [File-Upload] Generated filename: ${filename}`);
       
@@ -2211,6 +2266,9 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           <div className="management-card">
             <div className="empty-state">
               <p>Anda belum memiliki dokumen resmi apapun.</p>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                Dokumen resmi akan tersedia setelah permohonan Anda disetujui oleh Dukcapil.
+              </p>
             </div>
           </div>
         </div>
@@ -2224,8 +2282,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>CID Dokumen Resmi</th>
+                  <th>ID Permohonan</th>
+                  <th>Dokumen Resmi</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
@@ -2233,13 +2291,33 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                 {dokumenResmi.map((dokumen) => (
                   <tr key={dokumen.id}>
                     <td>{dokumen.id}</td>
-                    <td>{dokumen.cidDokumen}</td>
+                    <td>
+                      <span style={{ 
+                        background: '#f3f4f6', 
+                        padding: '4px 8px', 
+                        borderRadius: '4px', 
+                        fontSize: '12px',
+                        color: '#374151'
+                      }}>
+                        📄 Dokumen Resmi (PDF)
+                      </span>
+                    </td>
                     <td>
                       <button
                         className="download-button"
-                        onClick={() => window.open(`https://ipfs.io/ipfs/${dokumen.cidDokumen}`, '_blank')}
+                        onClick={() => downloadDokumenResmi(dokumen.cidDokumen)}
+                        style={{
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '500'
+                        }}
                       >
-                        Download
+                        📥 Download PDF
                       </button>
                     </td>
                   </tr>

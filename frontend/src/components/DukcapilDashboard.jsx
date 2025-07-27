@@ -453,6 +453,37 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         const file = fileInput.files[0];
         console.log(`📁 [Dukcapil-Verifikasi] File dokumen: ${file.name} (${file.size} bytes)`);
         
+        // Validasi file dokumen resmi (harus PDF)
+        const validateDokumenResmi = (file) => {
+          // Cek MIME type
+          if (file.type !== 'application/pdf') {
+            return 'File harus berformat PDF';
+          }
+          
+          // Cek ekstensi file
+          if (!file.name.toLowerCase().endsWith('.pdf')) {
+            return 'File harus berekstensi .pdf';
+          }
+          
+          // Cek ukuran file (maksimal 10MB)
+          const maxSize = 10 * 1024 * 1024; // 10MB
+          if (file.size > maxSize) {
+            return 'Ukuran file maksimal 10MB';
+          }
+          
+          return null; // File valid
+        };
+        
+        const validationError = validateDokumenResmi(file);
+        if (validationError) {
+          console.error(`❌ [Dukcapil-Verifikasi] ${validationError}`);
+          onError(validationError);
+          setIsVerifying(false);
+          return;
+        }
+        
+        console.log(`✅ [Dukcapil-Verifikasi] File valid: PDF dokumen resmi`);
+        
         // Upload dokumen resmi ke IPFS
         console.log(`☁️ [Dukcapil-Verifikasi] Upload dokumen resmi ke IPFS...`);
         const uploadStartTime = Date.now();
@@ -468,7 +499,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
         console.log(`✅ [Dukcapil-Verifikasi] File encrypted (${encrypted.length} chars)`);
         
-        // 3. Upload ke IPFS dengan nama random UUID
+        // 3. Upload ke IPFS dengan nama random UUID.enc
         const fileName = `${generateUUID()}.enc`;
         console.log(`📁 [Dukcapil-Verifikasi] Upload dengan nama file: ${fileName}`);
         const cid = await uploadToPinata(encrypted, fileName);
@@ -883,11 +914,11 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                 {showUploadInput ? (
                   <>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', marginBottom: 12 }}>
-                      <label htmlFor="dokumen-resmi-file" style={{ fontWeight: 500, marginBottom: 6 }}>Upload Dokumen Resmi:</label>
+                      <label htmlFor="dokumen-resmi-file" style={{ fontWeight: 500, marginBottom: 6 }}>Upload Dokumen Resmi (PDF):</label>
                       <input
                         type="file"
                         id="dokumen-resmi-file"
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,application/pdf"
                         disabled={uploadingDokumen}
                         style={{
                           borderRadius: '8px',
