@@ -7,6 +7,7 @@ import { uploadToPinata } from '../utils/pinata';
 import { loadPermohonanDataForDisplay, downloadEncryptedFile, viewEncryptedFile } from '../utils/permohonanDataUtils.js';
 import { encryptAes256CbcNodeStyle, decryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
+import { createKKUpdateManager } from '../utils/kkUpdateManager.js';
 
 const sidebarMenus = [
   { key: 'kalurahan', label: 'Kelola Kalurahan', icon: <FaBuilding /> },
@@ -533,10 +534,60 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
       const verifyEndTime = Date.now();
       console.log(`✅ [Dukcapil-Verifikasi] Smart contract verifikasi berhasil dalam ${verifyEndTime - verifyStartTime}ms`);
       
+      // Jika disetujui, proses update KK dengan validasi dan riwayat
+      if (isSetuju) {
+        console.log(`🔄 [Dukcapil-Verifikasi] Memproses update KK setelah persetujuan...`);
+        
+        try {
+          // Buat KK Update Manager
+          const kkUpdateManager = createKKUpdateManager(contractService);
+          
+          // Tentukan jenis permohonan
+          const jenisPermohonanMap = {
+            '0': 'Kelahiran',
+            '1': 'Kematian',
+            '2': 'Perkawinan',
+            '3': 'Perceraian',
+            '4': 'Pindah'
+          };
+          
+          const jenisPermohonan = jenisPermohonanMap[selectedPermohonan.jenis];
+          console.log(`📋 [Dukcapil-Verifikasi] Jenis permohonan: ${jenisPermohonan}`);
+          
+          // Proses validasi dan update KK
+          const updateResult = await kkUpdateManager.validateAndUpdateKK(
+            selectedPermohonan.cidIPFS,
+            jenisPermohonan
+          );
+          
+          if (updateResult.success) {
+            console.log(`✅ [Dukcapil-Verifikasi] KK berhasil diupdate dengan riwayat`);
+            console.log(`📋 [Dukcapil-Verifikasi] Update result:`, updateResult.result);
+            
+            // Tampilkan notifikasi sukses dengan detail
+            const successMessage = `Permohonan ${selectedPermohonan.id} disetujui dan KK berhasil diupdate!`;
+            onSuccess(successMessage);
+          } else {
+            console.error(`❌ [Dukcapil-Verifikasi] Gagal update KK:`, updateResult.error);
+            
+            // Tampilkan warning tapi tidak gagalkan verifikasi
+            const warningMessage = `Permohonan disetujui, tetapi ada masalah saat update KK: ${updateResult.error}`;
+            onError(warningMessage);
+          }
+        } catch (updateError) {
+          console.error(`❌ [Dukcapil-Verifikasi] Error saat update KK:`, updateError);
+          
+          // Tampilkan warning tapi tidak gagalkan verifikasi
+          const warningMessage = `Permohonan disetujui, tetapi ada masalah saat update KK: ${updateError.message}`;
+          onError(warningMessage);
+        }
+      } else {
+        // Jika ditolak, tampilkan pesan biasa
+        onSuccess(`Permohonan ${selectedPermohonan.id} ditolak oleh Dukcapil!`);
+      }
+      
       const totalTime = Date.now() - startTime;
       console.log(`🎉 [Dukcapil-Verifikasi] Verifikasi berhasil dalam ${totalTime}ms`);
-      
-      onSuccess(`Permohonan ${selectedPermohonan.id} ${isSetuju ? 'disetujui' : 'ditolak'} oleh Dukcapil!`);
       
       // Reload daftar permohonan masuk (gabungan status)
       console.log(`🔄 [Dukcapil-Verifikasi] Reloading data...`);
