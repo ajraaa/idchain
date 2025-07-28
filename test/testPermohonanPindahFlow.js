@@ -9,7 +9,7 @@ describe("Test Permohonan Pindah Flow", function () {
 
         // Deploy contract
         const PencatatanSipil = await ethers.getContractFactory("PencatatanSipil");
-        contract = await PencatatanSipil.deploy();
+        contract = await PencatatanSipil.deploy("QmInitialNikMappingCID");
         await contract.waitForDeployment();
 
         // Setup kalurahan
@@ -34,7 +34,8 @@ describe("Test Permohonan Pindah Flow", function () {
             "QmeZkk4mNoyYc2BHavnpBMNmCDoWRDaTCYanp9BWehVugC", // CID IPFS
             1, // idKalurahanAsal
             2, // idKalurahanTujuan
-            0  // JenisPindah.PindahSeluruhKeluarga
+            0, // JenisPindah.PindahSeluruhKeluarga
+            "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
         );
         await tx1.wait();
         console.log("✅ Permohonan pindah submitted successfully");
@@ -67,7 +68,7 @@ describe("Test Permohonan Pindah Flow", function () {
 
         // Step 5: Check if permohonan appears in kalurahan tujuan
         console.log("\n🔍 Step 5: Check if permohonan appears in kalurahan tujuan...");
-        const permohonanTujuan = await contract.getPermohonanByKalurahanTujuan();
+        const permohonanTujuan = await contract.connect(kalurahan2).getPermohonanByKalurahanTujuan();
         console.log("📋 Permohonan di Kalurahan Tujuan:", permohonanTujuan);
         expect(permohonanTujuan.length).to.equal(1);
         expect(permohonanTujuan[0]).to.equal(0);
@@ -100,16 +101,17 @@ describe("Test Permohonan Pindah Flow", function () {
             "QmeZkk4mNoyYc2BHavnpBMNmCDoWRDaTCYanp9BWehVugC", // CID IPFS
             1, // idKalurahanAsal
             2, // idKalurahanTujuan
-            0  // JenisPindah.PindahSeluruhKeluarga
+            0, // JenisPindah.PindahSeluruhKeluarga
+            "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
         );
 
         // Check kalurahan asal list
-        const permohonanAsal = await contract.getPermohonanByKalurahanAsal();
+        const permohonanAsal = await contract.connect(kalurahan1).getPermohonanByKalurahanAsal();
         console.log("📋 Permohonan di Kalurahan Asal:", permohonanAsal);
         expect(permohonanAsal.length).to.equal(1);
 
         // Check kalurahan tujuan list (should be empty initially)
-        const permohonanTujuan = await contract.getPermohonanByKalurahanTujuan();
+        const permohonanTujuan = await contract.connect(kalurahan2).getPermohonanByKalurahanTujuan();
         console.log("📋 Permohonan di Kalurahan Tujuan (before verification):", permohonanTujuan);
         expect(permohonanTujuan.length).to.equal(1); // Should be 1 because it's added during submission
 
@@ -117,7 +119,7 @@ describe("Test Permohonan Pindah Flow", function () {
         await contract.connect(kalurahan1).verifikasiKalurahanAsalPindah(0, true, '', 2);
 
         // Check kalurahan tujuan list (should have the permohonan now)
-        const permohonanTujuanAfter = await contract.getPermohonanByKalurahanTujuan();
+        const permohonanTujuanAfter = await contract.connect(kalurahan2).getPermohonanByKalurahanTujuan();
         console.log("📋 Permohonan di Kalurahan Tujuan (after verification):", permohonanTujuanAfter);
         expect(permohonanTujuanAfter.length).to.equal(1);
 

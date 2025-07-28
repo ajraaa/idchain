@@ -19,7 +19,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("warga dapat mengajukan permohonan", async () => {
-        const tx = await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0);
+        const tx = await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0, 0, "");
         await tx.wait();
 
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
@@ -32,8 +32,8 @@ describe("PencatatanSipil", function () {
     });
 
     it("id permohonan harus bertambah satu per submit", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_a", 1, 0);
-        await pencatatan.connect(warga).submitPermohonan(1, "cid_b", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_a", 1, 0, 0, "");
+        await pencatatan.connect(warga).submitPermohonan(1, "cid_b", 1, 0, 0, "");
 
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         expect(ids[0]).to.equal(0);
@@ -41,7 +41,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("kalurahan dapat memverifikasi permohonan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         const tx = await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
@@ -52,7 +52,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("dukcapil dapat menolak permohonan dengan alasan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
         const tx = await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], false, "Data tidak lengkap", "");
@@ -63,21 +63,21 @@ describe("PencatatanSipil", function () {
     });
 
     it("mengembalikan status permohonan sebagai string", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_test", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_test", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         const status = await pencatatan.getStatusPermohonan(ids[0]);
         expect(status).to.equal("Diajukan");
     });
 
     it("mengembalikan jenis permohonan sebagai string", async () => {
-        await pencatatan.connect(warga).submitPermohonan(3, "cid_test", 1, 0); // 3 = Cerai
+        await pencatatan.connect(warga).submitPermohonan(3, "cid_test", 1, 0, 0, ""); // 3 = Cerai
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         const jenis = await pencatatan.getJenisPermohonan(ids[0]);
         expect(jenis).to.equal("Cerai");
     });
 
     it("gagal jika bukan kalurahan yang memverifikasi", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await expect(
@@ -86,7 +86,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("warga tidak boleh memverifikasi permohonan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await expect(
@@ -95,7 +95,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("kalurahan tidak boleh memverifikasi jika status bukan Diajukan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         // Ubah status ke DisetujuiKalurahan dulu
@@ -108,13 +108,13 @@ describe("PencatatanSipil", function () {
     });
 
     it("emit event saat permohonan diajukan", async () => {
-        await expect(pencatatan.connect(warga).submitPermohonan(0, "cid_event", 1, 0))
+        await expect(pencatatan.connect(warga).submitPermohonan(0, "cid_event", 1, 0, 0, ""))
             .to.emit(pencatatan, "PermohonanDiajukan")
             .withArgs(0, warga.address, 0, "cid_event", anyValue);
     });
 
     it("dukcapil dapat menyetujui permohonan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
         await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "");
@@ -123,7 +123,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("warga tidak bisa memverifikasi sebagai dukcapil", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_test", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_test", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
@@ -134,7 +134,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("emit event saat verifikasi kalurahan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(1, "cid_kalurahan", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(1, "cid_kalurahan", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await expect(
@@ -145,7 +145,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("emit event saat verifikasi dukcapil", async () => {
-        await pencatatan.connect(warga).submitPermohonan(2, "cid_dukcapil", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(2, "cid_dukcapil", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
@@ -158,7 +158,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("warga dapat membatalkan permohonan yang diajukan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_batal", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_batal", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(warga).batalkanPermohonan(ids[0]);
         const updated = await pencatatan.getPermohonan(ids[0]);
@@ -167,7 +167,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("tidak bisa membatalkan permohonan yang bukan milik sendiri", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_batal2", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_batal2", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         // Register kalurahan as warga so it passes onlyWargaTerdaftar but fails BukanPemilikPermohonan
         await pencatatan.connect(kalurahan).registerWarga("NIK_KALURAHAN");
@@ -177,26 +177,26 @@ describe("PencatatanSipil", function () {
     });
 
     it("kalurahan dapat mengambil daftar permohonan asalnya", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_kalurahanasal", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_kalurahanasal", 1, 0, 0, "");
         const ids = await pencatatan.connect(kalurahan).getPermohonanByKalurahanAsal();
         expect(ids.length).to.be.greaterThan(0);
     });
 
     it("kalurahan dapat mengambil permohonan yang belum diverifikasi dengan status tertentu", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_belumverif", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_belumverif", 1, 0, 0, "");
         const ids = await pencatatan.connect(kalurahan).getPermohonanBelumVerifikasiKalurahan(0); // 0 = Diajukan
         expect(ids.length).to.be.greaterThan(0);
     });
 
     it("dukcapil dapat mengambil permohonan dengan status tertentu", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dukcapil", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dukcapil", 1, 0, 0, "");
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
         const ids = await pencatatan.connect(dukcapil).getPermohonanForDukcapil(1); // 1 = DisetujuiKalurahan
         expect(ids.length).to.be.greaterThan(0);
     });
 
     it("dukcapil dapat mengunggah dan warga dapat mengambil dokumen resmi", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres", 1, 0, 0, "");
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
         await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "cid_dokres");
         const dok = await pencatatan.connect(warga).getDokumenResmi(0);
@@ -204,7 +204,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("dukcapil dapat verifikasi dengan dokumen resmi dalam satu transaksi", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres_combined", 1, 0, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres_combined", 1, 0, 0, "");
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
 
         // Verifikasi dengan dokumen resmi dalam satu transaksi
@@ -222,7 +222,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("gagal upload dokumen resmi jika sudah ada", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres_duplicate", 1, 0, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres_duplicate", 1, 0, 0, "");
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
 
         // Verifikasi dengan dokumen resmi
@@ -239,7 +239,7 @@ describe("PencatatanSipil", function () {
     });
 
     it("tidak bisa mengambil dokumen resmi jika belum diunggah", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres2", 1, 0, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres2", 1, 0, 0, "");
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
         await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "");
         await expect(
@@ -249,8 +249,8 @@ describe("PencatatanSipil", function () {
 
     it("jumlahPermohonan bertambah setiap submit", async () => {
         const awal = await pencatatan.jumlahPermohonan();
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_jumlah1", 1, 0, 0);
-        await pencatatan.connect(warga).submitPermohonan(1, "cid_jumlah2", 1, 0, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_jumlah1", 1, 0, 0, "");
+        await pencatatan.connect(warga).submitPermohonan(1, "cid_jumlah2", 1, 0, 0, "");
         const akhir = await pencatatan.jumlahPermohonan();
         expect(akhir - awal).to.equal(2);
     });
@@ -272,7 +272,7 @@ describe("Fitur Permohonan Pindah", function () {
 
     // A. Pengujian Pemohon
     it("A1. Submit permohonan pindah berhasil", async () => {
-        const tx = await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        const tx = await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         await tx.wait();
 
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
@@ -289,28 +289,28 @@ describe("Fitur Permohonan Pindah", function () {
         expect(asal).to.include(ids[0]);
         const tujuan = await pencatatan.connect(kalurahanTujuan).getPermohonanByKalurahanTujuan();
         expect(tujuan).to.include(ids[0]);
-        const perStatus = await pencatatan.connect(dukcapil).getPermohonanForDukcapil(0); // Status.Diajukan
+        const perStatus = await pencatatan.connect(owner).getPermohonanForDukcapil(0); // Status.Diajukan
         expect(perStatus).to.include(ids[0]);
     });
 
     it("A2. Gagal: ID Kalurahan Tujuan tidak valid", async () => {
         await expect(
-            pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 0)
+            pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 0, 0, "")
         ).to.be.revertedWithCustomError(pencatatan, "TujuanTidakValid");
         await expect(
-            pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 99)
+            pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 99, 0, "")
         ).to.be.revertedWithCustomError(pencatatan, "IdKalurahanTujuanTidakDikenal");
     });
 
     it("A3. Gagal: Tidak mengisi CID", async () => {
         await expect(
-            pencatatan.connect(warga).submitPermohonan(4, "", 1, 2)
+            pencatatan.connect(warga).submitPermohonan(4, "", 1, 2, 0, "")
         ).to.be.revertedWithCustomError(pencatatan, "CidKosong");
     });
 
     // B. Pengujian Kalurahan Asal
     it("B4. Verifikasi Kalurahan Asal berhasil (disetujui)", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
@@ -319,12 +319,12 @@ describe("Fitur Permohonan Pindah", function () {
         expect(data.verifikatorKalurahan).to.equal(kalurahanAsal.address);
         expect(data.waktuVerifikasiKalurahan).to.be.gt(0);
 
-        const perStatus = await pencatatan.connect(dukcapil).getPermohonanForDukcapil(5);
+        const perStatus = await pencatatan.connect(owner).getPermohonanForDukcapil(5);
         expect(perStatus).to.include(ids[0]);
     });
 
     it("B5. Verifikasi Kalurahan Asal ditolak", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], false, "Alasan tolak", 2);
@@ -334,7 +334,7 @@ describe("Fitur Permohonan Pindah", function () {
     });
 
     it("B6. Gagal: Verifikasi oleh kalurahan bukan asal", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await expect(
@@ -343,7 +343,7 @@ describe("Fitur Permohonan Pindah", function () {
     });
 
     it("B7. Gagal: Verifikasi saat status bukan Diajukan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
@@ -353,7 +353,7 @@ describe("Fitur Permohonan Pindah", function () {
     });
 
     it("B8. Gagal: Verifikasi tanpa ID Kalurahan Tujuan (disetujui)", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await expect(
@@ -363,7 +363,7 @@ describe("Fitur Permohonan Pindah", function () {
 
     // C. Pengujian Kalurahan Tujuan
     it("C9. Verifikasi Kalurahan Tujuan berhasil (disetujui)", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
 
@@ -375,7 +375,7 @@ describe("Fitur Permohonan Pindah", function () {
     });
 
     it("C10. Verifikasi Kalurahan Tujuan ditolak", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
 
@@ -386,7 +386,7 @@ describe("Fitur Permohonan Pindah", function () {
     });
 
     it("C11. Gagal: Verifikasi oleh kalurahan bukan tujuan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
 
@@ -396,7 +396,7 @@ describe("Fitur Permohonan Pindah", function () {
     });
 
     it("C12. Gagal: Verifikasi saat status bukan DisetujuiKalurahanAsal", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         await expect(
@@ -406,27 +406,26 @@ describe("Fitur Permohonan Pindah", function () {
 
     // D. Pengujian Akses Data
     it("D13. Pemohon melihat daftar permohonan miliknya", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         expect(ids.length).to.equal(1);
     });
 
     it("D14. Kalurahan Asal melihat permohonan dari wilayahnya", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.connect(kalurahanAsal).getPermohonanByKalurahanAsal();
         expect(ids.length).to.be.greaterThan(0);
     });
 
     it("D15. Kalurahan Tujuan melihat permohonan masuk", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.connect(kalurahanTujuan).getPermohonanByKalurahanTujuan();
         expect(ids.length).to.be.greaterThan(0);
     });
 
     it("D16. Gagal: Kalurahan melihat permohonan bukan wilayahnya", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         // Kalurahan lain (bukan asal/bukan tujuan)
-        await pencatatan.tambahKalurahan(lain.address);
         await pencatatan.tambahKalurahanById(3, lain.address, "QmTestMappingCID");
 
         const asal = await pencatatan.connect(lain).getPermohonanByKalurahanAsal();
@@ -436,11 +435,11 @@ describe("Fitur Permohonan Pindah", function () {
     });
 
     it("dukcapil dapat memverifikasi permohonan pindah setelah disetujui kalurahan tujuan", async () => {
-        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2);
+        await pencatatan.connect(warga).submitPermohonan(4, "cid_pindah", 1, 2, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
         await pencatatan.connect(kalurahanTujuan).verifikasiKalurahanTujuanPindah(ids[0], true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "");
+        await pencatatan.connect(owner).verifikasiDukcapil(ids[0], true, "", "");
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(3); // DisetujuiDukcapil
     });
@@ -499,19 +498,19 @@ describe("PencatatanSipil - onlyWargaTerdaftar", function () {
         // Use a new signer that is not registered
         const [, , , , wargaBaru] = await ethers.getSigners();
         await expect(
-            pencatatan.connect(wargaBaru).submitPermohonan(0, "cid_x", 1, 0)
+            pencatatan.connect(wargaBaru).submitPermohonan(0, "cid_x", 1, 0, 0, "")
         ).to.be.revertedWithCustomError(pencatatan, "OnlyWargaTerdaftar");
     });
 
     it("berhasil submitPermohonan setelah registerWarga", async () => {
-        const tx = await pencatatan.connect(warga).submitPermohonan(0, "cid_x", 1, 0);
+        const tx = await pencatatan.connect(warga).submitPermohonan(0, "cid_x", 1, 0, 0, "");
         await tx.wait();
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         expect(ids.length).to.equal(1);
     });
 
     it("gagal batalkanPermohonan jika belum registerWarga", async () => {
-        await pencatatan.connect(warga).submitPermohonan(0, "cid_x", 1, 0);
+        await pencatatan.connect(warga).submitPermohonan(0, "cid_x", 1, 0, 0, "");
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
 
         // Buat akun baru yang belum register

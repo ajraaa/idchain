@@ -8,7 +8,7 @@ describe("Permohonan Pindah Enhanced", function () {
         [owner, dukcapil, kal1, kal2, w1, w2, w3] = await ethers.getSigners();
         // Deploy contract
         const PencatatanSipil = await ethers.getContractFactory("PencatatanSipil");
-        kontrak = await PencatatanSipil.deploy();
+        kontrak = await PencatatanSipil.deploy("QmInitialNikMappingCID");
         await kontrak.waitForDeployment();
 
         // Setup Dukcapil & Kalurahan
@@ -26,7 +26,8 @@ describe("Permohonan Pindah Enhanced", function () {
             "cidA",
             1,
             2,
-            0 // JenisPindah.PindahSeluruhKeluarga
+            0, // JenisPindah.PindahSeluruhKeluarga
+            "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
         );
         const receipt = await tx.wait();
         const permohonan = await kontrak.getPermohonan(0);
@@ -40,7 +41,8 @@ describe("Permohonan Pindah Enhanced", function () {
             "cidB",
             1,
             2,
-            1 // JenisPindah.PindahMandiri
+            1, // JenisPindah.PindahMandiri
+            "" // NIK kepala keluarga tujuan (kosong untuk pindah mandiri)
         );
         const receipt = await tx.wait();
         const permohonan = await kontrak.getPermohonan(0);
@@ -55,13 +57,14 @@ describe("Permohonan Pindah Enhanced", function () {
             "cidC",
             1,
             2,
-            2 // JenisPindah.PindahGabungKK
+            2, // JenisPindah.PindahGabungKK
+            "NIK2" // NIK kepala keluarga tujuan
         );
         let permohonan = await kontrak.getPermohonan(0);
         expect(permohonan.status).to.equal(10); // MenungguKonfirmasiKKTujuan
 
         // Berhasil konfirmasi oleh KK tujuan
-        await kontrak.connect(w2).konfirmasiPindahGabungKK(0, true);
+        await kontrak.connect(w2).konfirmasiPindahGabungKK(0, true, "NIK2");
         permohonan = await kontrak.getPermohonan(0);
         expect(permohonan.status).to.equal(11); // DikonfirmasiKKTujuan
         expect(permohonan.konfirmasiKKTujuan).to.equal(true);
@@ -73,10 +76,11 @@ describe("Permohonan Pindah Enhanced", function () {
             "cidC2",
             1,
             2,
-            2 // JenisPindah.PindahGabungKK
+            2, // JenisPindah.PindahGabungKK
+            "NIK2" // NIK kepala keluarga tujuan
         );
         // Ditolak oleh KK tujuan
-        await kontrak.connect(w2).konfirmasiPindahGabungKK(0, false);
+        await kontrak.connect(w2).konfirmasiPindahGabungKK(0, false, "NIK2");
         const permohonan = await kontrak.getPermohonan(0);
         expect(permohonan.status).to.equal(12); // DitolakKKTujuan
         expect(permohonan.konfirmasiKKTujuan).to.equal(false);
@@ -88,9 +92,45 @@ describe("Permohonan Pindah Enhanced", function () {
             "cidD",
             1,
             2,
-            1 // JenisPindah.PindahMandiri
+            1, // JenisPindah.PindahMandiri
+            "" // NIK kepala keluarga tujuan (kosong untuk pindah mandiri)
         );
         const jenisPindahStr = await kontrak.getJenisPindah(0);
         expect(jenisPindahStr).to.include("Mandiri");
+    });
+
+    it("Submit pindah gabung KK tanpa NIK kepala keluarga tujuan harus gagal", async function () {
+        // Submit permohonan pindah gabung KK tanpa NIK kepala keluarga tujuan
+        await expect(
+            kontrak.connect(w1).submitPermohonan(
+                4, // JenisPermohonan.Pindah
+                "cidC3",
+                1,
+                2,
+                2, // JenisPindah.PindahGabungKK
+                "" // NIK kepala keluarga tujuan kosong
+            )
+        ).to.be.revertedWith("NIK kepala keluarga tujuan wajib diisi untuk pindah gabung KK");
+    });
+
+    it("Mapping permohonan menunggu konfirmasi KK berfungsi dengan benar", async function () {
+        // Submit permohonan pindah gabung KK
+        await kontrak.connect(w1).submitPermohonan(
+            4, // JenisPermohonan.Pindah
+            "cidC4",
+            1,
+            2,
+            2, // JenisPindah.PindahGabungKK
+            "NIK2" // NIK kepala keluarga tujuan
+        );
+
+        // Cek apakah permohonan ada di mapping
+        const permohonanIds = await kontrak.getPermohonanMenungguKonfirmasiKK("NIK2");
+        expect(permohonanIds.length).to.equal(1);
+        expect(permohonanIds[0]).to.equal(0);
+
+        // Cek apakah ada permohonan menunggu konfirmasi
+        const adaPermohonan = await kontrak.adaPermohonanMenungguKonfirmasi("NIK2");
+        expect(adaPermohonan).to.equal(true);
     });
 }); 

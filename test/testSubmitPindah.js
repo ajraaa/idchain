@@ -9,7 +9,7 @@ describe("Test Submit Permohonan Pindah", function () {
 
         // Deploy contract
         const PencatatanSipil = await ethers.getContractFactory("PencatatanSipil");
-        contract = await PencatatanSipil.deploy();
+        contract = await PencatatanSipil.deploy("QmInitialNikMappingCID");
         await contract.waitForDeployment();
 
         // Setup kalurahan
@@ -34,7 +34,8 @@ describe("Test Submit Permohonan Pindah", function () {
             "QmeZkk4mNoyYc2BHavnpBMNmCDoWRDaTCYanp9BWehVugC", // CID IPFS
             1, // idKalurahanAsal
             2, // idKalurahanTujuan
-            0  // JenisPindah.PindahSeluruhKeluarga
+            0, // JenisPindah.PindahSeluruhKeluarga
+            "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
         );
 
         const receipt = await tx.wait();
@@ -63,7 +64,8 @@ describe("Test Submit Permohonan Pindah", function () {
                 "QmeZkk4mNoyYc2BHavnpBMNmCDoWRDaTCYanp9BWehVugC", // CID IPFS
                 1, // idKalurahanAsal
                 2, // idKalurahanTujuan
-                0  // JenisPindah.PindahSeluruhKeluarga
+                0, // JenisPindah.PindahSeluruhKeluarga
+                "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
             )
         ).to.be.revertedWithCustomError(contract, "OnlyWargaTerdaftar");
 
