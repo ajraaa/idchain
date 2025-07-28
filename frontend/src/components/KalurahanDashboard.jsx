@@ -287,15 +287,31 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       const isPermohonanPindah = selectedPermohonan.jenis === '4' || selectedPermohonan.jenis === 'Pindah';
       console.log(`📋 [Kalurahan-Verifikasi] Jenis Permohonan: ${selectedPermohonan.jenis} (${isPermohonanPindah ? 'Pindah' : 'Biasa'})`);
       
-      if (isSetuju) {
+            if (isSetuju) {
         if (isPermohonanPindah) {
           // Verifikasi setuju untuk permohonan pindah
           console.log(`🔄 [Kalurahan-Verifikasi] Menggunakan verifikasiKalurahanAsalPindah...`);
+          
+          // Untuk pindah gabung KK, ambil idKalurahanTujuan dari data IPFS jika tidak ada di smart contract
+          let idKalurahanTujuan = selectedPermohonan.idKalurahanTujuan;
+          if (selectedPermohonan.jenisPindah === '2' && (!idKalurahanTujuan || idKalurahanTujuan === 0)) {
+            console.log(`🔍 [Kalurahan-Verifikasi] Mencari idKalurahanTujuan dari data IPFS...`);
+            if (permohonanDetailRaw?.dataPindah?.kalurahanTujuan) {
+              const namaKalurahanTujuan = permohonanDetailRaw.dataPindah.kalurahanTujuan;
+              idKalurahanTujuan = getIdKalurahanByNama(namaKalurahanTujuan);
+              console.log(`📋 [Kalurahan-Verifikasi] Nama kalurahan tujuan: ${namaKalurahanTujuan} -> ID: ${idKalurahanTujuan}`);
+            }
+          }
+          
+          if (!idKalurahanTujuan || idKalurahanTujuan === 0) {
+            throw new Error('ID Kalurahan tujuan tidak ditemukan');
+          }
+          
           const result = await contractService.contract.verifikasiKalurahanAsalPindah(
             selectedPermohonan.id, 
             true, 
             '', 
-            selectedPermohonan.idKalurahanTujuan
+            idKalurahanTujuan
           );
           await result.wait();
           console.log(`✅ [Kalurahan-Verifikasi] Verifikasi pindah setuju berhasil dalam ${Date.now() - startTime}ms`);
@@ -312,11 +328,27 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
         if (isPermohonanPindah) {
           // Verifikasi tolak untuk permohonan pindah
           console.log(`🔄 [Kalurahan-Verifikasi] Menggunakan verifikasiKalurahanAsalPindah...`);
+          
+          // Untuk pindah gabung KK, ambil idKalurahanTujuan dari data IPFS jika tidak ada di smart contract
+          let idKalurahanTujuan = selectedPermohonan.idKalurahanTujuan;
+          if (selectedPermohonan.jenisPindah === '2' && (!idKalurahanTujuan || idKalurahanTujuan === 0)) {
+            console.log(`🔍 [Kalurahan-Verifikasi] Mencari idKalurahanTujuan dari data IPFS...`);
+            if (permohonanDetailRaw?.dataPindah?.kalurahanTujuan) {
+              const namaKalurahanTujuan = permohonanDetailRaw.dataPindah.kalurahanTujuan;
+              idKalurahanTujuan = getIdKalurahanByNama(namaKalurahanTujuan);
+              console.log(`📋 [Kalurahan-Verifikasi] Nama kalurahan tujuan: ${namaKalurahanTujuan} -> ID: ${idKalurahanTujuan}`);
+            }
+          }
+          
+          if (!idKalurahanTujuan || idKalurahanTujuan === 0) {
+            throw new Error('ID Kalurahan tujuan tidak ditemukan');
+          }
+          
           const result = await contractService.contract.verifikasiKalurahanAsalPindah(
             selectedPermohonan.id, 
             false, 
             alasanPenolakan, 
-            selectedPermohonan.idKalurahanTujuan
+            idKalurahanTujuan
           );
           await result.wait();
           console.log(`✅ [Kalurahan-Verifikasi] Verifikasi pindah tolak berhasil dalam ${Date.now() - startTime}ms`);
@@ -329,7 +361,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
           console.log(`✅ [Kalurahan-Verifikasi] Verifikasi tolak berhasil dalam ${Date.now() - startTime}ms`);
           onSuccess(`Permohonan ${selectedPermohonan.id} ditolak.`);
         }
-              }
+      }
         
         // Cek status permohonan setelah verifikasi
         const updatedPermohonan = await contractService.getPermohonanDetail(selectedPermohonan.id);
@@ -401,61 +433,14 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       console.log(`🔍 [Kalurahan-VerifikasiTujuan] Jenis Pindah (original): ${jenisPindah} (type: ${typeof jenisPindah})`);
       console.log(`🔍 [Kalurahan-VerifikasiTujuan] Jenis Pindah (converted): ${jenisPindahStr} (type: ${typeof jenisPindahStr})`);
       
-      if (jenisPindahStr === '2') {
-        // Pindah Gabung KK - memerlukan NIK kepala keluarga tujuan
-        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Gabung KK (${jenisPindahStr}) - memerlukan NIK kepala keluarga tujuan`);
-        
-        let nikKepalaKeluargaTujuan = '';
-        if (
-          permohonanDetailRaw &&
-          permohonanDetailRaw.dataPindah &&
-          permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan
-        ) {
-          nikKepalaKeluargaTujuan = permohonanDetailRaw.dataPindah.nikKepalaKeluargaTujuan;
-        }
-        
-        console.log('[VerifikasiKalurahanTujuan] NIK Kepala Keluarga Tujuan:', nikKepalaKeluargaTujuan);
-        
-        if (!nikKepalaKeluargaTujuan) {
-          console.error('[VerifikasiKalurahanTujuan] ERROR: NIK Kepala Keluarga Tujuan tidak ditemukan untuk Pindah Gabung KK!');
-          setIsVerifying(false);
-          onError('NIK Kepala Keluarga Tujuan tidak ditemukan di data permohonan untuk Pindah Gabung KK.');
-          return;
-        }
-        
-        result = await contractService.contract.verifikasiKalurahanTujuanPindah(
-          selectedPermohonan.id,
-          isSetuju,
-          alasanPenolakan || '',
-          nikKepalaKeluargaTujuan
-        );
-      } else if (jenisPindahStr === '0') {
-        // Pindah Seluruh Keluarga - tidak memerlukan NIK kepala keluarga tujuan
-        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Seluruh Keluarga (${jenisPindahStr}) - tidak memerlukan NIK kepala keluarga tujuan`);
-        
-        result = await contractService.contract.verifikasiKalurahanTujuanPindah(
-          selectedPermohonan.id,
-          isSetuju,
-          alasanPenolakan || '',
-          '' // NIK kepala keluarga tujuan kosong untuk pindah seluruh keluarga
-        );
-      } else if (jenisPindahStr === '1') {
-        // Pindah Mandiri - tidak memerlukan NIK kepala keluarga tujuan
-        console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: Mandiri (${jenisPindahStr}) - tidak memerlukan NIK kepala keluarga tujuan`);
-        
-        result = await contractService.contract.verifikasiKalurahanTujuanPindah(
-          selectedPermohonan.id,
-          isSetuju,
-          alasanPenolakan || '',
-          '' // NIK kepala keluarga tujuan kosong untuk pindah mandiri
-        );
-      } else {
-        // Fallback untuk jenis pindah yang tidak dikenal
-        console.error(`❌ [Kalurahan-VerifikasiTujuan] Jenis Pindah tidak dikenal: ${jenisPindah} (type: ${typeof jenisPindah})`);
-        setIsVerifying(false);
-        onError(`Jenis pindah tidak dikenal: ${jenisPindah}`);
-        return;
-      }
+      // Semua jenis pindah menggunakan fungsi yang sama untuk verifikasi kalurahan tujuan
+      console.log(`🔄 [Kalurahan-VerifikasiTujuan] Jenis Pindah: ${jenisPindahStr} - verifikasi kalurahan tujuan`);
+      
+      result = await contractService.contract.verifikasiKalurahanTujuanPindah(
+        selectedPermohonan.id,
+        isSetuju,
+        alasanPenolakan || ''
+      );
       
       console.log('[VerifikasiKalurahanTujuan] TX result:', result);
       await result.wait();
@@ -481,6 +466,19 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
     } finally {
       setIsVerifying(false);
     }
+  };
+
+  // Helper function untuk mendapatkan ID kalurahan berdasarkan nama
+  const getIdKalurahanByNama = (nama) => {
+    if (!nama || !kalurahanMapping || kalurahanMapping.length === 0) {
+      return null;
+    }
+    
+    const kalurahan = kalurahanMapping.find(k => 
+      k.nama.toLowerCase() === nama.toLowerCase()
+    );
+    
+    return kalurahan ? kalurahan.id : null;
   };
 
   // Helper function untuk format tanggal
@@ -514,6 +512,8 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
       'DitolakKalurahanAsal': 'Ditolak Kalurahan Asal',
       'DisetujuiKalurahanTujuan': 'Disetujui Kalurahan Tujuan',
       'DitolakKalurahanTujuan': 'Ditolak Kalurahan Tujuan',
+      'Dikonfirmasi KK Tujuan': 'Menunggu Verifikasi Kalurahan Asal',
+      'Ditolak KK Tujuan': 'Ditolak Kepala Keluarga Tujuan',
       'Selesai': 'Selesai'
     };
     return statusMap[status] || status;
@@ -781,9 +781,10 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
               const isKalurahanTujuan = profile.id && selectedPermohonan.idKalurahanTujuan && profile.id.toString() === selectedPermohonan.idKalurahanTujuan.toString();
               const status = selectedPermohonan.status;
               // Tombol hanya muncul jika:
-              // - Kalurahan asal & status Diajukan
+              // - Kalurahan asal & status Diajukan (untuk permohonan biasa dan pindah non-gabung KK)
+              // - Kalurahan asal & status Dikonfirmasi KK Tujuan (untuk pindah gabung KK)
               // - Kalurahan tujuan & status Disetujui Kalurahan Asal
-              if ((isKalurahanAsal && status === 'Diajukan') || (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal')) {
+              if ((isKalurahanAsal && (status === 'Diajukan' || status === 'Dikonfirmasi KK Tujuan')) || (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal')) {
                 return (
                   <div className="modal-footer" style={{
                     position: 'sticky',
@@ -808,7 +809,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                           setShowAlasanInput(false);
                           setAlasanPenolakan('');
                           setAlasanError('');
-                          if (isKalurahanAsal && status === 'Diajukan') {
+                          if (isKalurahanAsal && (status === 'Diajukan' || status === 'Dikonfirmasi KK Tujuan')) {
                             handleVerifikasi(true);
                           } else if (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal') {
                             handleVerifikasiTujuan(true);
@@ -829,7 +830,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
                           }
                           setAlasanError('');
                           setShowAlasanInput(false);
-                          if (isKalurahanAsal && status === 'Diajukan') {
+                          if (isKalurahanAsal && (status === 'Diajukan' || status === 'Dikonfirmasi KK Tujuan')) {
                             handleVerifikasi(false, alasanPenolakan);
                           } else if (isKalurahanTujuan && status === 'Disetujui Kalurahan Asal') {
                             handleVerifikasiTujuan(false, alasanPenolakan);
