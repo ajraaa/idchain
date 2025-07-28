@@ -73,7 +73,8 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         string calldata _cidIPFS,
         uint8 _idKalurahanAsal,
         uint8 _idKalurahanTujuan, // Hanya wajib jika jenis == Pindah
-        PencatatanTypes.JenisPindah _jenisPindah // Opsional, hanya untuk jenis Pindah
+        PencatatanTypes.JenisPindah _jenisPindah, // Opsional, hanya untuk jenis Pindah
+        string calldata _nikKepalaKeluargaTujuan // Opsional, hanya untuk PindahGabungKK
     ) external onlyWargaTerdaftar {
         require(bytes(_cidIPFS).length > 0, CidKosong());
         require(
@@ -92,12 +93,23 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         uint256 idBaru = jumlahPermohonan++;
 
+        // Tentukan status awal berdasarkan jenis permohonan
+        PencatatanTypes.Status statusAwal;
+        if (
+            _jenis == PencatatanTypes.JenisPermohonan.Pindah &&
+            _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
+        ) {
+            statusAwal = PencatatanTypes.Status.MenungguKonfirmasiKKTujuan;
+        } else {
+            statusAwal = PencatatanTypes.Status.Diajukan;
+        }
+
         permohonans[idBaru] = PencatatanTypes.Permohonan({
             id: idBaru,
             waktuPengajuan: block.timestamp,
             pemohon: msg.sender,
             jenis: _jenis,
-            status: PencatatanTypes.Status.Diajukan, // Selalu mulai dari Diajukan
+            status: statusAwal,
             idKalurahanAsal: _idKalurahanAsal,
             idKalurahanTujuan: _jenis == PencatatanTypes.JenisPermohonan.Pindah
                 ? _idKalurahanTujuan
@@ -122,11 +134,28 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         daftarPermohonanKalurahanAsal[_idKalurahanAsal].push(idBaru);
 
         // Tambahkan ke mapping status yang sesuai
-        daftarPermohonanPerStatus[PencatatanTypes.Status.Diajukan].push(idBaru);
+        daftarPermohonanPerStatus[statusAwal].push(idBaru);
 
         // Tambahkan ke mapping kalurahan tujuan jika jenisnya Pindah
         if (_jenis == PencatatanTypes.JenisPermohonan.Pindah) {
             daftarPermohonanKalurahanTujuan[_idKalurahanTujuan].push(idBaru);
+        }
+
+        // Untuk pindah gabung KK, langsung tambahkan ke mapping menunggu konfirmasi KK
+        if (
+            _jenis == PencatatanTypes.JenisPermohonan.Pindah &&
+            _jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK
+        ) {
+            // Validasi NIK kepala keluarga tujuan tidak boleh kosong untuk pindah gabung KK
+            require(
+                bytes(_nikKepalaKeluargaTujuan).length > 0,
+                "NIK kepala keluarga tujuan wajib diisi untuk pindah gabung KK"
+            );
+
+            // Langsung tambahkan ke mapping
+            permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaTujuan].push(
+                idBaru
+            );
         }
 
         if (_jenis == PencatatanTypes.JenisPermohonan.Pindah) {
@@ -153,11 +182,25 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         require(p.pemohon == msg.sender, BukanPemilikPermohonan());
         require(
-            p.status == PencatatanTypes.Status.Diajukan,
+            p.status == PencatatanTypes.Status.Diajukan ||
+                p.status == PencatatanTypes.Status.MenungguKonfirmasiKKTujuan,
             TidakDapatDibatalkan()
         );
 
-        _hapusByStatus(_id, PencatatanTypes.Status.Diajukan); // Hapus dari mapping status sebelumnya
+        // Hapus dari mapping status sebelumnya
+        if (p.status == PencatatanTypes.Status.Diajukan) {
+            _hapusByStatus(_id, PencatatanTypes.Status.Diajukan);
+        } else if (
+            p.status == PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
+        ) {
+            _hapusByStatus(
+                _id,
+                PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
+            );
+
+            // Note: Untuk pindah gabung KK, mapping akan dibersihkan saat konfirmasi KK
+            // atau saat permohonan diproses lebih lanjut
+        }
 
         p.status = PencatatanTypes.Status.DibatalkanPemohon;
         p.waktuVerifikasiKalurahan = block.timestamp; // Waktu pembatalan
@@ -212,15 +255,25 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
 
         require(
-            p.status == PencatatanTypes.Status.Diajukan,
-            PermohonanBukanDiajukan()
-        );
-        require(
             p.jenis == PencatatanTypes.JenisPermohonan.Pindah,
             BukanPermohonanPindah()
         );
 
-        _hapusByStatus(_id, PencatatanTypes.Status.Diajukan);
+        // Untuk pindah gabung KK, status harus DikonfirmasiKKTujuan
+        // Untuk pindah lainnya, status harus Diajukan
+        if (p.jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK) {
+            require(
+                p.status == PencatatanTypes.Status.DikonfirmasiKKTujuan,
+                "Permohonan pindah gabung KK harus sudah dikonfirmasi kepala keluarga tujuan"
+            );
+            _hapusByStatus(_id, PencatatanTypes.Status.DikonfirmasiKKTujuan);
+        } else {
+            require(
+                p.status == PencatatanTypes.Status.Diajukan,
+                PermohonanBukanDiajukan()
+            );
+            _hapusByStatus(_id, PencatatanTypes.Status.Diajukan);
+        }
 
         if (_disetujui) {
             require(_idKalurahanTujuan != 0, TujuanTidakValid());
@@ -257,8 +310,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     function verifikasiKalurahanTujuanPindah(
         uint256 _id,
         bool _disetujui,
-        string calldata _alasan,
-        string calldata _nikKepalaKeluargaTujuan
+        string calldata _alasan
     ) external onlyKalurahan {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
 
@@ -280,22 +332,10 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         _hapusByStatus(_id, PencatatanTypes.Status.DisetujuiKalurahanAsal);
 
         if (_disetujui) {
-            if (p.jenisPindah == PencatatanTypes.JenisPindah.PindahGabungKK) {
-                // Setelah disetujui kalurahan tujuan, baru masuk ke konfirmasi KK tujuan
-                p.status = PencatatanTypes.Status.MenungguKonfirmasiKKTujuan;
-                daftarPermohonanPerStatus[
-                    PencatatanTypes.Status.MenungguKonfirmasiKKTujuan
-                ].push(_id);
-                // TAMBAHKAN INI:
-                permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaTujuan].push(
-                    _id
-                );
-            } else {
-                p.status = PencatatanTypes.Status.DisetujuiKalurahanTujuan;
-                daftarPermohonanPerStatus[
-                    PencatatanTypes.Status.DisetujuiKalurahanTujuan
-                ].push(_id);
-            }
+            p.status = PencatatanTypes.Status.DisetujuiKalurahanTujuan;
+            daftarPermohonanPerStatus[
+                PencatatanTypes.Status.DisetujuiKalurahanTujuan
+            ].push(_id);
         } else {
             p.status = PencatatanTypes.Status.DitolakKalurahanTujuan;
             p.alasanPenolakan = _alasan;
@@ -426,6 +466,44 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         return hasil;
     }
 
+    // Fungsi khusus untuk mendapatkan permohonan yang siap diverifikasi kalurahan asal
+    // (termasuk yang sudah dikonfirmasi KK untuk pindah gabung KK)
+    function getPermohonanSiapVerifikasiKalurahanAsal()
+        external
+        view
+        onlyKalurahan
+        returns (uint256[] memory)
+    {
+        uint8 idKalurahan = idKalurahanByAddress[msg.sender];
+        uint256[] storage semua = daftarPermohonanKalurahanAsal[idKalurahan];
+
+        uint256[] memory temp = new uint256[](semua.length);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < semua.length; i++) {
+            PencatatanTypes.Permohonan storage p = permohonans[semua[i]];
+            // Untuk pindah gabung KK, status harus DikonfirmasiKKTujuan
+            // Untuk pindah lainnya, status harus Diajukan
+            if (
+                (p.jenis == PencatatanTypes.JenisPermohonan.Pindah &&
+                    p.jenisPindah ==
+                    PencatatanTypes.JenisPindah.PindahGabungKK &&
+                    p.status == PencatatanTypes.Status.DikonfirmasiKKTujuan) ||
+                (p.status == PencatatanTypes.Status.Diajukan)
+            ) {
+                temp[count] = semua[i];
+                count++;
+            }
+        }
+
+        uint256[] memory hasil = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            hasil[i] = temp[i];
+        }
+
+        return hasil;
+    }
+
     function getPermohonanByKalurahanTujuan()
         external
         view
@@ -474,7 +552,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         _hapusByStatus(_id, PencatatanTypes.Status.MenungguKonfirmasiKKTujuan);
 
-        // Hapus dari mapping permohonanMenungguKonfirmasiKK
+        // Hapus dari mapping permohonanMenungguKonfirmasiKK menggunakan parameter NIK
         uint256[] storage arr = permohonanMenungguKonfirmasiKK[
             _nikKepalaKeluargaTujuan
         ];
@@ -504,7 +582,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         emit KonfirmasiKKTujuan(
             _id,
-            _nikKepalaKeluargaTujuan, // Sekarang diisi dari parameter
+            _nikKepalaKeluargaTujuan, // Menggunakan parameter NIK
             _disetujui,
             block.timestamp
         );
