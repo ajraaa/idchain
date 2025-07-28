@@ -952,6 +952,18 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                         onFocus={e => e.target.style.borderColor = '#3b82f6'}
                         onBlur={e => e.target.style.borderColor = '#d1d5db'}
                       />
+                      {uploadingDokumen && (
+                        <span style={{ 
+                          marginTop: '8px', 
+                          fontSize: '14px', 
+                          color: '#3b82f6',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          📤 Mengupload dokumen resmi...
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                       <button className="add-button" disabled={isVerifying || uploadingDokumen} onClick={() => handleVerifikasiDukcapil(true)}>Setujui</button>

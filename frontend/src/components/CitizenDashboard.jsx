@@ -1526,7 +1526,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     className="form-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
+                    disabled={isFileUploading('1', 'suratKeteranganKematian')}
                   />
+                  {isFileUploading('1', 'suratKeteranganKematian') && (
+                    <span className="upload-status">📤 Mengupload file...</span>
+                  )}
+                  {formDataKematian.suratKeteranganKematian && !isFileUploading('1', 'suratKeteranganKematian') && (
+                    <span className="upload-status success">✅ File berhasil diupload</span>
+                  )}
                   {formErrors.suratKeteranganKematian && <span className="error">{formErrors.suratKeteranganKematian}</span>}
                 </div>
                 <button
@@ -1632,7 +1639,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     className="form-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
+                    disabled={isFileUploading('2', 'suratKeteranganPernikahan')}
                   />
+                  {isFileUploading('2', 'suratKeteranganPernikahan') && (
+                    <span className="upload-status">📤 Mengupload file...</span>
+                  )}
+                  {formDataPerkawinan.suratKeteranganPernikahan && !isFileUploading('2', 'suratKeteranganPernikahan') && (
+                    <span className="upload-status success">✅ File berhasil diupload</span>
+                  )}
                   {formErrors.suratKeteranganPernikahan && <span className="error">{formErrors.suratKeteranganPernikahan}</span>}
                 </div>
                 <div className="form-group">
@@ -1649,7 +1663,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     className="form-input"
                     accept=".jpg,.jpeg,.png"
                     required
+                    disabled={isFileUploading('2', 'fotoPria')}
                   />
+                  {isFileUploading('2', 'fotoPria') && (
+                    <span className="upload-status">📤 Mengupload file...</span>
+                  )}
+                  {formDataPerkawinan.fotoPria && !isFileUploading('2', 'fotoPria') && (
+                    <span className="upload-status success">✅ File berhasil diupload</span>
+                  )}
                   {formErrors.fotoPria && <span className="error">{formErrors.fotoPria}</span>}
                 </div>
                 <div className="form-group">
@@ -1666,7 +1687,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     className="form-input"
                     accept=".jpg,.jpeg,.png"
                     required
+                    disabled={isFileUploading('2', 'fotoWanita')}
                   />
+                  {isFileUploading('2', 'fotoWanita') && (
+                    <span className="upload-status">📤 Mengupload file...</span>
+                  )}
+                  {formDataPerkawinan.fotoWanita && !isFileUploading('2', 'fotoWanita') && (
+                    <span className="upload-status success">✅ File berhasil diupload</span>
+                  )}
                   {formErrors.fotoWanita && <span className="error">{formErrors.fotoWanita}</span>}
                 </div>
                 <button
@@ -1721,7 +1749,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
                     className="form-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
+                    disabled={isFileUploading('3', 'suratPutusanPengadilan')}
                   />
+                  {isFileUploading('3', 'suratPutusanPengadilan') && (
+                    <span className="upload-status">📤 Mengupload file...</span>
+                  )}
+                  {formDataPerceraian.suratPutusanPengadilan && !isFileUploading('3', 'suratPutusanPengadilan') && (
+                    <span className="upload-status success">✅ File berhasil diupload</span>
+                  )}
                   {formErrors.suratPutusanPengadilan && <span className="error">{formErrors.suratPutusanPengadilan}</span>}
                 </div>
                 <button
