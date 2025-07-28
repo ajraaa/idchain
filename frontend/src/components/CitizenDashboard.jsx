@@ -414,7 +414,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           cidIPFS,
           idKalurahanAsal,
           idKalurahanTujuan,
-          parseInt(jenisPindah)
+          parseInt(jenisPindah),
+          nikKepalaKeluargaTujuan
         );
         const contractEndTime = Date.now();
         console.log(`✅ [Submit-Permohonan] Smart contract submission berhasil dalam ${contractEndTime - contractStartTime}ms`);
@@ -2489,7 +2490,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
       }
       console.log('[NotifGabungKK] NIK kepala keluarga yang login:', citizenData.nik);
       try {
-        const ids = await contractService.contract.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
+        const ids = await contractService.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
         console.log('[NotifGabungKK] Hasil getPermohonanMenungguKonfirmasiKK:', ids);
         const list = [];
         for (let id of ids) {
@@ -2513,12 +2514,12 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     try {
       console.log(`[NotifGabungKK] Konfirmasi permohonan gabung KK id ${id}, setuju: ${isSetuju}`);
       console.log('[NotifGabungKK] NIK kepala keluarga yang login (untuk konfirmasi):', citizenData.nik);
-      await contractService.contract.konfirmasiPindahGabungKK(id, isSetuju, citizenData.nik);
+      await contractService.konfirmasiPindahGabungKK(id, isSetuju, citizenData.nik);
       onPermohonanSuccess(isSetuju ? 'Permohonan gabung KK disetujui.' : 'Permohonan gabung KK ditolak.');
       setShowKonfirmasiModal(false);
       setPermohonanUntukKonfirmasi(null);
       // Refresh daftar
-      const ids = await contractService.contract.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
+      const ids = await contractService.getPermohonanMenungguKonfirmasiKK(citizenData.nik);
       console.log('[NotifGabungKK] (refresh) Hasil getPermohonanMenungguKonfirmasiKK:', ids);
       const list = [];
       for (let id of ids) {

@@ -387,7 +387,8 @@ export class ContractService {
         cidIPFS,
         idKalurahanAsal,
         idKalurahanTujuan,
-        jenisPindah
+        jenisPindah,
+        nikKepalaKeluargaTujuan = ''
     ) {
         if (!this.contract) {
             throw new Error('Contract not initialized');
@@ -429,7 +430,8 @@ export class ContractService {
                 cidIPFS,
                 idKalurahanAsal,
                 idKalurahanTujuan,
-                jenisPindah
+                jenisPindah,
+                nikKepalaKeluargaTujuan
             });
 
             console.log('🔍 [ContractService] Parameter types:', {
@@ -437,7 +439,8 @@ export class ContractService {
                 cidIPFS: typeof cidIPFS,
                 idKalurahanAsal: typeof idKalurahanAsal,
                 idKalurahanTujuan: typeof idKalurahanTujuan,
-                jenisPindah: typeof jenisPindah
+                jenisPindah: typeof jenisPindah,
+                nikKepalaKeluargaTujuan: typeof nikKepalaKeluargaTujuan
             });
 
             console.log('🔍 [ContractService] Parameter values:', {
@@ -445,7 +448,8 @@ export class ContractService {
                 cidIPFS: cidIPFS,
                 idKalurahanAsal: idKalurahanAsal,
                 idKalurahanTujuan: idKalurahanTujuan,
-                jenisPindah: jenisPindah
+                jenisPindah: jenisPindah,
+                nikKepalaKeluargaTujuan: nikKepalaKeluargaTujuan
             });
 
             const tx = await this.contract.submitPermohonan(
@@ -453,7 +457,8 @@ export class ContractService {
                 cidIPFS,
                 idKalurahanAsal,
                 idKalurahanTujuan,
-                jenisPindah
+                jenisPindah,
+                nikKepalaKeluargaTujuan
             );
             const receipt = await tx.wait();
             return {
@@ -658,6 +663,48 @@ export class ContractService {
         } catch (error) {
             console.error('❌ [ContractService] Failed to get NIK mapping CID:', error);
             return '';
+        }
+    }
+
+    async konfirmasiPindahGabungKK(id, isSetuju, nikKepalaKeluargaTujuan) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            console.log('🔍 [ContractService] Konfirmasi pindah gabung KK with params:', {
+                id,
+                isSetuju,
+                nikKepalaKeluargaTujuan
+            });
+
+            const idNum = typeof id === 'bigint' ? Number(id) : Number(id);
+            const tx = await this.contract.konfirmasiPindahGabungKK(idNum, isSetuju, nikKepalaKeluargaTujuan);
+            const receipt = await tx.wait();
+
+            console.log('✅ [ContractService] Konfirmasi pindah gabung KK successful');
+            return {
+                success: true,
+                transactionHash: receipt.hash
+            };
+        } catch (error) {
+            console.error('Failed to konfirmasi pindah gabung KK:', error);
+            const errorMessage = handleContractError(error);
+            throw new Error(errorMessage);
+        }
+    }
+
+    async getPermohonanMenungguKonfirmasiKK(nikKepalaKeluarga) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            console.log('🔍 [ContractService] Getting permohonan menunggu konfirmasi KK for NIK:', nikKepalaKeluarga);
+            const ids = await this.contract.getPermohonanMenungguKonfirmasiKK(nikKepalaKeluarga);
+            console.log('📋 [ContractService] Permohonan menunggu konfirmasi KK:', ids);
+            return ids;
+        } catch (error) {
+            console.error('Failed to get permohonan menunggu konfirmasi KK:', error);
+            return [];
         }
     }
 } 

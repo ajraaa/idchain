@@ -141,8 +141,8 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
         const list = [];
         for (let id of ids) {
           const detail = await contractService.getPermohonanDetail(Number(id));
-          // Filter status Diajukan (butuh verifikasi)
-          if (detail.status === 'Diajukan') list.push(detail);
+          // Filter status Diajukan (butuh verifikasi) atau Dikonfirmasi KK Tujuan (untuk pindah gabung KK)
+          if (detail.status === 'Diajukan' || detail.status === 'Dikonfirmasi KK Tujuan') list.push(detail);
         }
         setPermohonanMasuk(list);
       } catch (e) {
@@ -343,7 +343,7 @@ const KalurahanDashboard = ({ walletAddress, contractService, onDisconnect, onSu
         const list = [];
         for (let id of ids) {
           const detail = await contractService.getPermohonanDetail(Number(id));
-          if (detail.status === 'Diajukan') list.push(detail);
+          if (detail.status === 'Diajukan' || detail.status === 'Dikonfirmasi KK Tujuan') list.push(detail);
         }
         console.log(`📋 [Kalurahan-Verifikasi] Reloaded ${list.length} permohonan masuk`);
         setPermohonanMasuk(list);
