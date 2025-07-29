@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { CONTRACT_CONFIG, CONTRACT_ABI } from '../config/contract.js';
 import { handleContractError } from './errorHandler.js';
+import { hashNIK } from './nikHash.js';
 
 export class ContractService {
     constructor() {
@@ -357,20 +358,73 @@ export class ContractService {
         }
     }
 
-    async submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan = 0, jenisPindah = 0) {
+    async submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan = 0, jenisPindah = 0, nikKepalaKeluargaTujuan = '') {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
         try {
+            // Check if wallet is registered
+            const walletAddress = await this.signer.getAddress();
+            console.log('🔍 [ContractService] Checking wallet registration for:', walletAddress);
+
+            const nik = await this.contract.nikByWallet(walletAddress);
+            console.log('🔍 [ContractService] NIK for wallet:', nik);
+
+            if (!nik || nik === '') {
+                throw new Error('Wallet belum terdaftar. Silakan register terlebih dahulu.');
+            }
+
+            // Check kalurahan mapping
+            console.log('🔍 [ContractService] Checking kalurahan mapping...');
+            const kalurahanAsalAddress = await this.contract.addressKalurahanById(idKalurahanAsal);
+
+            console.log('🔍 [ContractService] Kalurahan mapping:', {
+                idKalurahanAsal,
+                kalurahanAsalAddress
+            });
+
+            if (kalurahanAsalAddress === '0x0000000000000000000000000000000000000000') {
+                throw new Error(`Kalurahan asal dengan ID ${idKalurahanAsal} tidak terdaftar`);
+            }
+
+            // Check kalurahan tujuan if it's a pindah permohonan
+            if (jenis === 4 && idKalurahanTujuan !== 0) { // 4 = JenisPermohonan.Pindah
+                const kalurahanTujuanAddress = await this.contract.addressKalurahanById(idKalurahanTujuan);
+                console.log('🔍 [ContractService] Kalurahan tujuan mapping:', {
+                    idKalurahanTujuan,
+                    kalurahanTujuanAddress
+                });
+
+                if (kalurahanTujuanAddress === '0x0000000000000000000000000000000000000000') {
+                    throw new Error(`Kalurahan tujuan dengan ID ${idKalurahanTujuan} tidak terdaftar`);
+                }
+            }
+
+            // Hash NIK kepala keluarga tujuan jika ada
+            let nikKepalaKeluargaTujuanHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+            if (nikKepalaKeluargaTujuan && nikKepalaKeluargaTujuan.trim() !== '') {
+                nikKepalaKeluargaTujuanHash = hashNIK(nikKepalaKeluargaTujuan);
+                console.log('🔐 [ContractService] NIK Kepala Keluarga Tujuan:', nikKepalaKeluargaTujuan);
+                console.log('🔐 [ContractService] NIK Hash:', nikKepalaKeluargaTujuanHash);
+            }
+
             console.log('🔍 [ContractService] Submitting permohonan with params:', {
                 jenis,
                 cidIPFS,
                 idKalurahanAsal,
                 idKalurahanTujuan,
-                jenisPindah
+                jenisPindah,
+                nikKepalaKeluargaTujuanHash
             });
 
-            const tx = await this.contract.submitPermohonan(jenis, cidIPFS, idKalurahanAsal, idKalurahanTujuan, jenisPindah);
+            const tx = await this.contract.submitPermohonan(
+                jenis,
+                cidIPFS,
+                idKalurahanAsal,
+                idKalurahanTujuan,
+                jenisPindah,
+                nikKepalaKeluargaTujuanHash
+            );
             const receipt = await tx.wait();
             return {
                 success: true,
@@ -458,7 +512,7 @@ export class ContractService {
                 idKalurahanAsal,
                 idKalurahanTujuan,
                 jenisPindah,
-                nikKepalaKeluargaTujuan
+                hashNIK(nikKepalaKeluargaTujuan) // Use hashNIK for nikKepalaKeluargaTujuan
             );
             const receipt = await tx.wait();
             return {
@@ -677,8 +731,12 @@ export class ContractService {
                 nikKepalaKeluargaTujuan
             });
 
+            // Hash NIK kepala keluarga tujuan
+            const nikKepalaKeluargaTujuanHash = hashNIK(nikKepalaKeluargaTujuan);
+            console.log('🔐 [ContractService] NIK Hash for konfirmasi:', nikKepalaKeluargaTujuanHash);
+
             const idNum = typeof id === 'bigint' ? Number(id) : Number(id);
-            const tx = await this.contract.konfirmasiPindahGabungKK(idNum, isSetuju, nikKepalaKeluargaTujuan);
+            const tx = await this.contract.konfirmasiPindahGabungKK(idNum, isSetuju, nikKepalaKeluargaTujuanHash);
             const receipt = await tx.wait();
 
             console.log('✅ [ContractService] Konfirmasi pindah gabung KK successful');
@@ -699,12 +757,37 @@ export class ContractService {
         }
         try {
             console.log('🔍 [ContractService] Getting permohonan menunggu konfirmasi KK for NIK:', nikKepalaKeluarga);
-            const ids = await this.contract.getPermohonanMenungguKonfirmasiKK(nikKepalaKeluarga);
+
+            // Hash NIK kepala keluarga
+            const nikKepalaKeluargaHash = hashNIK(nikKepalaKeluarga);
+            console.log('🔐 [ContractService] NIK Hash for search:', nikKepalaKeluargaHash);
+
+            const ids = await this.contract.getPermohonanMenungguKonfirmasiKK(nikKepalaKeluargaHash);
             console.log('📋 [ContractService] Permohonan menunggu konfirmasi KK:', ids);
             return ids;
         } catch (error) {
             console.error('Failed to get permohonan menunggu konfirmasi KK:', error);
             return [];
+        }
+    }
+
+    async adaPermohonanMenungguKonfirmasi(nikKepalaKeluarga) {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+        try {
+            console.log('🔍 [ContractService] Checking if ada permohonan menunggu konfirmasi for NIK:', nikKepalaKeluarga);
+
+            // Hash NIK kepala keluarga
+            const nikKepalaKeluargaHash = hashNIK(nikKepalaKeluarga);
+            console.log('🔐 [ContractService] NIK Hash for check:', nikKepalaKeluargaHash);
+
+            const ada = await this.contract.adaPermohonanMenungguKonfirmasi(nikKepalaKeluargaHash);
+            console.log('📋 [ContractService] Ada permohonan menunggu konfirmasi:', ada);
+            return ada;
+        } catch (error) {
+            console.error('Failed to check ada permohonan menunggu konfirmasi:', error);
+            return false;
         }
     }
 } 

@@ -410,12 +410,13 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         // Submit to smart contract
         console.log(`📜 [Submit-Permohonan] Submitting ke smart contract...`);
         const contractStartTime = Date.now();
-        const result = await contractService.submitPermohonanPindah(
+        const result = await contractService.submitPermohonan(
+          parseInt(jenisPermohonan),
           cidIPFS,
           idKalurahanAsal,
           idKalurahanTujuan,
-          parseInt(jenisPindah),
-          nikKepalaKeluargaTujuan
+          jenisPindah || 0, // jenisPindah default for non-pindah permohonan
+          jenisPindah === '2' ? nikKepalaKeluargaTujuan : '' // hanya kirim NIK untuk PindahGabungKK
         );
         const contractEndTime = Date.now();
         console.log(`✅ [Submit-Permohonan] Smart contract submission berhasil dalam ${contractEndTime - contractStartTime}ms`);
@@ -454,7 +455,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
           cidIPFS,
           idKalurahanAsal,
           idKalurahanTujuan,
-          0 // jenisPindah default for non-pindah permohonan
+          0, // jenisPindah default for non-pindah permohonan
+          '' // nikKepalaKeluargaTujuan - empty string for non-pindah permohonan
         );
         const contractEndTime = Date.now();
         console.log(`✅ [Submit-Permohonan] Smart contract submission berhasil dalam ${contractEndTime - contractStartTime}ms`);

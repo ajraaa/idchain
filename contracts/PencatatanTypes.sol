@@ -94,7 +94,7 @@ abstract contract PencatatanTypes {
 
     event KonfirmasiKKTujuan(
         uint256 indexed idPermohonan,
-        string indexed nikKepalaKeluargaTujuan,
+        bytes32 indexed nikKepalaKeluargaTujuanHash,
         bool disetujui,
         uint256 waktu
     );

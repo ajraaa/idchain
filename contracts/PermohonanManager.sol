@@ -74,7 +74,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         uint8 _idKalurahanAsal,
         uint8 _idKalurahanTujuan, // Hanya wajib jika jenis == Pindah
         PencatatanTypes.JenisPindah _jenisPindah, // Opsional, hanya untuk jenis Pindah
-        string calldata _nikKepalaKeluargaTujuan // Opsional, hanya untuk PindahGabungKK
+        bytes32 _nikKepalaKeluargaTujuanHash // Opsional, hanya untuk PindahGabungKK (hash NIK)
     ) external onlyWargaTerdaftar {
         require(bytes(_cidIPFS).length > 0, CidKosong());
         require(
@@ -148,12 +148,12 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         ) {
             // Validasi NIK kepala keluarga tujuan tidak boleh kosong untuk pindah gabung KK
             require(
-                bytes(_nikKepalaKeluargaTujuan).length > 0,
+                _nikKepalaKeluargaTujuanHash != bytes32(0),
                 "NIK kepala keluarga tujuan wajib diisi untuk pindah gabung KK"
             );
 
             // Langsung tambahkan ke mapping
-            permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaTujuan].push(
+            permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaTujuanHash].push(
                 idBaru
             );
         }
@@ -523,13 +523,13 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
     // ===== FUNGSI BARU UNTUK FITUR PINDAH ENHANCED =====
 
     // Mapping untuk tracking permohonan per kepala keluarga
-    mapping(string => uint256[]) public permohonanMenungguKonfirmasiKK;
+    mapping(bytes32 => uint256[]) public permohonanMenungguKonfirmasiKK;
 
     // Konfirmasi kepala keluarga tujuan untuk pindah gabung KK
     function konfirmasiPindahGabungKK(
         uint256 _id,
         bool _disetujui,
-        string calldata _nikKepalaKeluargaTujuan
+        bytes32 _nikKepalaKeluargaTujuanHash // Hash NIK kepala keluarga tujuan
     ) external onlyWargaTerdaftar {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
 
@@ -552,9 +552,9 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         _hapusByStatus(_id, PencatatanTypes.Status.MenungguKonfirmasiKKTujuan);
 
-        // Hapus dari mapping permohonanMenungguKonfirmasiKK menggunakan parameter NIK
+        // Hapus dari mapping permohonanMenungguKonfirmasiKK menggunakan hash NIK
         uint256[] storage arr = permohonanMenungguKonfirmasiKK[
-            _nikKepalaKeluargaTujuan
+            _nikKepalaKeluargaTujuanHash
         ];
         for (uint i = 0; i < arr.length; i++) {
             if (arr[i] == _id) {
@@ -582,7 +582,7 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
         emit KonfirmasiKKTujuan(
             _id,
-            _nikKepalaKeluargaTujuan, // Menggunakan parameter NIK
+            _nikKepalaKeluargaTujuanHash, // Menggunakan hash NIK
             _disetujui,
             block.timestamp
         );
@@ -590,16 +590,17 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
 
     // Get permohonan yang menunggu konfirmasi KK
     function getPermohonanMenungguKonfirmasiKK(
-        string calldata _nikKepalaKeluarga
+        bytes32 _nikKepalaKeluargaHash
     ) external view returns (uint256[] memory) {
-        return permohonanMenungguKonfirmasiKK[_nikKepalaKeluarga];
+        return permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaHash];
     }
 
     // Check apakah ada permohonan menunggu konfirmasi
     function adaPermohonanMenungguKonfirmasi(
-        string calldata _nikKepalaKeluarga
+        bytes32 _nikKepalaKeluargaHash
     ) external view returns (bool) {
-        return permohonanMenungguKonfirmasiKK[_nikKepalaKeluarga].length > 0;
+        return
+            permohonanMenungguKonfirmasiKK[_nikKepalaKeluargaHash].length > 0;
     }
 
     // Get jenis pindah sebagai string
