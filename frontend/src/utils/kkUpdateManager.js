@@ -11,7 +11,8 @@ import {
     updateKKWithHistory,
     KK_HISTORY_TYPES
 } from './kkHistory.js';
-import { loadNIKMapping, fetchFromIPFS, uploadToPinata } from './ipfs.js';
+import { loadNIKMapping, fetchFromIPFS } from './ipfs.js';
+import { uploadToPinata } from './pinata.js';
 import { decryptAes256CbcNodeStyle, encryptAes256CbcNodeStyle } from './crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 
@@ -130,33 +131,49 @@ export class KKUpdateManager {
     async processKelahiran(permohonanData) {
         try {
             console.log('🔄 [KK-Update] Processing kelahiran...');
+            console.log('📋 [KK-Update] Permohonan data:', JSON.stringify(permohonanData, null, 2));
 
             const dataKelahiran = permohonanData.dataKelahiran;
+            console.log('📋 [KK-Update] Data kelahiran:', JSON.stringify(dataKelahiran, null, 2));
 
-            // Load KK ayah atau ibu
+            // Load KK ayah
             const kkAsal = await this.loadKKByNIK(dataKelahiran.nikAyah);
+            console.log('📋 [KK-Update] KK Asal loaded:', JSON.stringify(kkAsal, null, 2));
 
             // Dapatkan CID KK lama dari mapping
             const mapping = await loadNIKMapping(this.contractService);
             const oldKKCID = mapping[dataKelahiran.nikAyah];
 
-            // Validasi data
+            // Validasi data dengan logging detail
+            console.log('🔍 [KK-Update] Starting validation...');
             const validation = await validateKKComprehensive(
                 kkAsal,
                 dataKelahiran,
                 'Kelahiran',
                 this.contractService
             );
+            console.log('📋 [KK-Update] Validation result:', JSON.stringify(validation, null, 2));
 
             if (!validation.isValid) {
+                console.error('❌ [KK-Update] Validation failed:', validation.errors);
                 throw new Error(`Validasi gagal: ${validation.errors.join(', ')}`);
             }
 
             // Update KK dengan riwayat
             const result = await updateKKKelahiran(kkAsal, dataKelahiran, oldKKCID);
 
-            // Update mapping NIK
-            const nikList = kkAsal.anggota.map(a => a.nik).concat([dataKelahiran.nik]);
+            // Update mapping NIK - gunakan NIK dari result jika ada
+            const nikList = kkAsal.anggota.map(a => a.nik);
+            // Tambahkan NIK anak baru jika ada dalam result
+            if (result.newKKData && result.newKKData.anggota) {
+                const anakBaru = result.newKKData.anggota.find(a =>
+                    a.nama === dataKelahiran.namaAnak &&
+                    a.tanggalLahir === dataKelahiran.tanggalLahir
+                );
+                if (anakBaru && anakBaru.nik) {
+                    nikList.push(anakBaru.nik);
+                }
+            }
             await this.updateNIKMapping(mapping, nikList, result.newKKCID);
 
             console.log('✅ [KK-Update] Kelahiran processed successfully');
@@ -424,6 +441,8 @@ export class KKUpdateManager {
     async processKKUpdate(permohonanData, jenisPermohonan) {
         try {
             console.log('🔄 [KK-Update] Starting KK update process for:', jenisPermohonan);
+            console.log('🔍 [KK-Update] jenisPermohonan type:', typeof jenisPermohonan);
+            console.log('🔍 [KK-Update] jenisPermohonan value:', JSON.stringify(jenisPermohonan));
 
             switch (jenisPermohonan) {
                 case 'Kelahiran':
@@ -437,6 +456,8 @@ export class KKUpdateManager {
                 case 'Pindah':
                     return await this.processPindah(permohonanData);
                 default:
+                    console.error('❌ [KK-Update] Unsupported jenis permohonan:', jenisPermohonan);
+                    console.error('❌ [KK-Update] Supported types:', ['Kelahiran', 'Kematian', 'Perkawinan', 'Perceraian', 'Pindah']);
                     throw new Error(`Jenis permohonan tidak didukung: ${jenisPermohonan}`);
             }
         } catch (error) {

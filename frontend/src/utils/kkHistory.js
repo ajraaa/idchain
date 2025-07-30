@@ -208,7 +208,8 @@ export const updateKKWithHistory = async (kkData, jenisPerubahan, detailPerubaha
             oldKKCID: oldKKCID, // Return CID KK lama untuk referensi (atau null)
             historyCID: historyCID,
             historyEntry: historyEntry,
-            updatedHistory: updatedHistory
+            updatedHistory: updatedHistory,
+            newKKData: kkData // Return data KK baru untuk referensi
         };
 
     } catch (error) {
@@ -226,33 +227,44 @@ export const updateKKWithHistory = async (kkData, jenisPerubahan, detailPerubaha
  * @returns {Promise<Object>} - Hasil update
  */
 export const updateKKKelahiran = async (kkAsal, dataAnak, oldKKCID, existingHistory = []) => {
+    console.log('🔍 [KK-History] Creating new KK for kelahiran with data:', JSON.stringify(dataAnak, null, 2));
+
+    // Generate NIK valid untuk anak baru lahir jika belum ada
+    const nikAnak = dataAnak.nik || generateNIKFromKelahiran(dataAnak);
+    console.log('🔍 [KK-History] Generated NIK for child:', nikAnak);
+
     // Buat KK baru dengan anak
     const kkBaru = {
         ...kkAsal,
         anggota: [...kkAsal.anggota, {
-            nik: dataAnak.nik,
+            nik: nikAnak,
             nama: dataAnak.namaAnak,
             tempatLahir: dataAnak.tempatLahir,
             tanggalLahir: dataAnak.tanggalLahir,
-            jenisKelamin: dataAnak.jenisKelamin,
+            jenisKelamin: dataAnak.jenisKelamin || 'L', // Default jika tidak ada
             agama: dataAnak.agama || 'Islam',
-            statusPerkawinan: 'Belum Kawin',
-            pekerjaan: 'Belum/Tidak Bekerja',
-            kewarganegaraan: 'WNI',
+            pendidikan: dataAnak.pendidikan || 'BELUM TAMAT SD/SEDERAJAT',
+            jenisPekerjaan: dataAnak.jenisPekerjaan || 'BELUM/TIDAK BEKERJA',
+            statusPernikahan: 'BELUM KAWIN', // Gunakan statusPernikahan bukan statusPerkawinan
             statusHubunganKeluarga: 'ANAK',
+            kewarganegaraan: 'WNI',
             nikAyah: dataAnak.nikAyah,
             nikIbu: dataAnak.nikIbu
         }],
         jumlahAnggotaKeluarga: kkAsal.anggota.length + 1
     };
 
+    console.log('🔍 [KK-History] New KK created:', JSON.stringify(kkBaru, null, 2));
+
     const detailPerubahan = {
         jumlahAnggotaSebelum: kkAsal.anggota.length,
         anggotaYangBerubah: [{
-            nik: dataAnak.nik,
+            nik: nikAnak,
             nama: dataAnak.namaAnak,
             aksi: 'TAMBAH',
-            alasan: 'Kelahiran'
+            alasan: 'Kelahiran',
+            tanggalLahir: dataAnak.tanggalLahir,
+            tempatLahir: dataAnak.tempatLahir
         }],
         alamatSebelum: kkAsal.alamatLengkap,
         alamatSesudah: kkBaru.alamatLengkap
@@ -659,5 +671,100 @@ export const loadKKHistory = async (historyCID, contractService) => {
     } catch (error) {
         console.error('❌ [KK-History] Failed to load history:', error);
         return [];
+    }
+};
+
+/**
+ * Generate NIK valid untuk anak baru lahir
+ * Format NIK: PPKKDDMMYYXXXX
+ * PP = Kode Provinsi (2 digit)
+ * KK = Kode Kabupaten/Kota (2 digit)  
+ * DD = Tanggal lahir (2 digit)
+ * MM = Bulan lahir (2 digit)
+ * YY = Tahun lahir (2 digit)
+ * XXXX = Nomor urut (4 digit)
+ * @param {string} tanggalLahir - Tanggal lahir dalam format YYYY-MM-DD
+ * @param {string} kodeProvinsi - Kode provinsi (default: 34 untuk DIY)
+ * @param {string} kodeKabupaten - Kode kabupaten (default: 01 untuk Sleman)
+ * @returns {string} - NIK yang digenerate
+ */
+export const generateNIK = (tanggalLahir, kodeProvinsi = '34', kodeKabupaten = '01') => {
+    try {
+        console.log('🔍 [KK-History] Generating NIK for:', { tanggalLahir, kodeProvinsi, kodeKabupaten });
+
+        // Parse tanggal lahir
+        const date = new Date(tanggalLahir);
+        const tanggal = date.getDate().toString().padStart(2, '0');
+        const bulan = (date.getMonth() + 1).toString().padStart(2, '0');
+        const tahun = date.getFullYear().toString().slice(-2); // Ambil 2 digit terakhir
+
+        // Generate nomor urut random (4 digit)
+        const nomorUrut = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+
+        // Gabungkan semua komponen
+        const nik = `${kodeProvinsi}${kodeKabupaten}${tanggal}${bulan}${tahun}${nomorUrut}`;
+
+        console.log('✅ [KK-History] Generated NIK:', nik);
+        console.log('📋 [KK-History] NIK breakdown:', {
+            kodeProvinsi,
+            kodeKabupaten,
+            tanggal,
+            bulan,
+            tahun,
+            nomorUrut,
+            totalLength: nik.length
+        });
+
+        return nik;
+    } catch (error) {
+        console.error('❌ [KK-History] Error generating NIK:', error);
+        // Fallback ke NIK sementara jika ada error
+        return `TEMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+};
+
+/**
+ * Generate NIK berdasarkan data kelahiran
+ * @param {Object} dataAnak - Data anak yang baru lahir
+ * @returns {string} - NIK yang digenerate
+ */
+export const generateNIKFromKelahiran = (dataAnak) => {
+    try {
+        console.log('🔍 [KK-History] Generating NIK from kelahiran data:', JSON.stringify(dataAnak, null, 2));
+
+        // Tentukan kode provinsi dan kabupaten berdasarkan tempat lahir
+        let kodeProvinsi = '34'; // Default: DIY
+        let kodeKabupaten = '01'; // Default: Sleman
+
+        // Mapping tempat lahir ke kode (bisa diperluas)
+        const tempatLahir = dataAnak.tempatLahir?.toLowerCase() || '';
+
+        if (tempatLahir.includes('sleman')) {
+            kodeProvinsi = '34';
+            kodeKabupaten = '01';
+        } else if (tempatLahir.includes('yogyakarta') || tempatLahir.includes('yogya')) {
+            kodeProvinsi = '34';
+            kodeKabupaten = '02';
+        } else if (tempatLahir.includes('bantul')) {
+            kodeProvinsi = '34';
+            kodeKabupaten = '03';
+        } else if (tempatLahir.includes('kulon progo') || tempatLahir.includes('kulonprogo')) {
+            kodeProvinsi = '34';
+            kodeKabupaten = '04';
+        } else if (tempatLahir.includes('gunung kidul') || tempatLahir.includes('gunungkidul')) {
+            kodeProvinsi = '34';
+            kodeKabupaten = '05';
+        }
+        // Bisa ditambahkan mapping untuk provinsi lain
+
+        const nik = generateNIK(dataAnak.tanggalLahir, kodeProvinsi, kodeKabupaten);
+
+        console.log('✅ [KK-History] Generated NIK from kelahiran:', nik);
+        return nik;
+
+    } catch (error) {
+        console.error('❌ [KK-History] Error generating NIK from kelahiran:', error);
+        // Fallback ke NIK sementara
+        return `TEMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 }; 

@@ -543,16 +543,36 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
           const kkUpdateManager = createKKUpdateManager(contractService);
           
           // Tentukan jenis permohonan
-          const jenisPermohonanMap = {
-            '0': 'Kelahiran',
-            '1': 'Kematian',
-            '2': 'Perkawinan',
-            '3': 'Perceraian',
-            '4': 'Pindah'
-          };
+          console.log(`🔍 [Dukcapil-Verifikasi] selectedPermohonan.jenis:`, selectedPermohonan.jenis);
+          console.log(`🔍 [Dukcapil-Verifikasi] typeof selectedPermohonan.jenis:`, typeof selectedPermohonan.jenis);
           
-          const jenisPermohonan = jenisPermohonanMap[selectedPermohonan.jenis];
-          console.log(`📋 [Dukcapil-Verifikasi] Jenis permohonan: ${jenisPermohonan}`);
+          // Jika smart contract sudah mengembalikan string langsung, gunakan langsung
+          let jenisPermohonan = selectedPermohonan.jenis;
+          
+          // Jika smart contract mengembalikan angka, lakukan mapping
+          if (typeof selectedPermohonan.jenis === 'number' || !isNaN(parseInt(selectedPermohonan.jenis))) {
+            const jenisPermohonanMap = {
+              '0': 'Kelahiran',
+              '1': 'Kematian',
+              '2': 'Perkawinan',
+              '3': 'Perceraian',
+              '4': 'Pindah',
+              0: 'Kelahiran',
+              1: 'Kematian',
+              2: 'Perkawinan',
+              3: 'Perceraian',
+              4: 'Pindah'
+            };
+            
+            jenisPermohonan = jenisPermohonanMap[selectedPermohonan.jenis];
+          }
+          
+          console.log(`📋 [Dukcapil-Verifikasi] Jenis permohonan mapped: ${jenisPermohonan}`);
+          
+          if (!jenisPermohonan) {
+            console.error(`❌ [Dukcapil-Verifikasi] Jenis permohonan tidak ditemukan untuk nilai: ${selectedPermohonan.jenis}`);
+            throw new Error(`Jenis permohonan tidak valid: ${selectedPermohonan.jenis}`);
+          }
           
           // Proses validasi dan update KK
           const updateResult = await kkUpdateManager.validateAndUpdateKK(

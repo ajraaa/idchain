@@ -35,7 +35,7 @@ describe("Test Submit Permohonan Pindah", function () {
             1, // idKalurahanAsal
             2, // idKalurahanTujuan
             0, // JenisPindah.PindahSeluruhKeluarga
-            "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
+            ethers.ZeroHash // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
         );
 
         const receipt = await tx.wait();
@@ -65,7 +65,7 @@ describe("Test Submit Permohonan Pindah", function () {
                 1, // idKalurahanAsal
                 2, // idKalurahanTujuan
                 0, // JenisPindah.PindahSeluruhKeluarga
-                "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
+                ethers.ZeroHash // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
             )
         ).to.be.revertedWithCustomError(contract, "OnlyWargaTerdaftar");
 

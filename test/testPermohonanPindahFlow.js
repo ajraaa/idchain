@@ -1,6 +1,11 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
+// Utility function untuk hash NIK
+function hashNIK(nik) {
+    return ethers.keccak256(ethers.toUtf8Bytes(nik));
+}
+
 describe("Test Permohonan Pindah Flow", function () {
     let contract, deployer, kalurahan1, kalurahan2, warga1;
 
@@ -35,7 +40,7 @@ describe("Test Permohonan Pindah Flow", function () {
             1, // idKalurahanAsal
             2, // idKalurahanTujuan
             0, // JenisPindah.PindahSeluruhKeluarga
-            "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
+            ethers.ZeroHash // Hash NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
         );
         await tx1.wait();
         console.log("✅ Permohonan pindah submitted successfully");
@@ -102,7 +107,7 @@ describe("Test Permohonan Pindah Flow", function () {
             1, // idKalurahanAsal
             2, // idKalurahanTujuan
             0, // JenisPindah.PindahSeluruhKeluarga
-            "" // NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
+            ethers.ZeroHash // Hash NIK kepala keluarga tujuan (kosong untuk pindah seluruh keluarga)
         );
 
         // Check kalurahan asal list
@@ -124,5 +129,65 @@ describe("Test Permohonan Pindah Flow", function () {
         expect(permohonanTujuanAfter.length).to.equal(1);
 
         console.log("✅ Permohonan lists test passed!");
+    });
+
+    it("Should complete Pindah Gabung KK flow with hash NIK", async function () {
+        console.log("🚀 Testing Pindah Gabung KK flow with hash NIK...");
+
+        const nikKepalaKeluargaTujuan = "1234567890123456";
+        const nikKepalaKeluargaTujuanHash = hashNIK(nikKepalaKeluargaTujuan);
+
+        console.log("🔐 NIK Kepala Keluarga Tujuan:", nikKepalaKeluargaTujuan);
+        console.log("🔐 NIK Hash:", nikKepalaKeluargaTujuanHash);
+
+        // Step 1: Submit permohonan pindah gabung KK
+        console.log("\n📝 Step 1: Submit permohonan pindah gabung KK...");
+        const tx1 = await contract.connect(warga1).submitPermohonan(
+            4, // JenisPermohonan.Pindah
+            "QmeZkk4mNoyYc2BHavnpBMNmCDoWRDaTCYanp9BWehVugC", // CID IPFS
+            1, // idKalurahanAsal
+            2, // idKalurahanTujuan
+            2, // JenisPindah.PindahGabungKK
+            nikKepalaKeluargaTujuanHash // Hash NIK kepala keluarga tujuan
+        );
+        await tx1.wait();
+        console.log("✅ Permohonan pindah gabung KK submitted successfully");
+
+        // Step 2: Check initial status (should be MenungguKonfirmasiKKTujuan)
+        console.log("\n🔍 Step 2: Check initial status...");
+        const status = await contract.getStatusPermohonan(0);
+        console.log("📋 Initial Status:", status);
+        expect(status).to.equal("Menunggu Konfirmasi KK Tujuan");
+
+        // Step 3: Check if permohonan appears in waiting list for KK
+        console.log("\n🔍 Step 3: Check if permohonan appears in KK waiting list...");
+        const permohonanMenungguKK = await contract.getPermohonanMenungguKonfirmasiKK(nikKepalaKeluargaTujuanHash);
+        console.log("📋 Permohonan menunggu konfirmasi KK:", permohonanMenungguKK);
+        expect(permohonanMenungguKK.length).to.equal(1);
+        expect(permohonanMenungguKK[0]).to.equal(0);
+
+        // Step 4: KK confirms (setuju)
+        console.log("\n✅ Step 4: KK confirms (setuju)...");
+        const tx2 = await contract.connect(warga1).konfirmasiPindahGabungKK(
+            0, // permohonan ID
+            true, // setuju
+            nikKepalaKeluargaTujuanHash // hash NIK
+        );
+        await tx2.wait();
+        console.log("✅ KK confirmation successful");
+
+        // Step 5: Check status after KK confirmation
+        console.log("\n🔍 Step 5: Check status after KK confirmation...");
+        const statusAfterKK = await contract.getStatusPermohonan(0);
+        console.log("📋 Status after KK confirmation:", statusAfterKK);
+        expect(statusAfterKK).to.equal("Dikonfirmasi KK Tujuan");
+
+        // Step 6: Check if permohonan removed from KK waiting list
+        console.log("\n🔍 Step 6: Check if permohonan removed from KK waiting list...");
+        const permohonanMenungguKKAfter = await contract.getPermohonanMenungguKonfirmasiKK(nikKepalaKeluargaTujuanHash);
+        console.log("📋 Permohonan menunggu konfirmasi KK after:", permohonanMenungguKKAfter);
+        expect(permohonanMenungguKKAfter.length).to.equal(0);
+
+        console.log("\n🎉 Pindah Gabung KK flow test passed!");
     });
 }); 
