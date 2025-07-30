@@ -360,27 +360,19 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         uint256 _id,
         bool _disetujui,
         string calldata _alasan,
-        string calldata _cidDokumen
+        string calldata _cidDokumen,
+        string calldata _mappingNIKCID
     ) external onlyDukcapil {
         PencatatanTypes.Permohonan storage p = permohonans[_id];
 
         if (p.jenis == PencatatanTypes.JenisPermohonan.Pindah) {
             require(
-                p.status == PencatatanTypes.Status.DisetujuiKalurahanTujuan ||
-                    p.status == PencatatanTypes.Status.DikonfirmasiKKTujuan,
-                PermohonanPindahBelumDisetujuiKalurahanTujuan()
+                p.status == PencatatanTypes.Status.DisetujuiKalurahanTujuan
             );
             if (p.status == PencatatanTypes.Status.DisetujuiKalurahanTujuan) {
                 _hapusByStatus(
                     _id,
                     PencatatanTypes.Status.DisetujuiKalurahanTujuan
-                );
-            } else if (
-                p.status == PencatatanTypes.Status.DikonfirmasiKKTujuan
-            ) {
-                _hapusByStatus(
-                    _id,
-                    PencatatanTypes.Status.DikonfirmasiKKTujuan
                 );
             }
         } else {
@@ -392,15 +384,37 @@ abstract contract PermohonanManager is KontrolAkses, PencatatanTypes {
         }
 
         if (_disetujui) {
+            // Validasi input untuk permohonan yang disetujui
+            require(
+                bytes(_mappingNIKCID).length > 0,
+                "CID mapping NIK harus diisi"
+            );
+            require(
+                bytes(_cidDokumen).length > 0,
+                "CID dokumen resmi harus diisi"
+            );
+
+            // Validasi format CID (basic validation)
+            require(
+                bytes(_mappingNIKCID).length >= 46,
+                "Format CID mapping NIK tidak valid"
+            );
+            require(
+                bytes(_cidDokumen).length >= 46,
+                "Format CID dokumen tidak valid"
+            );
+
             p.status = PencatatanTypes.Status.DisetujuiDukcapil;
             daftarPermohonanPerStatus[PencatatanTypes.Status.DisetujuiDukcapil]
                 .push(_id);
 
-            // Jika ada CID dokumen, simpan langsung
-            if (bytes(_cidDokumen).length > 0) {
-                cidDokumenResmi[_id] = _cidDokumen;
-                emit DokumenResmiDiunggah(_id, _cidDokumen, block.timestamp);
-            }
+            // Simpan CID dokumen resmi
+            cidDokumenResmi[_id] = _cidDokumen;
+            emit DokumenResmiDiunggah(_id, _cidDokumen, block.timestamp);
+
+            // Update mapping NIK CID
+            nikMappingCID = _mappingNIKCID;
+            emit NikMappingCIDUpdated(_mappingNIKCID);
         } else {
             p.status = PencatatanTypes.Status.DitolakDukcapil;
             p.alasanPenolakan = _alasan;

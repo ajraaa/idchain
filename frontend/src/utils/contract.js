@@ -314,12 +314,12 @@ export class ContractService {
     }
 
     // Tambahkan method verifikasiDukcapil
-    async verifikasiDukcapil(id, disetujui, alasan = '', cidDokumen = '') {
+    async verifikasiDukcapil(id, disetujui, alasan = '', cidDokumen = '', mappingNIKCID = '') {
         if (!this.contract) {
             throw new Error('Contract not initialized');
         }
         try {
-            const tx = await this.contract.verifikasiDukcapil(id, disetujui, alasan, cidDokumen);
+            const tx = await this.contract.verifikasiDukcapil(id, disetujui, alasan, cidDokumen, mappingNIKCID);
             const receipt = await tx.wait();
             return {
                 success: true,
@@ -788,6 +788,35 @@ export class ContractService {
         } catch (error) {
             console.error('Failed to check ada permohonan menunggu konfirmasi:', error);
             return false;
+        }
+    }
+
+    // Upload dokumen resmi ke IPFS
+    async uploadDokumenResmi(file) {
+        if (!file) {
+            throw new Error('File dokumen resmi tidak ditemukan');
+        }
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.REACT_APP_PINATA_JWT}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Gagal upload dokumen resmi ke IPFS');
+            }
+
+            const result = await response.json();
+            return result.IpfsHash;
+        } catch (error) {
+            console.error('Failed to upload dokumen resmi:', error);
+            throw new Error('Gagal upload dokumen resmi ke IPFS');
         }
     }
 } 

@@ -8,6 +8,7 @@ import { loadPermohonanDataForDisplay, downloadEncryptedFile, viewEncryptedFile 
 import { encryptAes256CbcNodeStyle, decryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 import { createKKUpdateManager } from '../utils/kkUpdateManager.js';
+import { loadFromIPFS } from '../utils/ipfs.js';
 
 const sidebarMenus = [
   { key: 'kalurahan', label: 'Kelola Kalurahan', icon: <FaBuilding /> },
@@ -452,10 +453,10 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
       console.log(`📋 [Dukcapil-Verifikasi] Status: ${isSetuju ? 'Setuju' : 'Tolak'}`);
       console.log(`📋 [Dukcapil-Verifikasi] Alasan: ${alasanPenolakan}`);
       
-      let cidDokumen = ""; // Default kosong untuk penolakan
-      
-      // Jika setuju, upload dokumen resmi terlebih dahulu
       if (isSetuju) {
+        // ===== ALUR UNTUK PERMOHONAN DISETUJUI =====
+        
+        // 1. Validasi file dokumen resmi
         const fileInput = document.getElementById('dokumen-resmi-file');
         if (!fileInput.files || fileInput.files.length === 0) {
           console.error('❌ [Dukcapil-Verifikasi] File dokumen resmi tidak dipilih!');
@@ -469,22 +470,16 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         
         // Validasi file dokumen resmi (harus PDF)
         const validateDokumenResmi = (file) => {
-          // Cek MIME type
           if (file.type !== 'application/pdf') {
             return 'File harus berformat PDF';
           }
-          
-          // Cek ekstensi file
           if (!file.name.toLowerCase().endsWith('.pdf')) {
             return 'File harus berekstensi .pdf';
           }
-          
-          // Cek ukuran file (maksimal 10MB)
           const maxSize = 10 * 1024 * 1024; // 10MB
           if (file.size > maxSize) {
             return 'Ukuran file maksimal 10MB';
           }
-          
           return null; // File valid
         };
         
@@ -498,112 +493,143 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         
         console.log(`✅ [Dukcapil-Verifikasi] File valid: PDF dokumen resmi`);
         
-        // Upload dokumen resmi ke IPFS
-        console.log(`☁️ [Dukcapil-Verifikasi] Upload dokumen resmi ke IPFS...`);
-        const uploadStartTime = Date.now();
-        
-        // 1. Baca file sebagai ArrayBuffer dan ubah ke string base64
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const binaryString = String.fromCharCode.apply(null, uint8Array);
-        const base64Data = btoa(binaryString);
-        console.log(`✅ [Dukcapil-Verifikasi] File converted to base64 (${base64Data.length} chars)`);
-        
-        // 2. Enkripsi file pakai secret key
-        const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
-        console.log(`✅ [Dukcapil-Verifikasi] File encrypted (${encrypted.length} chars)`);
-        
-        // 3. Upload ke IPFS dengan nama random UUID.enc
-        const fileName = `${generateUUID()}.enc`;
-        console.log(`📁 [Dukcapil-Verifikasi] Upload dengan nama file: ${fileName}`);
-        cidDokumen = await uploadToPinata(encrypted, fileName);
-        const uploadEndTime = Date.now();
-        console.log(`✅ [Dukcapil-Verifikasi] Dokumen resmi uploaded ke IPFS dalam ${uploadEndTime - uploadStartTime}ms`);
-        console.log(`🔗 [Dukcapil-Verifikasi] IPFS CID: ${cidDokumen}`);
-      }
-      
-      // Satu transaksi untuk verifikasi + upload dokumen
-      console.log(`📜 [Dukcapil-Verifikasi] Verifikasi di smart contract dengan CID dokumen...`);
-      const verifyStartTime = Date.now();
-      const result = await contractService.verifikasiDukcapil(
-        selectedPermohonan.id,
-        isSetuju,
-        alasanPenolakan || '',
-        cidDokumen
-      );
-      const verifyEndTime = Date.now();
-      console.log(`✅ [Dukcapil-Verifikasi] Smart contract verifikasi berhasil dalam ${verifyEndTime - verifyStartTime}ms`);
-      
-      // Jika disetujui, proses update KK dengan validasi dan riwayat
-      if (isSetuju) {
-        console.log(`🔄 [Dukcapil-Verifikasi] Memproses update KK setelah persetujuan...`);
-        
+        // 2. Proses update KK (jika gagal, STOP)
+        console.log(`🔄 [Dukcapil-Verifikasi] Memproses update KK...`);
+        let kkUpdateResult;
         try {
-          // Buat KK Update Manager
           const kkUpdateManager = createKKUpdateManager(contractService);
           
           // Tentukan jenis permohonan
-          console.log(`🔍 [Dukcapil-Verifikasi] selectedPermohonan.jenis:`, selectedPermohonan.jenis);
-          console.log(`🔍 [Dukcapil-Verifikasi] typeof selectedPermohonan.jenis:`, typeof selectedPermohonan.jenis);
-          
-          // Jika smart contract sudah mengembalikan string langsung, gunakan langsung
           let jenisPermohonan = selectedPermohonan.jenis;
-          
-          // Jika smart contract mengembalikan angka, lakukan mapping
           if (typeof selectedPermohonan.jenis === 'number' || !isNaN(parseInt(selectedPermohonan.jenis))) {
             const jenisPermohonanMap = {
-              '0': 'Kelahiran',
-              '1': 'Kematian',
-              '2': 'Perkawinan',
-              '3': 'Perceraian',
-              '4': 'Pindah',
-              0: 'Kelahiran',
-              1: 'Kematian',
-              2: 'Perkawinan',
-              3: 'Perceraian',
-              4: 'Pindah'
+              '0': 'Kelahiran', '1': 'Kematian', '2': 'Perkawinan', '3': 'Perceraian', '4': 'Pindah',
+              0: 'Kelahiran', 1: 'Kematian', 2: 'Perkawinan', 3: 'Perceraian', 4: 'Pindah'
             };
-            
             jenisPermohonan = jenisPermohonanMap[selectedPermohonan.jenis];
           }
           
-          console.log(`📋 [Dukcapil-Verifikasi] Jenis permohonan mapped: ${jenisPermohonan}`);
-          
           if (!jenisPermohonan) {
-            console.error(`❌ [Dukcapil-Verifikasi] Jenis permohonan tidak ditemukan untuk nilai: ${selectedPermohonan.jenis}`);
             throw new Error(`Jenis permohonan tidak valid: ${selectedPermohonan.jenis}`);
           }
           
-          // Proses validasi dan update KK
-          const updateResult = await kkUpdateManager.validateAndUpdateKK(
+          kkUpdateResult = await kkUpdateManager.validateAndUpdateKK(
             selectedPermohonan.cidIPFS,
             jenisPermohonan
           );
           
-          if (updateResult.success) {
-            console.log(`✅ [Dukcapil-Verifikasi] KK berhasil diupdate dengan riwayat`);
-            console.log(`📋 [Dukcapil-Verifikasi] Update result:`, updateResult.result);
-            
-            // Tampilkan notifikasi sukses dengan detail
-            const successMessage = `Permohonan ${selectedPermohonan.id} disetujui dan KK berhasil diupdate!`;
-            onSuccess(successMessage);
-          } else {
-            console.error(`❌ [Dukcapil-Verifikasi] Gagal update KK:`, updateResult.error);
-            
-            // Tampilkan warning tapi tidak gagalkan verifikasi
-            const warningMessage = `Permohonan disetujui, tetapi ada masalah saat update KK: ${updateResult.error}`;
-            onError(warningMessage);
+          if (!kkUpdateResult.success) {
+            throw new Error(`Gagal update KK: ${kkUpdateResult.error}`);
           }
-        } catch (updateError) {
-          console.error(`❌ [Dukcapil-Verifikasi] Error saat update KK:`, updateError);
           
-          // Tampilkan warning tapi tidak gagalkan verifikasi
-          const warningMessage = `Permohonan disetujui, tetapi ada masalah saat update KK: ${updateError.message}`;
-          onError(warningMessage);
+          console.log(`✅ [Dukcapil-Verifikasi] KK berhasil diupdate`);
+        } catch (kkError) {
+          console.error(`❌ [Dukcapil-Verifikasi] Gagal update KK:`, kkError);
+          onError(`Gagal update KK: ${kkError.message}`);
+          setIsVerifying(false);
+          return;
         }
+        
+        // 3. Update mapping NIK (jika gagal, STOP)
+        console.log(`🔄 [Dukcapil-Verifikasi] Memproses update mapping NIK...`);
+        let mappingNIKCID;
+        try {
+          // Load mapping NIK dari IPFS
+          const currentMappingCID = await contractService.getNikMappingCID();
+          const mapping = await loadFromIPFS(currentMappingCID);
+          
+          // Update mapping sesuai hasil KK update
+          const updatedMapping = { ...mapping };
+          
+          // Update mapping berdasarkan jenis permohonan
+          if (kkUpdateResult.result && kkUpdateResult.result.newKKData) {
+            const newKKData = kkUpdateResult.result.newKKData;
+            const newNIKs = newKKData.anggota.map(anggota => anggota.nik);
+            
+            // Update mapping untuk NIK yang ada di KK baru
+            newNIKs.forEach(nik => {
+              if (nik) {
+                updatedMapping[nik] = kkUpdateResult.result.newKKCID;
+              }
+            });
+          }
+          
+          // Upload mapping NIK yang sudah diupdate
+          const encryptedMapping = await encryptAes256CbcNodeStyle(
+            JSON.stringify(updatedMapping),
+            CRYPTO_CONFIG.SECRET_KEY
+          );
+          mappingNIKCID = await uploadToPinata(encryptedMapping, 'nik-mapping.json.enc');
+          
+          console.log(`✅ [Dukcapil-Verifikasi] Mapping NIK berhasil diupdate`);
+        } catch (mappingError) {
+          console.error(`❌ [Dukcapil-Verifikasi] Gagal update mapping NIK:`, mappingError);
+          onError(`Gagal update mapping NIK: ${mappingError.message}`);
+          setIsVerifying(false);
+          return;
+        }
+        
+        // 4. Upload dokumen resmi (jika gagal, STOP)
+        console.log(`🔄 [Dukcapil-Verifikasi] Upload dokumen resmi...`);
+        let cidDokumen;
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          const binaryString = String.fromCharCode.apply(null, uint8Array);
+          const base64Data = btoa(binaryString);
+          const encrypted = await encryptAes256CbcNodeStyle(base64Data, CRYPTO_CONFIG.SECRET_KEY);
+          const fileName = `${generateUUID()}.enc`;
+          cidDokumen = await uploadToPinata(encrypted, fileName);
+          
+          console.log(`✅ [Dukcapil-Verifikasi] Dokumen resmi berhasil diupload`);
+        } catch (dokumenError) {
+          console.error(`❌ [Dukcapil-Verifikasi] Gagal upload dokumen resmi:`, dokumenError);
+          onError(`Gagal upload dokumen resmi: ${dokumenError.message}`);
+          setIsVerifying(false);
+          return;
+        }
+        
+        // 5. Panggil smart contract dengan semua CID
+        console.log(`📜 [Dukcapil-Verifikasi] Panggil smart contract...`);
+        try {
+          const result = await contractService.verifikasiDukcapil(
+            selectedPermohonan.id,
+            isSetuju,
+            alasanPenolakan || '',
+            cidDokumen,
+            mappingNIKCID
+          );
+          
+          console.log(`✅ [Dukcapil-Verifikasi] Smart contract berhasil dipanggil`);
+          onSuccess(`Permohonan ${selectedPermohonan.id} disetujui dan KK berhasil diupdate!`);
+        } catch (contractError) {
+          console.error(`❌ [Dukcapil-Verifikasi] Gagal panggil smart contract:`, contractError);
+          onError(`Gagal panggil smart contract: ${contractError.message}`);
+          setIsVerifying(false);
+          return;
+        }
+        
       } else {
-        // Jika ditolak, tampilkan pesan biasa
-        onSuccess(`Permohonan ${selectedPermohonan.id} ditolak oleh Dukcapil!`);
+        // ===== ALUR UNTUK PERMOHONAN DITOLAK =====
+        console.log(`📜 [Dukcapil-Verifikasi] Panggil smart contract untuk penolakan...`);
+        
+        try {
+          const result = await contractService.verifikasiDukcapil(
+            selectedPermohonan.id,
+            isSetuju,
+            alasanPenolakan || '',
+            '',  // Empty string untuk dokumen resmi
+            ''   // Empty string untuk mapping CID
+          );
+          
+          console.log(`✅ [Dukcapil-Verifikasi] Smart contract berhasil dipanggil`);
+          onSuccess(`Permohonan ${selectedPermohonan.id} ditolak oleh Dukcapil!`);
+        } catch (contractError) {
+          console.error(`❌ [Dukcapil-Verifikasi] Gagal panggil smart contract:`, contractError);
+          onError(`Gagal panggil smart contract: ${contractError.message}`);
+          setIsVerifying(false);
+          return;
+        }
       }
       
       const totalTime = Date.now() - startTime;
