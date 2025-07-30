@@ -233,6 +233,13 @@ export const updateKKKelahiran = async (kkAsal, dataAnak, oldKKCID, existingHist
     const nikAnak = dataAnak.nik || generateNIKFromKelahiran(dataAnak);
     console.log('🔍 [KK-History] Generated NIK for child:', nikAnak);
 
+    // Cari data ayah untuk mendapatkan agamanya
+    const ayah = kkAsal.anggota.find(anggota => anggota.nik === dataAnak.nikAyah);
+    const agamaAyah = ayah ? ayah.agama : 'Islam'; // Default ke Islam jika ayah tidak ditemukan
+
+    console.log('🔍 [KK-History] Agama ayah:', agamaAyah);
+    console.log('🔍 [KK-History] Data ayah:', ayah);
+
     // Buat KK baru dengan anak
     const kkBaru = {
         ...kkAsal,
@@ -242,7 +249,7 @@ export const updateKKKelahiran = async (kkAsal, dataAnak, oldKKCID, existingHist
             tempatLahir: dataAnak.tempatLahir,
             tanggalLahir: dataAnak.tanggalLahir,
             jenisKelamin: dataAnak.jenisKelamin || 'L', // Default jika tidak ada
-            agama: dataAnak.agama || 'Islam',
+            agama: agamaAyah, // Agama anak mengikuti agama ayah
             pendidikan: dataAnak.pendidikan || 'BELUM TAMAT SD/SEDERAJAT',
             jenisPekerjaan: dataAnak.jenisPekerjaan || 'BELUM/TIDAK BEKERJA',
             statusPernikahan: 'BELUM KAWIN', // Gunakan statusPernikahan bukan statusPerkawinan
