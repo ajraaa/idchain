@@ -559,7 +559,8 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
             JSON.stringify(updatedMapping),
             CRYPTO_CONFIG.SECRET_KEY
           );
-          mappingNIKCID = await uploadToPinata(encryptedMapping, 'nik-mapping.json.enc');
+          const mappingFileName = `${generateUUID()}.enc`;
+          mappingNIKCID = await uploadToPinata(encryptedMapping, mappingFileName);
           
           console.log(`✅ [Dukcapil-Verifikasi] Mapping NIK berhasil diupdate`);
         } catch (mappingError) {
