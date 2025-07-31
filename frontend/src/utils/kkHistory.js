@@ -176,40 +176,44 @@ export const updateKKWithHistory = async (kkData, jenisPerubahan, detailPerubaha
         console.log('🔄 [KK-History] Starting KK update with history...');
         console.log('📋 [KK-History] Old KK CID:', oldKKCID || 'null (KK baru)');
 
-        // 1. Upload KK baru (KK lama tidak perlu diupload ulang, gunakan CID yang ada)
-        const encryptedKK = await encryptAes256CbcNodeStyle(
-            JSON.stringify(kkData),
-            CRYPTO_CONFIG.SECRET_KEY
-        );
-
-        const fileName = `${generateUUID()}.enc`;
-        const newCID = await uploadToPinata(encryptedKK, fileName);
-        console.log('✅ [KK-History] New KK uploaded:', newCID);
-
-        // 2. Buat entri riwayat dengan CID KK lama yang sudah ada (atau null untuk KK baru)
+        // 1. Buat entri riwayat dengan CID KK lama yang sudah ada (atau null untuk KK baru)
         const historyEntry = createHistoryEntry(
             kkData,
             jenisPerubahan,
             detailPerubahan,
             oldKKCID, // Bisa null untuk KK baru
-            newCID
+            null // newCID akan diisi setelah upload
         );
 
-        // 3. Update riwayat
+        // 2. Update riwayat
         const updatedHistory = updateKKHistory(existingHistory, historyEntry);
 
-        // 4. Upload riwayat yang diupdate
-        const historyCID = await uploadKKHistory(updatedHistory, kkData.kk);
-        console.log('✅ [KK-History] History updated:', historyCID);
+        // 3. Tambahkan history ke dalam KK data
+        const kkDataWithHistory = {
+            ...kkData,
+            history: updatedHistory
+        };
+
+        // 4. Upload KK baru dengan history di dalamnya
+        const encryptedKK = await encryptAes256CbcNodeStyle(
+            JSON.stringify(kkDataWithHistory),
+            CRYPTO_CONFIG.SECRET_KEY
+        );
+
+        const fileName = `${generateUUID()}.enc`;
+        const newCID = await uploadToPinata(encryptedKK, fileName);
+        console.log('✅ [KK-History] New KK with history uploaded:', newCID);
+
+        // 5. Update history entry dengan newCID yang baru
+        historyEntry.newKKCID = newCID;
 
         return {
             success: true,
             newKKCID: newCID,
             oldKKCID: oldKKCID, // Return CID KK lama untuk referensi (atau null)
-            historyCID: historyCID,
             historyEntry: historyEntry,
             updatedHistory: updatedHistory,
-            newKKData: kkData // Return data KK baru untuk referensi
+            newKKData: kkDataWithHistory // Return data KK baru dengan history untuk referensi
         };
 
     } catch (error) {
@@ -226,7 +230,7 @@ export const updateKKWithHistory = async (kkData, jenisPerubahan, detailPerubaha
  * @param {Array} existingHistory - Riwayat yang sudah ada
  * @returns {Promise<Object>} - Hasil update
  */
-export const updateKKKelahiran = async (kkAsal, dataAnak, oldKKCID, existingHistory = []) => {
+export const updateKKKelahiran = async (kkAsal, dataAnak, oldKKCID) => {
     console.log('🔍 [KK-History] Creating new KK for kelahiran with data:', JSON.stringify(dataAnak, null, 2));
 
     // Generate NIK valid untuk anak baru lahir jika belum ada
@@ -277,6 +281,8 @@ export const updateKKKelahiran = async (kkAsal, dataAnak, oldKKCID, existingHist
         alamatSesudah: kkBaru.alamatLengkap
     };
 
+    // Ambil history dari KK asal jika ada
+    const existingHistory = kkAsal.history || [];
     return await updateKKWithHistory(kkBaru, KK_HISTORY_TYPES.KELAHIRAN, detailPerubahan, oldKKCID, existingHistory);
 };
 
@@ -664,19 +670,41 @@ const updateKKPindahGabung = async (kkAsal, dataPindah, oldKKCID, existingHistor
 };
 
 /**
- * Load riwayat KK dari IPFS
+ * Load riwayat KK dari dalam KK data
+ * @param {Object} kkData - Data KK yang sudah didekripsi
+ * @returns {Array} - Data riwayat
+ */
+export const loadKKHistory = (kkData) => {
+    try {
+        console.log('📋 [KK-History] Loading history from KK data');
+
+        // History sekarang disimpan langsung di dalam KK data
+        if (kkData && kkData.history && Array.isArray(kkData.history)) {
+            console.log('✅ [KK-History] History found in KK data:', kkData.history.length, 'entries');
+            return kkData.history;
+        } else {
+            console.log('📋 [KK-History] No history found in KK data, returning empty array');
+            return [];
+        }
+    } catch (error) {
+        console.error('❌ [KK-History] Failed to load history from KK data:', error);
+        return [];
+    }
+};
+
+/**
+ * Load riwayat KK dari CID (legacy function untuk backward compatibility)
  * @param {string} historyCID - CID riwayat
  * @param {Object} contractService - Service untuk dekripsi
  * @returns {Promise<Array>} - Data riwayat
  */
-export const loadKKHistory = async (historyCID, contractService) => {
+export const loadKKHistoryFromCID = async (historyCID, contractService) => {
     try {
-        // Implementasi load dan dekripsi riwayat
-        // Ini akan diimplementasikan sesuai dengan struktur yang ada
-        console.log('📋 [KK-History] Loading history from CID:', historyCID);
+        console.log('📋 [KK-History] Loading history from CID (legacy):', historyCID);
+        // Implementasi load dan dekripsi riwayat dari CID (untuk data lama)
         return [];
     } catch (error) {
-        console.error('❌ [KK-History] Failed to load history:', error);
+        console.error('❌ [KK-History] Failed to load history from CID:', error);
         return [];
     }
 };
