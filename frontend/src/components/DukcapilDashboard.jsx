@@ -8,7 +8,7 @@ import { loadPermohonanDataForDisplay, downloadEncryptedFile, viewEncryptedFile 
 import { encryptAes256CbcNodeStyle, decryptAes256CbcNodeStyle } from '../utils/crypto.js';
 import { CRYPTO_CONFIG } from '../config/crypto.js';
 import { createKKUpdateManager } from '../utils/kkUpdateManager.js';
-import { loadFromIPFS } from '../utils/ipfs.js';
+import { fetchFromIPFS } from '../utils/ipfs.js';
 
 const sidebarMenus = [
   { key: 'kalurahan', label: 'Kelola Kalurahan', icon: <FaBuilding /> },
@@ -536,7 +536,8 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         try {
           // Load mapping NIK dari IPFS
           const currentMappingCID = await contractService.getNikMappingCID();
-          const mapping = await loadFromIPFS(currentMappingCID);
+          const encryptedMappingData = await fetchFromIPFS(currentMappingCID);
+          const mapping = await decryptAes256CbcNodeStyle(encryptedMappingData, CRYPTO_CONFIG.SECRET_KEY);
           
           // Update mapping sesuai hasil KK update
           const updatedMapping = { ...mapping };
@@ -594,7 +595,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         console.log(`📜 [Dukcapil-Verifikasi] Panggil smart contract...`);
         try {
           const result = await contractService.verifikasiDukcapil(
-            selectedPermohonan.id,
+            Number(selectedPermohonan.id),
             isSetuju,
             alasanPenolakan || '',
             cidDokumen,
@@ -616,7 +617,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
         
         try {
           const result = await contractService.verifikasiDukcapil(
-            selectedPermohonan.id,
+            Number(selectedPermohonan.id),
             isSetuju,
             alasanPenolakan || '',
             '',  // Empty string untuk dokumen resmi
