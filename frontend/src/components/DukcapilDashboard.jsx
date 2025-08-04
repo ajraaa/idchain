@@ -303,7 +303,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
 
   const handleRemoveKalurahan = async (addressToRemove) => {
     if (!addressToRemove.trim()) {
-      onError('Alamat wallet Kalurahan wajib diisi');
+      onError('Alamat wallet Kalurahan wajib diisi!');
       return;
     }
     // Validasi: address harus ada di mapping
