@@ -530,43 +530,23 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
           return;
         }
         
-        // 3. Update mapping NIK (jika gagal, STOP)
-        console.log(`🔄 [Dukcapil-Verifikasi] Memproses update mapping NIK...`);
+        // 3. Ambil CID mapping NIK dari hasil KK update
+        console.log(`🔄 [Dukcapil-Verifikasi] Mengambil CID mapping NIK dari hasil update...`);
         let mappingNIKCID;
         try {
-          // Load mapping NIK dari IPFS
-          const currentMappingCID = await contractService.getNikMappingCID();
-          const encryptedMappingData = await fetchFromIPFS(currentMappingCID);
-          const mapping = await decryptAes256CbcNodeStyle(encryptedMappingData, CRYPTO_CONFIG.SECRET_KEY);
-          
-          // Update mapping sesuai hasil KK update
-          const updatedMapping = { ...mapping };
-          
-          // Update mapping berdasarkan jenis permohonan
-          if (kkUpdateResult.result && kkUpdateResult.result.newKKData) {
-            const newKKData = kkUpdateResult.result.newKKData;
-            const newNIKs = newKKData.anggota.map(anggota => anggota.nik);
-            
-            // Update mapping untuk NIK yang ada di KK baru
-            newNIKs.forEach(nik => {
-              if (nik) {
-                updatedMapping[nik] = kkUpdateResult.result.newKKCID;
-              }
-            });
+          // Ambil CID mapping NIK dari hasil kkUpdateManager
+          if (kkUpdateResult.result && kkUpdateResult.result.mappingCID) {
+            mappingNIKCID = kkUpdateResult.result.mappingCID;
+            console.log(`✅ [Dukcapil-Verifikasi] CID mapping NIK dari kkUpdateManager: ${mappingNIKCID}`);
+          } else {
+            // Fallback: ambil dari smart contract jika tidak ada di result
+            const mappingCID = await contractService.getNikMappingCID();
+            mappingNIKCID = mappingCID;
+            console.log(`✅ [Dukcapil-Verifikasi] CID mapping NIK dari smart contract: ${mappingNIKCID}`);
           }
-          
-          // Upload mapping NIK yang sudah diupdate
-          const encryptedMapping = await encryptAes256CbcNodeStyle(
-            JSON.stringify(updatedMapping),
-            CRYPTO_CONFIG.SECRET_KEY
-          );
-          const mappingFileName = `${generateUUID()}.enc`;
-          mappingNIKCID = await uploadToPinata(encryptedMapping, mappingFileName);
-          
-          console.log(`✅ [Dukcapil-Verifikasi] Mapping NIK berhasil diupdate`);
         } catch (mappingError) {
-          console.error(`❌ [Dukcapil-Verifikasi] Gagal update mapping NIK:`, mappingError);
-          onError(`Gagal update mapping NIK: ${mappingError.message}`);
+          console.error(`❌ [Dukcapil-Verifikasi] Gagal mengambil CID mapping NIK:`, mappingError);
+          onError(`Gagal mengambil CID mapping NIK: ${mappingError.message}`);
           setIsVerifying(false);
           return;
         }

@@ -9,7 +9,8 @@ import {
     updateKKPerceraian,
     updateKKPindah,
     updateKKWithHistory,
-    KK_HISTORY_TYPES
+    KK_HISTORY_TYPES,
+    generateUUID
 } from './kkHistory.js';
 import { loadNIKMapping, fetchFromIPFS } from './ipfs.js';
 import { uploadToPinata } from './pinata.js';
@@ -95,15 +96,26 @@ export class KKUpdateManager {
      * @param {Object} mapping - Mapping yang sudah ada
      * @param {Array} nikList - List NIK yang perlu diupdate
      * @param {string} newCID - CID baru
+     * @param {Array} nikToRemove - List NIK yang perlu dihapus dari mapping (opsional)
      * @returns {Promise<Object>} - Mapping yang diupdate
      */
-    async updateNIKMapping(mapping, nikList, newCID) {
+    async updateNIKMapping(mapping, nikList, newCID, nikToRemove = []) {
         try {
             console.log('🔄 [KK-Update] Updating NIK mapping for:', nikList);
+            if (nikToRemove.length > 0) {
+                console.log('🗑️ [KK-Update] Removing NIKs from mapping:', nikToRemove);
+            }
 
             const updatedMapping = { ...mapping };
+
+            // Update NIK yang ada
             nikList.forEach(nik => {
                 updatedMapping[nik] = newCID;
+            });
+
+            // Hapus NIK yang tidak diperlukan
+            nikToRemove.forEach(nik => {
+                delete updatedMapping[nik];
             });
 
             // Upload mapping baru ke IPFS
@@ -112,13 +124,61 @@ export class KKUpdateManager {
                 CRYPTO_CONFIG.SECRET_KEY
             );
 
-            const fileName = `nik_mapping_${new Date().toISOString().split('T')[0]}.json`;
+            const fileName = `${generateUUID()}.enc`;
             const mappingCID = await uploadToPinata(encryptedMapping, fileName);
 
             console.log('✅ [KK-Update] NIK mapping uploaded to IPFS:', mappingCID);
-            return updatedMapping;
+            return { updatedMapping, mappingCID };
         } catch (error) {
             console.error('❌ [KK-Update] Failed to update NIK mapping:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update mapping NIK dengan multiple changes dalam satu operasi
+     * @param {Object} mapping - Mapping yang sudah ada
+     * @param {Array} changes - Array of changes: [{nikList, newCID, nikToRemove}]
+     * @returns {Promise<Object>} - Mapping yang diupdate
+     */
+    async updateNIKMappingBatch(mapping, changes) {
+        try {
+            console.log('🔄 [KK-Update] Batch updating NIK mapping for:', changes.length, 'changes');
+
+            const updatedMapping = { ...mapping };
+
+            // Apply all changes
+            changes.forEach((change, index) => {
+                console.log(`📝 [KK-Update] Applying change ${index + 1}:`, change);
+
+                // Update NIK yang ada
+                if (change.nikList) {
+                    change.nikList.forEach(nik => {
+                        updatedMapping[nik] = change.newCID;
+                    });
+                }
+
+                // Hapus NIK yang tidak diperlukan
+                if (change.nikToRemove) {
+                    change.nikToRemove.forEach(nik => {
+                        delete updatedMapping[nik];
+                    });
+                }
+            });
+
+            // Upload mapping baru ke IPFS
+            const encryptedMapping = await encryptAes256CbcNodeStyle(
+                JSON.stringify(updatedMapping),
+                CRYPTO_CONFIG.SECRET_KEY
+            );
+
+            const fileName = `${generateUUID()}.enc`;
+            const mappingCID = await uploadToPinata(encryptedMapping, fileName);
+
+            console.log('✅ [KK-Update] Batch NIK mapping uploaded to IPFS:', mappingCID);
+            return { updatedMapping, mappingCID };
+        } catch (error) {
+            console.error('❌ [KK-Update] Failed to batch update NIK mapping:', error);
             throw error;
         }
     }
@@ -174,7 +234,8 @@ export class KKUpdateManager {
                     nikList.push(anakBaru.nik);
                 }
             }
-            await this.updateNIKMapping(mapping, nikList, result.newKKCID);
+            const mappingResult = await this.updateNIKMapping(mapping, nikList, result.newKKCID);
+            result.mappingCID = mappingResult.mappingCID;
 
             console.log('✅ [KK-Update] Kelahiran processed successfully');
             return result;
@@ -217,9 +278,11 @@ export class KKUpdateManager {
             // Update KK dengan riwayat
             const result = await updateKKKematian(kkAsal, dataKematian, oldKKCID);
 
-            // Update mapping NIK
+            // Update mapping NIK - update yang masih hidup dan hapus yang meninggal
             const nikList = kkAsal.anggota.filter(a => a.nik !== dataKematian.nikAlmarhum).map(a => a.nik);
-            await this.updateNIKMapping(mapping, nikList, result.newKKCID);
+            const nikToRemove = [dataKematian.nikAlmarhum]; // Hapus NIK almarhum dari mapping
+            const mappingResult = await this.updateNIKMapping(mapping, nikList, result.newKKCID, nikToRemove);
+            result.mappingCID = mappingResult.mappingCID;
 
             console.log('✅ [KK-Update] Kematian processed successfully');
             return result;
@@ -255,14 +318,24 @@ export class KKUpdateManager {
             // Update KK dengan riwayat
             const result = await updateKKPerkawinan(kkSuami, kkIstri, dataPerkawinan, oldKKSuamiCID, oldKKIstriCID);
 
-            // Update mapping NIK untuk semua KK yang terpengaruh
-            const nikListSuami = kkSuami.anggota.filter(a => a.nik !== dataPerkawinan.nikPria).map(a => a.nik);
-            const nikListIstri = kkIstri.anggota.filter(a => a.nik !== dataPerkawinan.nikWanita).map(a => a.nik);
-            const nikListBaru = [dataPerkawinan.nikPria, dataPerkawinan.nikWanita];
+            // Update mapping NIK untuk semua KK yang terpengaruh dalam satu operasi
+            const changes = [
+                {
+                    nikList: kkSuami.anggota.filter(a => a.nik !== dataPerkawinan.nikPria).map(a => a.nik),
+                    newCID: result.kkSuamiUpdate.newKKCID
+                },
+                {
+                    nikList: kkIstri.anggota.filter(a => a.nik !== dataPerkawinan.nikWanita).map(a => a.nik),
+                    newCID: result.kkIstriUpdate.newKKCID
+                },
+                {
+                    nikList: [dataPerkawinan.nikPria, dataPerkawinan.nikWanita],
+                    newCID: result.kkBaru.newKKCID
+                }
+            ];
 
-            await this.updateNIKMapping(mapping, nikListSuami, result.kkSuamiUpdate.newKKCID);
-            await this.updateNIKMapping(mapping, nikListIstri, result.kkIstriUpdate.newKKCID);
-            await this.updateNIKMapping(mapping, nikListBaru, result.kkBaru.newKKCID);
+            const mappingResult = await this.updateNIKMappingBatch(mapping, changes);
+            result.mappingCID = mappingResult.mappingCID;
 
             console.log('✅ [KK-Update] Perkawinan processed successfully');
             return result;
@@ -305,12 +378,20 @@ export class KKUpdateManager {
             // Update KK dengan riwayat
             const result = await updateKKPerceraian(kkAsal, dataPerceraian, oldKKCID);
 
-            // Update mapping NIK
-            const nikListSuami = kkAsal.anggota.filter(a => a.nik !== dataPerceraian.nikIstri).map(a => a.nik);
-            const nikListIstri = [dataPerceraian.nikIstri];
+            // Update mapping NIK dalam satu operasi
+            const changes = [
+                {
+                    nikList: kkAsal.anggota.filter(a => a.nik !== dataPerceraian.nikIstri).map(a => a.nik),
+                    newCID: result.kkSuamiUpdate.newKKCID
+                },
+                {
+                    nikList: [dataPerceraian.nikIstri],
+                    newCID: result.kkIstriBaru.newKKCID
+                }
+            ];
 
-            await this.updateNIKMapping(mapping, nikListSuami, result.kkSuamiUpdate.newKKCID);
-            await this.updateNIKMapping(mapping, nikListIstri, result.kkIstriBaru.newKKCID);
+            const mappingResult = await this.updateNIKMappingBatch(mapping, changes);
+            result.mappingCID = mappingResult.mappingCID;
 
             console.log('✅ [KK-Update] Perceraian processed successfully');
             return result;
@@ -357,16 +438,29 @@ export class KKUpdateManager {
             // Update mapping NIK sesuai jenis pindah
             if (jenisPindah === '0') { // Pindah seluruh keluarga
                 const nikList = kkAsal.anggota.map(a => a.nik);
-                await this.updateNIKMapping(mapping, nikList, result.newKKCID);
+                const mappingResult = await this.updateNIKMapping(mapping, nikList, result.newKKCID);
+                result.mappingCID = mappingResult.mappingCID;
             } else if (jenisPindah === '1') { // Pindah mandiri
                 const nikListTinggal = kkAsal.anggota.filter(a => !dataPindah.anggotaPindah.includes(a.nik)).map(a => a.nik);
                 const nikListPindah = dataPindah.anggotaPindah;
 
-                await this.updateNIKMapping(mapping, nikListTinggal, result.kkAsalUpdate.newKKCID);
-                await this.updateNIKMapping(mapping, nikListPindah, result.kkBaru.newKKCID);
+                const changes = [
+                    {
+                        nikList: nikListTinggal,
+                        newCID: result.kkAsalUpdate.newKKCID
+                    },
+                    {
+                        nikList: nikListPindah,
+                        newCID: result.kkBaru.newKKCID
+                    }
+                ];
+
+                const mappingResult = await this.updateNIKMappingBatch(mapping, changes);
+                result.mappingCID = mappingResult.mappingCID;
             } else if (jenisPindah === '2') { // Pindah gabung KK
                 const nikListTinggal = kkAsal.anggota.filter(a => !dataPindah.anggotaPindah.includes(a.nik)).map(a => a.nik);
-                await this.updateNIKMapping(mapping, nikListTinggal, result.kkAsalUpdate.newKKCID);
+                const mappingResult = await this.updateNIKMapping(mapping, nikListTinggal, result.kkAsalUpdate.newKKCID);
+                result.mappingCID = mappingResult.mappingCID;
                 // KK tujuan akan diupdate terpisah
             }
 
@@ -422,7 +516,8 @@ export class KKUpdateManager {
 
             // Update mapping NIK
             const nikList = kkTujuan.anggota.map(a => a.nik).concat(anggotaPindah.map(a => a.nik));
-            await this.updateNIKMapping(mapping, nikList, result.newKKCID);
+            const mappingResult = await this.updateNIKMapping(mapping, nikList, result.newKKCID);
+            result.mappingCID = mappingResult.mappingCID;
 
             console.log('✅ [KK-Update] Pindah gabung KK tujuan processed successfully');
             return result;
