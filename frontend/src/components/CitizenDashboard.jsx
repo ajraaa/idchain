@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaUser, FaFileAlt, FaList, FaDownload, FaPowerOff, FaBell } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import { handleContractError } from '../utils/errorHandler.js';
@@ -121,6 +121,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
 
   // Loading state untuk NIK lookup
   const [isLookingUpNIK, setIsLookingUpNIK] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(null);
+  const [failedRefreshCount, setFailedRefreshCount] = useState(0);
+  
+  // Use refs untuk melacak state yang selalu up-to-date dalam interval
+  const dataLoadedRef = useRef(false);
+  const lastRefreshTimeRef = useRef(null);
+  const failedRefreshCountRef = useRef(0);
 
   // Helper function untuk generate UUID
   const generateUUID = () => {
@@ -138,23 +146,98 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
   // Load citizen data on component mount
   useEffect(() => {
     if (contractService && walletAddress) {
+      // Reset state ketika wallet berubah
+      setDataLoaded(false);
+      setLastRefreshTime(null);
+      setFailedRefreshCount(0);
+      
+      // Reset refs juga
+      dataLoadedRef.current = false;
+      lastRefreshTimeRef.current = null;
+      failedRefreshCountRef.current = 0;
+      
       loadCitizenData();
       loadDaftarPermohonan();
       loadDokumenResmi();
+      
+      // Set up auto-refresh dengan kondisi yang lebih baik
+      const refreshInterval = setInterval(() => {
+        const now = Date.now();
+        const timeSinceLastRefresh = lastRefreshTimeRef.current ? now - lastRefreshTimeRef.current : Infinity;
+        
+        // Hanya refresh jika:
+        // 1. Data belum berhasil dimuat, atau
+        // 2. Sudah lebih dari 30 detik sejak refresh terakhir
+        // 3. Belum terlalu banyak percobaan yang gagal (maksimal 5 kali)
+        if ((!dataLoadedRef.current || timeSinceLastRefresh > 30000) && failedRefreshCountRef.current < 5) {
+          console.log('🔄 [CitizenDashboard] Auto-refreshing data...', {
+            dataLoaded: dataLoadedRef.current,
+            timeSinceLastRefresh: Math.round(timeSinceLastRefresh / 1000) + 's ago',
+            failedCount: failedRefreshCountRef.current
+          });
+          loadCitizenData(true); // Force refresh untuk memastikan data terupdate
+          loadDaftarPermohonan();
+          loadDokumenResmi();
+          setLastRefreshTime(now);
+          lastRefreshTimeRef.current = now;
+        } else if (failedRefreshCountRef.current >= 5) {
+          console.log('🛑 [CitizenDashboard] Stopping auto-refresh - too many failed attempts');
+        } else {
+          console.log('⏸️ [CitizenDashboard] Skipping auto-refresh - data already loaded and recent');
+        }
+      }, 30000); // Refresh setiap 30 detik (lebih lama dari sebelumnya)
+      
+      return () => clearInterval(refreshInterval);
     }
   }, [contractService, walletAddress]);
 
-  const loadCitizenData = async () => {
+  const loadCitizenData = async (forceRefresh = false) => {
     try {
       console.log('🔄 [CitizenDashboard] Loading citizen data for wallet:', walletAddress);
       const data = await contractService.getCitizenData(walletAddress);
       console.log('✅ [CitizenDashboard] Citizen data loaded:', data);
       setCitizenData(data);
       
-      // Load KK data from IPFS via smart contract
-      const mapping = await loadNIKMapping(contractService);
-      const cid = mapping[data.nik];
-      console.log('🔍 [CitizenDashboard] Mapping lookup:', { nik: data.nik, cid, mappingKeys: Object.keys(mapping) });
+      // Load KK data from IPFS via smart contract dengan retry jika forceRefresh
+      const retryCount = forceRefresh ? 5 : 3;
+      const retryDelay = forceRefresh ? 3000 : 2000;
+      const mapping = await loadNIKMapping(contractService, retryCount, retryDelay);
+      console.log('📊 [CitizenDashboard] Mapping object type:', typeof mapping);
+      console.log('📊 [CitizenDashboard] Mapping object keys:', Object.keys(mapping || {}));
+      
+      // Validasi mapping object
+      if (!mapping || typeof mapping !== 'object') {
+        console.error('❌ [CitizenDashboard] Invalid mapping object:', mapping);
+        throw new Error('Invalid mapping object received');
+      }
+      
+      if (Array.isArray(mapping)) {
+        console.error('❌ [CitizenDashboard] Mapping is array, expected object:', mapping);
+        throw new Error('Mapping is array, expected object');
+      }
+      console.log('📊 [CitizenDashboard] Looking for NIK:', data.nik);
+      console.log('📊 [CitizenDashboard] Available NIKs in mapping:', Object.keys(mapping || {}));
+      // Coba berbagai kemungkinan tipe data NIK
+      const nikString = data.nik.toString();
+      const nikNumber = parseInt(data.nik);
+      console.log('🔍 [CitizenDashboard] NIK variations:', { 
+        original: data.nik, 
+        type: typeof data.nik,
+        asString: nikString, 
+        asNumber: nikNumber 
+      });
+      
+      let cid = mapping[data.nik];
+      if (!cid) {
+        cid = mapping[nikString];
+        console.log('🔄 [CitizenDashboard] Trying NIK as string:', nikString, '-> CID:', cid);
+      }
+      if (!cid) {
+        cid = mapping[nikNumber];
+        console.log('🔄 [CitizenDashboard] Trying NIK as number:', nikNumber, '-> CID:', cid);
+      }
+      
+      console.log('🔍 [CitizenDashboard] Final mapping lookup:', { nik: data.nik, cid, mappingKeys: Object.keys(mapping) });
       
       if (cid) {
         console.log('📁 [CitizenDashboard] Loading KK data from IPFS CID:', cid);
@@ -176,6 +259,17 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         }
         
         setCitizenData(prev => ({ ...prev, kkData: parsedKKData }));
+        
+        // Set data loaded flag ketika KK data berhasil dimuat
+        const now = Date.now();
+        setDataLoaded(true);
+        setLastRefreshTime(now);
+        setFailedRefreshCount(0); // Reset failed count ketika berhasil
+        
+        // Update refs juga
+        dataLoadedRef.current = true;
+        lastRefreshTimeRef.current = now;
+        failedRefreshCountRef.current = 0;
         
         // Extract citizen name from KK data for header
         if (parsedKKData.anggota && parsedKKData.anggota.length > 0) {
@@ -203,11 +297,40 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         }
       } else {
         console.log('⚠️ [CitizenDashboard] No CID found for NIK:', data.nik);
+        if (forceRefresh) {
+          console.log('🔄 [CitizenDashboard] Force refresh failed, will retry in next auto-refresh cycle');
+          setFailedRefreshCount(prev => prev + 1);
+          failedRefreshCountRef.current += 1;
+        }
+        // Set data loaded untuk mencegah refresh terus menerus jika NIK tidak ditemukan
+        const now = Date.now();
+        setDataLoaded(true);
+        setLastRefreshTime(now);
+        dataLoadedRef.current = true;
+        lastRefreshTimeRef.current = now;
       }
     } catch (error) {
       console.error('❌ [CitizenDashboard] Failed to load citizen data:', error);
       onPermohonanError('Gagal memuat data warga');
+      // Increment failed count dan set data loaded untuk mencegah refresh terus menerus
+      const now = Date.now();
+      setFailedRefreshCount(prev => prev + 1);
+      setDataLoaded(true);
+      setLastRefreshTime(now);
+      
+      // Update refs juga
+      failedRefreshCountRef.current += 1;
+      dataLoadedRef.current = true;
+      lastRefreshTimeRef.current = now;
     }
+  };
+
+  // Fungsi untuk manual refresh setelah verifikasi Dukcapil
+  const refreshDataAfterVerification = async () => {
+    console.log('🔄 [CitizenDashboard] Manual refresh after Dukcapil verification...');
+    await loadCitizenData(true); // Force refresh dengan retry lebih banyak
+    await loadDaftarPermohonan();
+    await loadDokumenResmi();
   };
 
   const loadDaftarPermohonan = async () => {

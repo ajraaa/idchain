@@ -16,26 +16,58 @@ export const fetchFromIPFS = async (cid) => {
     }
 };
 
-export const loadNIKMapping = async (contractService = null) => {
+export const loadNIKMapping = async (contractService = null, retryCount = 3, retryDelay = 2000) => {
     try {
         // Jika contractService tersedia, coba ambil dari smart contract dulu
         if (contractService && contractService.contract) {
             console.log('🔍 [IPFS] Trying to load NIK mapping from smart contract...');
-            try {
-                const cid = await contractService.getNikMappingCID();
-                if (cid && cid.trim() !== '') {
-                    console.log('📋 [IPFS] Found CID in smart contract:', cid);
-                    const encryptedData = await fetchFromIPFS(cid);
-                    console.log('🔐 [IPFS] Decrypting mapping data...');
-                    const mapping = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
-                    console.log('✅ [IPFS] Successfully loaded NIK mapping from IPFS via smart contract');
-                    return mapping;
-                } else {
-                    console.log('⚠️ [IPFS] No CID found in smart contract, falling back to local file');
+
+            for (let attempt = 1; attempt <= retryCount; attempt++) {
+                try {
+                    console.log(`🔄 [IPFS] Attempt ${attempt}/${retryCount} to load from smart contract...`);
+                    const cid = await contractService.getNikMappingCID();
+
+                    if (cid && cid.trim() !== '') {
+                        console.log('📋 [IPFS] Found CID in smart contract:', cid);
+                        const encryptedData = await fetchFromIPFS(cid);
+                        console.log('🔐 [IPFS] Decrypting mapping data...');
+                        const decryptedData = await decryptAes256CbcNodeStyle(encryptedData, CRYPTO_CONFIG.SECRET_KEY);
+                        console.log('📊 [IPFS] Decrypted data type:', typeof decryptedData);
+
+                        // Parse JSON jika masih string
+                        let mapping = decryptedData;
+                        if (typeof decryptedData === 'string') {
+                            try {
+                                mapping = JSON.parse(decryptedData);
+                                console.log('✅ [IPFS] Successfully parsed JSON string to object');
+                            } catch (error) {
+                                console.error('❌ [IPFS] Failed to parse JSON string:', error);
+                                throw new Error('Failed to parse mapping JSON: ' + error.message);
+                            }
+                        }
+
+                        console.log('📊 [IPFS] Final mapping data type:', typeof mapping);
+                        console.log('📊 [IPFS] Final mapping keys:', Object.keys(mapping || {}));
+                        console.log('📊 [IPFS] Sample mapping entries:', Object.entries(mapping || {}).slice(0, 3));
+                        console.log('✅ [IPFS] Successfully loaded NIK mapping from IPFS via smart contract');
+                        return mapping;
+                    } else {
+                        console.log(`⚠️ [IPFS] No CID found in smart contract (attempt ${attempt}/${retryCount})`);
+                        if (attempt < retryCount) {
+                            console.log(`⏳ [IPFS] Waiting ${retryDelay}ms before retry...`);
+                            await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        }
+                    }
+                } catch (error) {
+                    console.log(`⚠️ [IPFS] Failed to load from smart contract (attempt ${attempt}/${retryCount}):`, error.message);
+                    if (attempt < retryCount) {
+                        console.log(`⏳ [IPFS] Waiting ${retryDelay}ms before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    }
                 }
-            } catch (error) {
-                console.log('⚠️ [IPFS] Failed to load from smart contract, falling back to local file:', error.message);
             }
+
+            console.log('⚠️ [IPFS] All attempts to load from smart contract failed, falling back to local file');
         }
 
         // Fallback ke file lokal
@@ -56,10 +88,6 @@ export const loadNIKMapping = async (contractService = null) => {
 export const uploadNIKMapping = async (mapping, contractService = null) => {
     try {
         console.log('📤 [IPFS] Uploading NIK mapping to IPFS...');
-
-        // Convert mapping to JSON string
-        const mappingJson = JSON.stringify(mapping, null, 2);
-        console.log('📊 [IPFS] Mapping JSON size:', mappingJson.length, 'characters');
 
         // Enkripsi mapping menggunakan crypto.js
         console.log('🔐 [IPFS] Encrypting mapping data...');
@@ -115,10 +143,6 @@ export const uploadNIKMapping = async (mapping, contractService = null) => {
 export const uploadNIKMappingToIPFSOnly = async (mapping) => {
     try {
         console.log('📤 [IPFS] Uploading NIK mapping to IPFS (no smart contract update)...');
-
-        // Convert mapping to JSON string
-        const mappingJson = JSON.stringify(mapping, null, 2);
-        console.log('📊 [IPFS] Mapping JSON size:', mappingJson.length, 'characters');
 
         // Enkripsi mapping menggunakan crypto.js
         console.log('🔐 [IPFS] Encrypting mapping data...');

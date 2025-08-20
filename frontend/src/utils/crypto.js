@@ -38,7 +38,19 @@ export async function decryptAes256CbcNodeStyle(base64Data, passphrase) {
         ciphertext
     );
     const decoder = new TextDecoder();
-    return JSON.parse(decoder.decode(decryptedBuffer));
+    const decodedString = decoder.decode(decryptedBuffer);
+    console.log('🔍 [Crypto] Decoded string length:', decodedString.length);
+    console.log('🔍 [Crypto] Decoded string preview:', decodedString.substring(0, 100) + '...');
+
+    try {
+        const parsedData = JSON.parse(decodedString);
+        console.log('✅ [Crypto] Successfully parsed JSON');
+        return parsedData;
+    } catch (error) {
+        console.error('❌ [Crypto] Failed to parse JSON:', error);
+        console.error('❌ [Crypto] Raw decoded string:', decodedString);
+        throw new Error('Failed to parse decrypted JSON: ' + error.message);
+    }
 }
 
 /**
@@ -66,7 +78,10 @@ export async function encryptAes256CbcNodeStyle(jsonData, passphrase) {
     );
     // 4. Encrypt
     const encoder = new TextEncoder();
-    const data = encoder.encode(JSON.stringify(jsonData));
+    const jsonString = JSON.stringify(jsonData);
+    console.log('🔍 [Crypto] JSON string to encrypt length:', jsonString.length);
+    console.log('🔍 [Crypto] JSON string preview:', jsonString.substring(0, 100) + '...');
+    const data = encoder.encode(jsonString);
     const encryptedBuffer = await window.crypto.subtle.encrypt(
         { name: 'AES-CBC', iv },
         cryptoKey,
