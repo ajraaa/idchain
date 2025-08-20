@@ -167,9 +167,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         
         // Hanya refresh jika:
         // 1. Data belum berhasil dimuat, atau
-        // 2. Sudah lebih dari 30 detik sejak refresh terakhir
-        // 3. Belum terlalu banyak percobaan yang gagal (maksimal 5 kali)
-        if ((!dataLoadedRef.current || timeSinceLastRefresh > 30000) && failedRefreshCountRef.current < 5) {
+        // 2. Belum terlalu banyak percobaan yang gagal (maksimal 5 kali)
+        if (!dataLoadedRef.current && failedRefreshCountRef.current < 5) {
           console.log('🔄 [CitizenDashboard] Auto-refreshing data...', {
             dataLoaded: dataLoadedRef.current,
             timeSinceLastRefresh: Math.round(timeSinceLastRefresh / 1000) + 's ago',
@@ -183,7 +182,7 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         } else if (failedRefreshCountRef.current >= 5) {
           console.log('🛑 [CitizenDashboard] Stopping auto-refresh - too many failed attempts');
         } else {
-          console.log('⏸️ [CitizenDashboard] Skipping auto-refresh - data already loaded and recent');
+          console.log('⏸️ [CitizenDashboard] Skipping auto-refresh - data already loaded successfully');
         }
       }, 30000); // Refresh setiap 30 detik (lebih lama dari sebelumnya)
       
