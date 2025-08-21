@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FaUser, FaFileAlt, FaList, FaDownload, FaPowerOff, FaBell } from 'react-icons/fa';
+import { FaUser, FaFileAlt, FaList, FaDownload, FaPowerOff, FaBell, FaUsers } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import { handleContractError } from '../utils/errorHandler.js';
 import { enhanceNotificationMessage } from '../utils/notificationHelper.js';
@@ -24,6 +24,7 @@ const sidebarMenus = [
   { key: 'ajukan', label: 'Ajukan Permohonan', icon: <FaFileAlt /> },
   { key: 'daftar', label: 'Daftar Permohonan', icon: <FaList /> },
   { key: 'dokumen', label: 'Dokumen Resmi', icon: <FaDownload /> },
+  { key: 'kk', label: 'Kartu Keluarga', icon: <FaUsers /> },
 ];
 
 const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSuccess, onError, onPermohonanSuccess, onPermohonanError, isLoading, onCitizenNameLoaded, citizenName }) => {
@@ -1150,6 +1151,26 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         };
       default: return {};
     }
+  };
+
+  // Helper functions for KK formatting
+  const formatAlamatLengkap = (alamat) => {
+    if (!alamat) return '-';
+    return `${alamat.alamat}, RT ${alamat.rt}/RW ${alamat.rw}, ${alamat.kelurahan}, ${alamat.kecamatan}, ${alamat.kabupaten}, ${alamat.provinsi}`;
+  };
+
+  const formatJenisKelamin = (jenis) => {
+    return jenis === 'L' ? 'Laki-Laki' : jenis === 'P' ? 'Perempuan' : jenis;
+  };
+
+  const formatTempatTanggalLahir = (anggota) => {
+    if (!anggota.tempatLahir && !anggota.tanggalLahir) return '-';
+    const tanggal = anggota.tanggalLahir ? new Date(anggota.tanggalLahir).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : '';
+    return `${anggota.tempatLahir || ''}, ${tanggal}`;
   };
 
   // Helper: reset form data
@@ -2615,6 +2636,199 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
     );
   };
 
+  const renderKartuKeluarga = () => {
+    if (!citizenData?.kkData) {
+      return (
+        <div className="kk-section">
+          <div className="management-card">
+            <div className="empty-state">
+              <p>Data kartu keluarga belum tersedia.</p>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                Data kartu keluarga akan dimuat setelah verifikasi data warga.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const { kkData } = citizenData;
+    const anggotaArr = Array.isArray(kkData?.anggota) ? kkData.anggota : [];
+    
+    return (
+      <div className="kk-section">
+        <div className="management-card">
+          {/* Header KK */}
+          <div style={{ 
+            borderBottom: '2px solid #e5e7eb', 
+            paddingBottom: '16px', 
+            marginBottom: '24px' 
+          }}>
+            <h3 style={{ 
+              margin: '0 0 12px 0', 
+              fontSize: '1.5rem', 
+              fontWeight: '700',
+              color: '#1f2937'
+            }}>
+              📋 Kartu Keluarga
+            </h3>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px',
+              fontSize: '14px',
+              color: '#4b5563'
+            }}>
+              <div>
+                <strong>Nomor KK:</strong> {kkData.kk || '-'}
+              </div>
+              <div>
+                <strong>Alamat:</strong> {formatAlamatLengkap(kkData.alamatLengkap)}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabel Anggota Keluarga */}
+          <div style={{ marginBottom: '32px' }}>
+            <h4 style={{ 
+              margin: '0 0 16px 0', 
+              fontSize: '1.25rem', 
+              fontWeight: '600',
+              color: '#374151'
+            }}>
+              👨‍👩‍👧‍👦 Anggota Keluarga ({anggotaArr.length} orang)
+            </h4>
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '50px' }}>No</th>
+                    <th style={{ width: '140px' }}>NIK</th>
+                    <th style={{ width: '200px' }}>Nama</th>
+                    <th style={{ width: '100px' }}>Jenis Kelamin</th>
+                    <th style={{ width: '180px' }}>Tempat, Tanggal Lahir</th>
+                    <th style={{ width: '150px' }}>Hubungan Keluarga</th>
+                    <th style={{ width: '120px' }}>Pendidikan</th>
+                    <th style={{ width: '120px' }}>Pekerjaan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {anggotaArr.map((anggota, index) => (
+                    <tr key={anggota.nik}>
+                      <td style={{ textAlign: 'center', fontWeight: '600' }}>{index + 1}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{anggota.nik}</td>
+                      <td style={{ fontWeight: '500' }}>{anggota.nama}</td>
+                      <td>{formatJenisKelamin(anggota.jenisKelamin)}</td>
+                      <td style={{ fontSize: '13px' }}>{formatTempatTanggalLahir(anggota)}</td>
+                      <td>
+                        <span style={{
+                          background: anggota.statusHubunganKeluarga === 'KEPALA KELUARGA' ? '#dbeafe' : '#f3f4f6',
+                          color: anggota.statusHubunganKeluarga === 'KEPALA KELUARGA' ? '#1e40af' : '#374151',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}>
+                          {anggota.statusHubunganKeluarga}
+                        </span>
+                      </td>
+                      <td>{anggota.pendidikan || '-'}</td>
+                      <td>{anggota.jenisPekerjaan || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* History Perubahan KK */}
+          {kkData.history && Array.isArray(kkData.history) && kkData.history.length > 0 && (
+            <div style={{ 
+              borderTop: '2px solid #e5e7eb', 
+              paddingTop: '24px' 
+            }}>
+              <h4 style={{ 
+                margin: '0 0 16px 0', 
+                fontSize: '1.25rem', 
+                fontWeight: '600',
+                color: '#374151'
+              }}>
+                📝 Riwayat Perubahan Kartu Keluarga
+              </h4>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '12px' 
+              }}>
+                {kkData.history.map((item, index) => (
+                  <div key={index} style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    background: '#fafafa'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1f2937'
+                      }}>
+                        {item.jenisPerubahan}
+                      </div>
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        background: '#f3f4f6',
+                        padding: '4px 8px',
+                        borderRadius: '4px'
+                      }}>
+                        {formatDate(item.tanggal)}
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#4b5563',
+                      marginBottom: '4px'
+                    }}>
+                      {item.keterangan}
+                    </div>
+                    {item.anggota && (
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#6b7280',
+                        fontStyle: 'italic'
+                      }}>
+                        Anggota: {item.anggota}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Jika tidak ada history */}
+          {(!kkData.history || !Array.isArray(kkData.history) || kkData.history.length === 0) && (
+            <div style={{ 
+              borderTop: '2px solid #e5e7eb', 
+              paddingTop: '24px',
+              textAlign: 'center',
+              color: '#6b7280',
+              fontSize: '14px'
+            }}>
+              <p style={{ margin: 0 }}>Belum ada riwayat perubahan kartu keluarga</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Judul dinamis sesuai menu
   const getCardTitle = () => {
     switch (activeTab) {
@@ -2626,6 +2840,8 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
         return 'Daftar Permohonan';
       case 'dokumen':
         return 'Dokumen Resmi';
+      case 'kk':
+        return 'Kartu Keluarga';
       default:
         return '';
     }
@@ -2733,12 +2949,14 @@ const CitizenDashboard = ({ walletAddress, contractService, onDisconnect, onSucc
               {activeTab === 'ajukan' && <p className="dukcapil-subtitle-main">Ajukan permohonan baru sesuai kebutuhan Anda</p>}
               {activeTab === 'daftar' && <p className="dukcapil-subtitle-main">Lihat riwayat permohonan yang pernah diajukan</p>}
               {activeTab === 'dokumen' && <p className="dukcapil-subtitle-main">Daftar dokumen resmi yang Anda miliki</p>}
+              {activeTab === 'kk' && <p className="dukcapil-subtitle-main">Lihat data lengkap kartu keluarga dan riwayat perubahannya</p>}
             </div>
             <div className="tab-content">
               {activeTab === 'profile' && renderProfile()}
               {activeTab === 'ajukan' && renderAjukanPermohonan()}
               {activeTab === 'daftar' && renderDaftarPermohonan()}
               {activeTab === 'dokumen' && renderDokumenResmi()}
+              {activeTab === 'kk' && renderKartuKeluarga()}
             </div>
           </div>
         </main>
