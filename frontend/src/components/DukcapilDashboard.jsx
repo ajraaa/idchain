@@ -677,7 +677,7 @@ const DukcapilDashboard = ({ walletAddress, contractService, onDisconnect, onSuc
                   <td>{p.id}</td>
                   <td>{p.jenis}</td>
                   <td>{p.status}</td>
-                  <td>{p.pemohon}</td>
+                  <td>{formatAddress(p.pemohon)}</td>
                   <td><button className="detail-button" onClick={() => handlePermohonanClick(p)}>Detail</button></td>
                 </tr>
               ))}
