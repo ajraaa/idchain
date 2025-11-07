@@ -55,7 +55,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_json_xxx", 1, 0, 0, ethers.ZeroHash);
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
-        const tx = await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], false, "Data tidak lengkap", "");
+        const tx = await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], false, "Data tidak lengkap", "", "");
         await tx.wait();
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(4); // DitolakDukcapil
@@ -117,7 +117,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_xx", 1, 0, 0, ethers.ZeroHash);
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "QmXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "QmYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(3); // DisetujuiDukcapil
     });
@@ -129,7 +129,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
 
         await expect(
-            pencatatan.connect(warga).verifikasiDukcapil(ids[0], true, "", "")
+            pencatatan.connect(warga).verifikasiDukcapil(ids[0], true, "", "", "")
         ).to.be.revertedWithCustomError(pencatatan, "OnlyDukcapil");
     });
 
@@ -151,7 +151,7 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(kalurahan).verifikasiKalurahan(ids[0], true, "");
 
         await expect(
-            pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "")
+            pencatatan.connect(dukcapil).verifikasiDukcapil(ids[0], true, "", "QmXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "QmYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
         )
             .to.emit(pencatatan, "VerifikasiDukcapil")
             .withArgs(ids[0], dukcapil.address, true, "", anyValue);
@@ -198,9 +198,9 @@ describe("PencatatanSipil", function () {
     it("dukcapil dapat mengunggah dan warga dapat mengambil dokumen resmi", async () => {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres", 1, 0, 0, ethers.ZeroHash);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "cid_dokres");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "QmXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "QmYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
         const dok = await pencatatan.connect(warga).getDokumenResmi(0);
-        expect(dok).to.equal("cid_dokres");
+        expect(dok).to.equal("QmXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
     });
 
     it("dukcapil dapat verifikasi dengan dokumen resmi dalam satu transaksi", async () => {
@@ -209,7 +209,7 @@ describe("PencatatanSipil", function () {
 
         // Verifikasi dengan dokumen resmi dalam satu transaksi
         await expect(
-            pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "cid_dokres_combined")
+            pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "QmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "QmYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
         )
             .to.emit(pencatatan, "VerifikasiDukcapil")
             .and.to.emit(pencatatan, "DokumenResmiDiunggah");
@@ -218,7 +218,7 @@ describe("PencatatanSipil", function () {
         expect(updated.status).to.equal(3); // DisetujuiDukcapil
 
         const dok = await pencatatan.connect(warga).getDokumenResmi(0);
-        expect(dok).to.equal("cid_dokres_combined");
+        expect(dok).to.equal("QmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     });
 
     it("gagal upload dokumen resmi jika sudah ada", async () => {
@@ -226,22 +226,22 @@ describe("PencatatanSipil", function () {
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
 
         // Verifikasi dengan dokumen resmi
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "cid_dokres_first");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "QmBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", "QmYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
 
         // Coba upload dokumen lagi (harus gagal)
         await expect(
-            pencatatan.connect(dukcapil).unggahDokumenResmi(0, "cid_dokres_second")
+            pencatatan.connect(dukcapil).unggahDokumenResmi(0, "QmCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC")
         ).to.be.revertedWithCustomError(pencatatan, "DokumenResmiSudahAda");
 
         // Dokumen pertama tetap ada
         const dok = await pencatatan.connect(warga).getDokumenResmi(0);
-        expect(dok).to.equal("cid_dokres_first");
+        expect(dok).to.equal("QmBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
     });
 
     it("tidak bisa mengambil dokumen resmi jika belum diunggah", async () => {
         await pencatatan.connect(warga).submitPermohonan(0, "cid_for_dokres2", 1, 0, 0, ethers.ZeroHash);
         await pencatatan.connect(kalurahan).verifikasiKalurahan(0, true, "");
-        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, true, "", "");
+        await pencatatan.connect(dukcapil).verifikasiDukcapil(0, false, "Tolak tanpa dokumen", "", "");
         await expect(
             pencatatan.connect(warga).getDokumenResmi(0)
         ).to.be.revertedWithCustomError(pencatatan, "BelumAdaDokumenResmi");
@@ -439,7 +439,7 @@ describe("Fitur Permohonan Pindah", function () {
         const ids = await pencatatan.getPermohonanIDsByPemohon(warga.address);
         await pencatatan.connect(kalurahanAsal).verifikasiKalurahanAsalPindah(ids[0], true, "", 2);
         await pencatatan.connect(kalurahanTujuan).verifikasiKalurahanTujuanPindah(ids[0], true, "");
-        await pencatatan.connect(owner).verifikasiDukcapil(ids[0], true, "", "");
+        await pencatatan.connect(owner).verifikasiDukcapil(ids[0], true, "", "QmDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "QmYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
         const updated = await pencatatan.getPermohonan(ids[0]);
         expect(updated.status).to.equal(3); // DisetujuiDukcapil
     });
